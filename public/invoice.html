@@ -437,6 +437,7 @@
         const token = localStorage.getItem('token');
         let userGstRate = 18; // Default fallback
         let itemNames = [];
+        let searchedInvoiceNo = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             const shopName = document.getElementById('shopName');
@@ -703,7 +704,7 @@
                         const next = await r.json();
                         if (next.success) {
                             invoiceNoEl.textContent = next.invoice_no;
-                           invoiceDateEl.textContent = safeInvoiceDate(j.date);
+                            invoiceDateEl.textContent = safeInvoiceDate(j.date);
                         }
                     } catch (e) {
                         console.warn('Error fetching next invoice number', e);
@@ -738,6 +739,7 @@
                 const r = await fetch(API_PREFIX + '/invoices/' + encodeURIComponent(inv), { headers: { Authorization: 'Bearer ' + token } });
                 const j = await r.json();
                 if (!j.success) return alert('Not found');
+                searchedInvoiceNo = j.invoice.invoice_no;
                 renderSearch(j.invoice);
             };
 
@@ -760,13 +762,16 @@
 
             // ✅ Silent Search Download
             searchDownloadBtn.onclick = async () => {
-                const inv = searchInput.value.trim();
-                if (!inv) return;
+                const inv = searchedInvoiceNo || searchInput.value.trim();
+                if (!inv) return alert('Search invoice first');
+
                 try {
-                    const response = await fetch(`${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`, {
-                        headers: { Authorization: 'Bearer ' + token }
-                    });
+                    const response = await fetch(
+                        `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
+                        { headers: { Authorization: 'Bearer ' + token } }
+                    );
                     if (!response.ok) throw new Error('Download failed');
+
                     const blob = await response.blob();
                     const link = document.createElement('a');
                     link.style.display = 'none';
@@ -780,6 +785,7 @@
                     alert('Failed to download PDF: ' + err.message);
                 }
             };
+
 
             init();
         });
