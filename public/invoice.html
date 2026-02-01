@@ -789,19 +789,46 @@
             // };
 
 
-            searchDownloadBtn.onclick = () => {
-                const inv = searchInput.value.trim();
+            searchDownloadBtn.onclick = async () => {
+                const inv = searchedInvoiceNo || searchInput.value.trim();
                 if (!inv) {
                     alert('Search invoice first');
                     return;
                 }
 
-                // user-triggered navigation (mobile safe)
-                window.open(
-                    `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
-                    '_self'
-                );
+                try {
+                    // 🔐 AUTH HEADER INCLUDED
+                    const response = await fetch(
+                        `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
+                        {
+                            headers: {
+                                Authorization: 'Bearer ' + token
+                            }
+                        }
+                    );
+
+                    if (!response.ok) {
+                        throw new Error('Download failed');
+                    }
+
+                    const blob = await response.blob();
+
+                    // ✅ USER-INITIATED DOWNLOAD (mobile safe)
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${inv}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                } catch (err) {
+                    alert('PDF download failed');
+                    console.error(err);
+                }
             };
+
 
 
             init();
