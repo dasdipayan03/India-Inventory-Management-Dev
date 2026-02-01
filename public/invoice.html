@@ -437,7 +437,6 @@
         const token = localStorage.getItem('token');
         let userGstRate = 18; // Default fallback
         let itemNames = [];
-        let searchedInvoiceNo = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             const shopName = document.getElementById('shopName');
@@ -693,145 +692,96 @@
                         }
                     }, 1000);
 
-            // ✅ Clear form and refresh next invoice number
-            custName.value = custContact.value = custAddress.value = '';
-            itemsTbody.innerHTML = '';
-            addItemRow();
-            recalcTotals();
+                    // ✅ Clear form and refresh next invoice number
+                    custName.value = custContact.value = custAddress.value = '';
+                    itemsTbody.innerHTML = '';
+                    addItemRow();
+                    recalcTotals();
 
-            try {
-                const r = await fetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
-                const next = await r.json();
-                if (next.success) {
-                    invoiceNoEl.textContent = next.invoice_no;
-                    invoiceDateEl.textContent = safeInvoiceDate(j.date);
+                    try {
+                        const r = await fetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
+                        const next = await r.json();
+                        if (next.success) {
+                            invoiceNoEl.textContent = next.invoice_no;
+                           invoiceDateEl.textContent = safeInvoiceDate(j.date);
+                        }
+                    } catch (e) {
+                        console.warn('Error fetching next invoice number', e);
+                    }
+                } else {
+                    alert('Error saving invoice');
                 }
-            } catch (e) {
-                console.warn('Error fetching next invoice number', e);
-            }
-        } else {
-            alert('Error saving invoice');
-        }
             };
 
-        // ✅ Clear Button
-        clearBtn.onclick = async () => {
-            custName.value = custContact.value = custAddress.value = '';
-            itemsTbody.innerHTML = '';
-            addItemRow();
-            recalcTotals();
-            try {
-                const r = await fetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
-                const j = await r.json();
-                if (j.success) {
-                    invoiceNoEl.textContent = j.invoice_no;
-                    invoiceDateEl.textContent = safeInvoiceDate(j.date);
+            // ✅ Clear Button
+            clearBtn.onclick = async () => {
+                custName.value = custContact.value = custAddress.value = '';
+                itemsTbody.innerHTML = '';
+                addItemRow();
+                recalcTotals();
+                try {
+                    const r = await fetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
+                    const j = await r.json();
+                    if (j.success) {
+                        invoiceNoEl.textContent = j.invoice_no;
+                        invoiceDateEl.textContent = safeInvoiceDate(j.date);
+                    }
+                } catch (err) {
+                    console.warn('Network error fetching new invoice number:', err);
                 }
-            } catch (err) {
-                console.warn('Network error fetching new invoice number:', err);
-            }
-        };
+            };
 
-        // ✅ Search & Render Invoice
-        searchBtn.onclick = async () => {
-            const inv = searchInput.value.trim();
-            if (!inv) return;
-            const r = await fetch(API_PREFIX + '/invoices/' + encodeURIComponent(inv), { headers: { Authorization: 'Bearer ' + token } });
-            const j = await r.json();
-            if (!j.success) return alert('Not found');
-            searchedInvoiceNo = j.invoice.invoice_no;
-            searchInput.value = j.invoice.invoice_no;
-            searchInput.blur();
-            renderSearch(j.invoice);
-        };
+            // ✅ Search & Render Invoice
+            searchBtn.onclick = async () => {
+                const inv = searchInput.value.trim();
+                if (!inv) return;
+                const r = await fetch(API_PREFIX + '/invoices/' + encodeURIComponent(inv), { headers: { Authorization: 'Bearer ' + token } });
+                const j = await r.json();
+                if (!j.success) return alert('Not found');
+                renderSearch(j.invoice);
+            };
 
-        function renderSearch(inv) {
-            let html = `<div><b>${inv.invoice_no}</b> | ${new Date(inv.date).toLocaleString()}<br>
+            function renderSearch(inv) {
+                let html = `<div><b>${inv.invoice_no}</b> | ${new Date(inv.date).toLocaleString()}<br>
       ${inv.customer_name || ''} ${inv.contact || ''}<br>${inv.address || ''}</div>
       <table style="width:100%;border-collapse:collapse;margin-top:4px;">`;
 
-            inv.items.forEach(it => {
-                html += `<tr><td>${it.description}</td><td style="text-align:right;">${it.quantity}</td>
+                inv.items.forEach(it => {
+                    html += `<tr><td>${it.description}</td><td style="text-align:right;">${it.quantity}</td>
         <td style="text-align:right;">${it.rate}</td><td style="text-align:right;">${it.amount}</td></tr>`;
-            });
+                });
 
-            html += `</table><div style="text-align:right;"><b>Subtotal:</b> ${inv.subtotal}<br>
+                html += `</table><div style="text-align:right;"><b>Subtotal:</b> ${inv.subtotal}<br>
   <b>GST:</b> ${inv.gst_amount}<br><b>Total:</b> ${inv.total_amount}</div>`;
 
-            searchResult.innerHTML = html;
-        }
-
-
-        // ✅ Silent Search Download
-        searchDownloadBtn.onclick = async () => {
-            const inv = searchedInvoiceNo || searchInput.value.trim();
-            if (!inv) return alert('Search invoice first');
-
-            try {
-                const response = await fetch(
-                    `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
-                    { headers: { Authorization: 'Bearer ' + token } }
-                );
-                if (!response.ok) throw new Error('Download failed');
-
-                const blob = await response.blob();
-                const link = document.createElement('a');
-                link.style.display = 'none';
-                link.href = URL.createObjectURL(blob);
-                link.download = `${inv}.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(link.href);
-            } catch (err) {
-                alert('Failed to download PDF: ' + err.message);
+                searchResult.innerHTML = html;
             }
-        };
 
 
-        // searchDownloadBtn.onclick = async () => {
-        //     const inv = searchedInvoiceNo || searchInput.value.trim();
-        //     if (!inv) {
-        //         alert('Search invoice first');
-        //         return;
-        //     }
+            // ✅ Silent Search Download
+            searchDownloadBtn.onclick = async () => {
+                const inv = searchInput.value.trim();
+                if (!inv) return;
+                try {
+                    const response = await fetch(`${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`, {
+                        headers: { Authorization: 'Bearer ' + token }
+                    });
+                    if (!response.ok) throw new Error('Download failed');
+                    const blob = await response.blob();
+                    const link = document.createElement('a');
+                    link.style.display = 'none';
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `${inv}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+                } catch (err) {
+                    alert('Failed to download PDF: ' + err.message);
+                }
+            };
 
-        //     try {
-        //         // 🔐 AUTH HEADER INCLUDED
-        //         const response = await fetch(
-        //             `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
-        //             {
-        //                 headers: {
-        //                     Authorization: 'Bearer ' + token
-        //                 }
-        //             }
-        //         );
-
-        //         if (!response.ok) {
-        //             throw new Error('Download failed');
-        //         }
-
-        //         const blob = await response.blob();
-
-        //         // ✅ USER-INITIATED DOWNLOAD (mobile safe)
-        //         const url = URL.createObjectURL(blob);
-        //         const a = document.createElement('a');
-        //         a.href = url;
-        //         a.download = `${inv}.pdf`;
-        //         document.body.appendChild(a);
-        //         a.click();
-        //         document.body.removeChild(a);
-        //         URL.revokeObjectURL(url);
-
-        //     } catch (err) {
-        //         alert('PDF download failed');
-        //         console.error(err);
-        //     }
-        // };
-
-
-
-        init();
+            init();
         });
     </script>
 
