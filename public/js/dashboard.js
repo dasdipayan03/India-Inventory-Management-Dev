@@ -397,7 +397,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     buyingRateInput.addEventListener("input", () => {
       const buying = parseFloat(buyingRateInput.value);
       if (!isNaN(buying)) {
-        sellingRateInput.value = (buying * 1.5).toFixed(2);
+        sellingRateInput.value = (buying * 1.3).toFixed(2);
       } else {
         sellingRateInput.value = "";
       }
