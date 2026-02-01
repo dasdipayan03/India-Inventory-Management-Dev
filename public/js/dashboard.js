@@ -122,15 +122,10 @@ function setupFilterInput(inputId, listId, onSelectCallback) {
     });
   });
 
-  const closeDropdown = (e) => {
-    if (e.target.closest(".dropdown-item")) return;
-    if (!input.contains(e.target) && !listEl.contains(e.target)) {
+  document.addEventListener("click", (e) => {
+    if (!input.contains(e.target) && !listEl.contains(e.target))
       listEl.style.display = "none";
-    }
-  };
-
-  document.addEventListener("click", closeDropdown, { passive: true });
-
+  });
 
   input.addEventListener("focus", () => {
     renderDropdown(listEl, itemNames.slice(0, 50), (val) => {
@@ -225,7 +220,7 @@ async function recordSale() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Sale failed");
     alert(data.message || "Sale recorded");
-    setTimeout(loadItemNames, 0);
+    await loadItemNames();
     ["saleItemSearch", "saleQuantity", "availableStock", "sellingPrice", "actualSellingPrice"].forEach(
       (id) => (document.getElementById(id).value = "")
     );
@@ -390,13 +385,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("searchLedgerBtn").addEventListener("click", searchLedger);
   document.getElementById("showAllDuesBtn").addEventListener("click", showAllDues);
   document.getElementById("saleQuantity").addEventListener("input", updateSellingPrice);
-  document.getElementById("invoiceBtn").addEventListener("click", (e) => {
-    e.preventDefault();
-
-    // 🔥 break gesture chain cleanly (mobile safe)
-    setTimeout(() => {
-      window.location.href = "invoice.html";
-    }, 0);
+  document.getElementById("invoiceBtn").addEventListener("click", () => {
+    window.location.href = "invoice.html";
   });
 
 

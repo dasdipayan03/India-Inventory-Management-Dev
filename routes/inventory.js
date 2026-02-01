@@ -20,7 +20,6 @@ router.post("/items", async (req, res) => {
 
     if (!name || quantity == null || buyingRate == null || sellingRate == null)
       return res.status(400).json({ error: "Missing fields" });
-
     const qty = parseFloat(quantity);
     const buy = parseFloat(buyingRate);
     const sell = parseFloat(sellingRate);
