@@ -740,6 +740,7 @@
                 const j = await r.json();
                 if (!j.success) return alert('Not found');
                 searchedInvoiceNo = j.invoice.invoice_no;
+                searchInput.value = j.invoice.invoice_no;
                 renderSearch(j.invoice);
             };
 
@@ -761,44 +762,30 @@
 
 
             // ✅ Silent Search Download
-            // searchDownloadBtn.onclick = async () => {
-            //     const inv = searchedInvoiceNo || searchInput.value.trim();
-            //     if (!inv) return alert('Search invoice first');
-
-            //     try {
-            //         const response = await fetch(
-            //             `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
-            //             { headers: { Authorization: 'Bearer ' + token } }
-            //         );
-            //         if (!response.ok) throw new Error('Download failed');
-
-            //         const blob = await response.blob();
-            //         const link = document.createElement('a');
-            //         link.style.display = 'none';
-            //         link.href = URL.createObjectURL(blob);
-            //         link.download = `${inv}.pdf`;
-            //         document.body.appendChild(link);
-            //         link.click();
-            //         document.body.removeChild(link);
-            //         URL.revokeObjectURL(link.href);
-            //     } catch (err) {
-            //         alert('Failed to download PDF: ' + err.message);
-            //     }
-            // };
-
-            // ✅ Search Download (Mobile + Desktop compatible)
-            searchDownloadBtn.onclick = () => {
+            searchDownloadBtn.onclick = async () => {
                 const inv = searchedInvoiceNo || searchInput.value.trim();
-                if (!inv) {
-                    alert('Search invoice first');
-                    return;
+                if (!inv) return alert('Search invoice first');
+
+                try {
+                    const response = await fetch(
+                        `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
+                        { headers: { Authorization: 'Bearer ' + token } }
+                    );
+                    if (!response.ok) throw new Error('Download failed');
+
+                    const blob = await response.blob();
+                    const link = document.createElement('a');
+                    link.style.display = 'none';
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `${inv}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+                } catch (err) {
+                    alert('Failed to download PDF: ' + err.message);
                 }
-
-                // Direct navigation = mobile browsers allow download
-                window.location.href =
-                    `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`;
             };
-
 
 
             init();
