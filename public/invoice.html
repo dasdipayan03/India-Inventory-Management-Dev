@@ -655,45 +655,6 @@
 
 
             // ✅ Save Invoice + Silent PDF Download
-            // saveInvoiceBtn.onclick = async () => {
-            //     const data = {
-            //         customer_name: custName.value.trim(),
-            //         contact: custContact.value.trim(),
-            //         address: custAddress.value.trim(),
-            //         gst_no: gstInput.value.trim() || null,
-            //         items: []
-            //     };
-            //     itemsTbody.querySelectorAll('tr').forEach(r => {
-            //         const d = r.children[0].querySelector('input').value.trim(),
-            //             q = parseFloat(r.children[1].querySelector('input').value) || 0,
-            //             p = parseFloat(r.children[2].querySelector('input').value) || 0;
-            //         if (d || q > 0 || p > 0) data.items.push({ description: d, quantity: q, rate: p });
-            //     });
-            //     if (!data.items.length) return alert('Add at least one item');
-            //     const res = await fetch(API_PREFIX + '/invoices', { method: 'POST', headers: authHeaders(), body: JSON.stringify(data) });
-            //     const j = await res.json();
-            //     if (j.success) {
-            //         // ✅ Wait 1 second, then silently download PDF
-            //         setTimeout(async () => {
-            //             const pdfUrl = `${API_PREFIX}/invoices/${encodeURIComponent(j.invoice_no)}/pdf`;
-            //             try {
-            //                 const response = await fetch(pdfUrl, { headers: { Authorization: 'Bearer ' + token } });
-            //                 if (!response.ok) throw new Error('Download failed');
-            //                 const blob = await response.blob();
-            //                 const link = document.createElement('a');
-            //                 link.style.display = 'none';
-            //                 link.href = URL.createObjectURL(blob);
-            //                 link.download = `${j.invoice_no}.pdf`;
-            //                 document.body.appendChild(link);
-            //                 link.click();
-            //                 document.body.removeChild(link);
-            //                 URL.revokeObjectURL(link.href);
-            //             } catch (err) {
-            //                 alert('Failed to download PDF: ' + err.message);
-            //             }
-            //         }, 1000);
-
-
             saveInvoiceBtn.onclick = async () => {
                 const data = {
                     customer_name: custName.value.trim(),
@@ -702,52 +663,35 @@
                     gst_no: gstInput.value.trim() || null,
                     items: []
                 };
-
                 itemsTbody.querySelectorAll('tr').forEach(r => {
                     const d = r.children[0].querySelector('input').value.trim(),
                         q = parseFloat(r.children[1].querySelector('input').value) || 0,
                         p = parseFloat(r.children[2].querySelector('input').value) || 0;
-                    if (d && q > 0) data.items.push({ description: d, quantity: q, rate: p });
+                    if (d || q > 0 || p > 0) data.items.push({ description: d, quantity: q, rate: p });
                 });
-
                 if (!data.items.length) return alert('Add at least one item');
-
-                const res = await fetch(API_PREFIX + '/invoices', {
-                    method: 'POST',
-                    headers: authHeaders(),
-                    body: JSON.stringify(data)
-                });
-
+                const res = await fetch(API_PREFIX + '/invoices', { method: 'POST', headers: authHeaders(), body: JSON.stringify(data) });
                 const j = await res.json();
-
-                if (!j.success) {
-                    alert('Error saving invoice');
-                    return;
-                }
-
-                // ✅ CONFIRM DOWNLOAD
-                const wantDownload = confirm(
-                    'Invoice saved successfully.\n\nDo you want to download the invoice PDF?'
-                );
-
-                if (wantDownload) {
-                    window.location.href =
-                        `${API_PREFIX}/invoices/${encodeURIComponent(j.invoice_no)}/pdf`;
-                }
-
-                // 🔄 Refresh page
-                setTimeout(() => {
-                    window.location.reload();
-                }, 500);
-            };
-
-
-
-
-
-
-
-
+                if (j.success) {
+                    // ✅ Wait 1 second, then silently download PDF
+                    setTimeout(async () => {
+                        const pdfUrl = `${API_PREFIX}/invoices/${encodeURIComponent(j.invoice_no)}/pdf`;
+                        try {
+                            const response = await fetch(pdfUrl, { headers: { Authorization: 'Bearer ' + token } });
+                            if (!response.ok) throw new Error('Download failed');
+                            const blob = await response.blob();
+                            const link = document.createElement('a');
+                            link.style.display = 'none';
+                            link.href = URL.createObjectURL(blob);
+                            link.download = `${j.invoice_no}.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(link.href);
+                        } catch (err) {
+                            alert('Failed to download PDF: ' + err.message);
+                        }
+                    }, 1000);
 
             // ✅ Clear form and refresh next invoice number
             custName.value = custContact.value = custAddress.value = '';
