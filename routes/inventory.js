@@ -88,22 +88,30 @@ router.get("/items/info", async (req, res) => {
   try {
     const user_id = getUserId(req);
     const name = req.query.name;
-    if (!name) return res.status(400).json({ error: "Missing item name" });
+
+    if (!name) {
+      return res.status(400).json({ error: "Missing item name" });
+    }
 
     const result = await pool.query(
-      "SELECT id, name, quantity, rate FROM items WHERE user_id=$1 AND LOWER(TRIM(name))=LOWER($2)",
+      `SELECT id, name, quantity, selling_rate
+       FROM items
+       WHERE user_id=$1
+       AND LOWER(TRIM(name)) = LOWER($2)`,
       [user_id, name.trim()]
     );
 
-    if (result.rows.length === 0)
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: "Item not found" });
+    }
 
     res.json(result.rows[0]);
   } catch (err) {
-    if (process.env.NODE_ENV !== "production") console.error("Error in GET /items/info:", err);
+    console.error("Error in GET /items/info:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // ----------------- SALES -----------------
 
