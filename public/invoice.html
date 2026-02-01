@@ -600,7 +600,7 @@
                             );
                             if (r.ok) {
                                 const j = await r.json();
-                                rateInput.value = j.rate || 0;
+                                rateInput.value = j.selling_rate || 0;
                                 recalcRow();
                             }
                         };
