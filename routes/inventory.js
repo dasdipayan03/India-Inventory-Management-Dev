@@ -16,13 +16,17 @@ router.use(authMiddleware);
 router.post("/items", async (req, res) => {
   try {
     const user_id = getUserId(req);
-    const { name, quantity, rate } = req.body;
+    const { name, quantity, buyingRate, sellingRate } = req.body;
 
-    if (!name || quantity == null || rate == null)
+    if (!name || quantity == null || buyingRate == null || sellingRate == null)
       return res.status(400).json({ error: "Missing fields" });
 
     const qty = parseFloat(quantity);
-    const adjustedRate = parseFloat(rate) * 1.5;
+    const buy = parseFloat(buyingRate);
+    const sell = parseFloat(sellingRate);
+
+    if (isNaN(qty) || isNaN(buy) || isNaN(sell))
+      return res.status(400).json({ error: "Invalid numeric values" });
 
     const check = await pool.query(
       "SELECT * FROM items WHERE user_id=$1 AND LOWER(TRIM(name))=LOWER($2)",
@@ -34,23 +38,35 @@ router.post("/items", async (req, res) => {
       const newQty = parseFloat(existing.quantity) + qty;
 
       const result = await pool.query(
-        "UPDATE items SET quantity=$1, rate=$2, updated_at=NOW() WHERE id=$3 AND user_id=$4 RETURNING *",
-        [newQty, adjustedRate, existing.id, user_id]
+        `UPDATE items
+         SET quantity=$1,
+             buying_rate=$2,
+             selling_rate=$3,
+             updated_at=NOW()
+         WHERE id=$4 AND user_id=$5
+         RETURNING *`,
+        [newQty, buy, sell, existing.id, user_id]
       );
 
       return res.json({ message: "Stock updated", item: result.rows[0] });
     } else {
       const result = await pool.query(
-        "INSERT INTO items (user_id, name, quantity, rate) VALUES ($1,$2,$3,$4) RETURNING *",
-        [user_id, name.trim(), qty, adjustedRate]
+        `INSERT INTO items
+         (user_id, name, quantity, buying_rate, selling_rate)
+         VALUES ($1,$2,$3,$4,$5)
+         RETURNING *`,
+        [user_id, name.trim(), qty, buy, sell]
       );
+
       return res.json({ message: "New item added", item: result.rows[0] });
     }
   } catch (err) {
-    if (process.env.NODE_ENV !== "production") console.error("Error in POST /items:", err);
+    if (process.env.NODE_ENV !== "production")
+      console.error("Error in POST /items:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 // Auto-suggest item names
 router.get("/items/names", async (req, res) => {

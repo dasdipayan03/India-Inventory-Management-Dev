@@ -156,8 +156,9 @@ async function addStock() {
       document.getElementById("newItemSearch").value ||
       "").trim();
   const quantity = parseFloat(document.getElementById("newQuantity").value);
-  const rate = parseFloat(document.getElementById("newRate").value);
-  if (!item || isNaN(quantity) || isNaN(rate))
+  const buyingRate = parseFloat(document.getElementById("newRate").value);
+  const sellingRate = parseFloat(document.getElementById("newSellingRate").value);
+  if (!item || isNaN(quantity) || isNaN(buyingRate) || isNaN(sellingRate))
     return alert("Fill all fields correctly");
   try {
     const res = await fetch(`${apiBase}/items`, {
@@ -166,13 +167,14 @@ async function addStock() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
-      body: JSON.stringify({ name: item, quantity, rate }),
+      body: JSON.stringify({ name: item, quantity, buyingRate, sellingRate }),
+
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Add failed");
     alert(data.message || "Added");
     await loadItemNames();
-    ["manualNewItem", "newItemSearch", "newQuantity", "newRate"].forEach(
+    ["manualNewItem", "newItemSearch", "newQuantity", "newRate", "newSellingRate"].forEach(
       (id) => (document.getElementById(id).value = "")
     );
   } catch (err) {
@@ -386,6 +388,22 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("invoiceBtn").addEventListener("click", () => {
     window.location.href = "invoice.html";
   });
+
+  // Auto calculate selling rate from buying rate (+50%)
+  const buyingRateInput = document.getElementById("newRate");
+  const sellingRateInput = document.getElementById("newSellingRate");
+
+  if (buyingRateInput && sellingRateInput) {
+    buyingRateInput.addEventListener("input", () => {
+      const buying = parseFloat(buyingRateInput.value);
+      if (!isNaN(buying)) {
+        sellingRateInput.value = (buying * 1.5).toFixed(2);
+      } else {
+        sellingRateInput.value = "";
+      }
+    });
+  }
+
 
   setupFilterInput("newItemSearch", "newItemDropdownList", (val) => {
     document.getElementById("manualNewItem").value = "";
