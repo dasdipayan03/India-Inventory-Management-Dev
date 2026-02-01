@@ -3,7 +3,7 @@ const apiBase = window.location.origin.includes("localhost")
   ? "http://localhost:4000/api"
   : "/api";
 
-let itemNames = [];
+// let itemNames = [];
 
 /* ---------------------- AUTH ----------------------- */
 async function checkAuth() {
@@ -184,51 +184,51 @@ async function addStock() {
 }
 
 /* ---------------------- Record Sale --------------------- */
-async function updateSellingPrice() {
-  const item = document.getElementById("saleItemSearch").value.trim();
-  const quantity = parseInt(document.getElementById("saleQuantity").value) || 0;
-  if (!item) return;
-  try {
-    const res = await fetch(
-      `${apiBase}/items/info?name=${encodeURIComponent(item)}`,
-      { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
-    );
-    const data = await res.json();
-    if (!res.ok) return alert(data.error || "Item info error");
-    document.getElementById("availableStock").value = data.quantity;
-    document.getElementById("sellingPrice").value = (data.rate * quantity).toFixed(2);
-  } catch (err) {
-    console.error("Update price error:", err);
-  }
-}
+// async function updateSellingPrice() {
+//   const item = document.getElementById("saleItemSearch").value.trim();
+//   const quantity = parseInt(document.getElementById("saleQuantity").value) || 0;
+//   if (!item) return;
+//   try {
+//     const res = await fetch(
+//       `${apiBase}/items/info?name=${encodeURIComponent(item)}`,
+//       { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+//     );
+//     const data = await res.json();
+//     if (!res.ok) return alert(data.error || "Item info error");
+//     document.getElementById("availableStock").value = data.quantity;
+//     document.getElementById("sellingPrice").value = (data.rate * quantity).toFixed(2);
+//   } catch (err) {
+//     console.error("Update price error:", err);
+//   }
+// }
 
-async function recordSale() {
-  const name = document.getElementById("saleItemSearch").value.trim();
-  const quantity = parseFloat(document.getElementById("saleQuantity").value);
-  const actualPrice = parseFloat(document.getElementById("actualSellingPrice").value);
-  if (!name || isNaN(quantity) || isNaN(actualPrice))
-    return alert("Invalid input");
-  try {
-    const res = await fetch(`${apiBase}/sales`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({ name, quantity, actualPrice }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Sale failed");
-    alert(data.message || "Sale recorded");
-    await loadItemNames();
-    ["saleItemSearch", "saleQuantity", "availableStock", "sellingPrice", "actualSellingPrice"].forEach(
-      (id) => (document.getElementById(id).value = "")
-    );
-  } catch (err) {
-    console.error("Record sale error:", err);
-    alert(err.message || "Server error");
-  }
-}
+// async function recordSale() {
+//   const name = document.getElementById("saleItemSearch").value.trim();
+//   const quantity = parseFloat(document.getElementById("saleQuantity").value);
+//   const actualPrice = parseFloat(document.getElementById("actualSellingPrice").value);
+//   if (!name || isNaN(quantity) || isNaN(actualPrice))
+//     return alert("Invalid input");
+//   try {
+//     const res = await fetch(`${apiBase}/sales`, {
+//       method: "POST",
+//       headers: {
+//         "Content-Type": "application/json",
+//         Authorization: `Bearer ${localStorage.getItem("token")}`,
+//       },
+//       body: JSON.stringify({ name, quantity, actualPrice }),
+//     });
+//     const data = await res.json();
+//     if (!res.ok) throw new Error(data.error || "Sale failed");
+//     alert(data.message || "Sale recorded");
+//     await loadItemNames();
+//     ["saleItemSearch", "saleQuantity", "availableStock", "sellingPrice", "actualSellingPrice"].forEach(
+//       (id) => (document.getElementById(id).value = "")
+//     );
+//   } catch (err) {
+//     console.error("Record sale error:", err);
+//     alert(err.message || "Server error");
+//   }
+// }
 
 /* ---------------------- Reports --------------------- */
 async function downloadSalesPDF() {
@@ -378,13 +378,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupSidebar();
 
   document.getElementById("addStockBtn").addEventListener("click", addStock);
-  document.getElementById("recordSaleBtn").addEventListener("click", recordSale);
+  // document.getElementById("recordSaleBtn").addEventListener("click", recordSale);
   document.getElementById("pdfBtn").addEventListener("click", downloadSalesPDF);
   document.getElementById("excelBtn").addEventListener("click", downloadSalesExcel);
   document.getElementById("submitDebtBtn").addEventListener("click", submitDebt);
   document.getElementById("searchLedgerBtn").addEventListener("click", searchLedger);
   document.getElementById("showAllDuesBtn").addEventListener("click", showAllDues);
-  document.getElementById("saleQuantity").addEventListener("input", updateSellingPrice);
+  // document.getElementById("saleQuantity").addEventListener("input", updateSellingPrice);
   document.getElementById("invoiceBtn").addEventListener("click", () => {
     window.location.href = "invoice.html";
   });
@@ -409,7 +409,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupFilterInput("newItemSearch", "newItemDropdownList", (val) => {
     document.getElementById("manualNewItem").value = "";
   });
-  setupFilterInput("saleItemSearch", "saleItemDropdownList");
+  // setupFilterInput("saleItemSearch", "saleItemDropdownList");
 
   await checkAuth();
   await loadItemNames();
