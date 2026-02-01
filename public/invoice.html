@@ -741,6 +741,7 @@
                 if (!j.success) return alert('Not found');
                 searchedInvoiceNo = j.invoice.invoice_no;
                 searchInput.value = j.invoice.invoice_no;
+                searchInput.blur();
                 renderSearch(j.invoice);
             };
 
@@ -762,29 +763,44 @@
 
 
             // ✅ Silent Search Download
-            searchDownloadBtn.onclick = async () => {
-                const inv = searchedInvoiceNo || searchInput.value.trim();
-                if (!inv) return alert('Search invoice first');
+            // searchDownloadBtn.onclick = async () => {
+            //     const inv = searchedInvoiceNo || searchInput.value.trim();
+            //     if (!inv) return alert('Search invoice first');
 
-                try {
-                    const response = await fetch(
-                        `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
-                        { headers: { Authorization: 'Bearer ' + token } }
-                    );
-                    if (!response.ok) throw new Error('Download failed');
+            //     try {
+            //         const response = await fetch(
+            //             `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
+            //             { headers: { Authorization: 'Bearer ' + token } }
+            //         );
+            //         if (!response.ok) throw new Error('Download failed');
 
-                    const blob = await response.blob();
-                    const link = document.createElement('a');
-                    link.style.display = 'none';
-                    link.href = URL.createObjectURL(blob);
-                    link.download = `${inv}.pdf`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(link.href);
-                } catch (err) {
-                    alert('Failed to download PDF: ' + err.message);
+            //         const blob = await response.blob();
+            //         const link = document.createElement('a');
+            //         link.style.display = 'none';
+            //         link.href = URL.createObjectURL(blob);
+            //         link.download = `${inv}.pdf`;
+            //         document.body.appendChild(link);
+            //         link.click();
+            //         document.body.removeChild(link);
+            //         URL.revokeObjectURL(link.href);
+            //     } catch (err) {
+            //         alert('Failed to download PDF: ' + err.message);
+            //     }
+            // };
+
+
+            searchDownloadBtn.onclick = () => {
+                const inv = searchInput.value.trim();
+                if (!inv) {
+                    alert('Search invoice first');
+                    return;
                 }
+
+                // user-triggered navigation (mobile safe)
+                window.open(
+                    `${API_PREFIX}/invoices/${encodeURIComponent(inv)}/pdf`,
+                    '_self'
+                );
             };
 
 
