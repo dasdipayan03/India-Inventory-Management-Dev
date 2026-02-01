@@ -122,10 +122,15 @@ function setupFilterInput(inputId, listId, onSelectCallback) {
     });
   });
 
-  document.addEventListener("click", (e) => {
-    if (!input.contains(e.target) && !listEl.contains(e.target))
+  const closeDropdown = (e) => {
+    if (e.target.closest(".dropdown-item")) return;
+    if (!input.contains(e.target) && !listEl.contains(e.target)) {
       listEl.style.display = "none";
-  });
+    }
+  };
+
+  document.addEventListener("click", closeDropdown, { passive: true });
+
 
   input.addEventListener("focus", () => {
     renderDropdown(listEl, itemNames.slice(0, 50), (val) => {
@@ -173,7 +178,7 @@ async function addStock() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Add failed");
     alert(data.message || "Added");
-    await loadItemNames();
+    setTimeout(loadItemNames, 0);
     ["manualNewItem", "newItemSearch", "newQuantity", "newRate", "newSellingRate"].forEach(
       (id) => (document.getElementById(id).value = "")
     );
@@ -220,7 +225,7 @@ async function recordSale() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Sale failed");
     alert(data.message || "Sale recorded");
-    await loadItemNames();
+    setTimeout(loadItemNames, 0);
     ["saleItemSearch", "saleQuantity", "availableStock", "sellingPrice", "actualSellingPrice"].forEach(
       (id) => (document.getElementById(id).value = "")
     );
@@ -385,11 +390,17 @@ window.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("searchLedgerBtn").addEventListener("click", searchLedger);
   document.getElementById("showAllDuesBtn").addEventListener("click", showAllDues);
   document.getElementById("saleQuantity").addEventListener("input", updateSellingPrice);
-  document.getElementById("invoiceBtn").addEventListener("click", () => {
-    window.location.href = "invoice.html";
+  document.getElementById("invoiceBtn").addEventListener("click", (e) => {
+    e.preventDefault();
+
+    // 🔥 break gesture chain cleanly (mobile safe)
+    setTimeout(() => {
+      window.location.href = "invoice.html";
+    }, 0);
   });
 
-  // Auto calculate selling rate from buying rate (+50%)
+
+  // Auto calculate selling rate from buying rate (+30%)
   const buyingRateInput = document.getElementById("newRate");
   const sellingRateInput = document.getElementById("newSellingRate");
 
