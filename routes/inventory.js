@@ -190,17 +190,30 @@ router.get("/sales/report/pdf", async (req, res) => {
     doc.fontSize(12).text(`From: ${from}  To: ${to}`);
     doc.moveDown();
 
-    const headers = ["#", "Item", "Qty", "Calc Price", "Actual Price", "Date"];
-    const columnWidths = [30, 120, 50, 80, 80, 100];
+    const headers = ["#", "Item", "Qty", "Price", "Date"];
+    const pageWidth =
+      doc.page.width - doc.page.margins.left - doc.page.margins.right;
+
+    const columnWidths = [
+      30,                 // #
+      pageWidth * 0.45,   // Item (big, wrap)
+      50,                 // Qty
+      pageWidth * 0.25,   // Price
+      pageWidth * 0.25    // Date
+    ];
+
     let startY = doc.y + 10;
-    let startX = doc.x;
+    let startX = doc.page.margins.left;
 
     doc.font("Helvetica-Bold").fontSize(10);
     headers.forEach((h, i) => {
       doc.text(h, startX, startY, { width: columnWidths[i], align: "center" });
       startX += columnWidths[i];
     });
-    doc.moveTo(30, startY + 15).lineTo(550, startY + 15).stroke();
+    doc
+      .moveTo(doc.page.margins.left, startY + 15)
+      .lineTo(doc.page.width - doc.page.margins.right, startY + 15)
+      .stroke();
 
     doc.font("Helvetica").fontSize(9);
     let y = startY + 20;
@@ -209,7 +222,7 @@ router.get("/sales/report/pdf", async (req, res) => {
     rows.forEach((r, idx) => {
       let x = 30;
       const qty = Number(r.quantity) || 0;
-      const calc = Number(r.selling_price) || 0;
+      // const calc = Number(r.selling_price) || 0;
       const actual = Number(r.actual_price) || 0;
       const date = new Date(r.created_at).toLocaleDateString('en-IN', {
         timeZone: 'Asia/Kolkata'
@@ -221,17 +234,33 @@ router.get("/sales/report/pdf", async (req, res) => {
         (idx + 1).toString(),
         r.name || "",
         qty.toString(),
-        calc.toFixed(2),
         actual.toFixed(2),
         date,
       ];
 
+
       row.forEach((val, i) => {
-        doc.text(val, x, y, { width: columnWidths[i], align: "center" });
+        if (i === 1) {
+          doc.text(val, x, y, {
+            width: columnWidths[i],
+            align: "left",
+            lineBreak: true
+          });
+        } else {
+          doc.text(val, x, y, {
+            width: columnWidths[i],
+            align: "center"
+          });
+        }
+
         x += columnWidths[i];
       });
 
-      y += 20;
+      const rowHeight = doc.heightOfString(r.name || "", {
+        width: columnWidths[1]
+      });
+
+      y += Math.max(20, rowHeight + 4);
       if (y > 750) {
         doc.addPage();
         y = 50;
@@ -256,14 +285,13 @@ router.get("/sales/report/excel", async (req, res) => {
       return res.status(400).json({ error: "Missing date range" });
 
     const result = await pool.query(
-      `SELECT s.id, i.name, s.quantity, s.selling_price, s.actual_price, s.created_at
-       FROM sales s
-       JOIN items i ON s.item_id = i.id
-      AND s.created_at >= ($2::date)
-      AND s.created_at < ($3::date + INTERVAL '1 day')
-      BETWEEN $2 AND $3
-
-       ORDER BY s.created_at ASC`,
+      `SELECT s.id, i.name, s.quantity, s.actual_price, s.created_at
+      FROM sales s
+      JOIN items i ON s.item_id = i.id
+      WHERE s.user_id = $1
+        AND s.created_at >= ($2::date)
+        AND s.created_at < ($3::date + INTERVAL '1 day')
+      ORDER BY s.created_at ASC`,
       [user_id, from, to]
     );
 
@@ -273,7 +301,7 @@ router.get("/sales/report/excel", async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Sales Report");
-    sheet.addRow(["#", "Item", "Quantity", "Calc Price", "Actual Price", "Date"]);
+    sheet.addRow(["#", "Item", "Quantity", "Price", "Date"]);
 
     let total = 0;
     rows.forEach((r, idx) => {
@@ -281,13 +309,12 @@ router.get("/sales/report/excel", async (req, res) => {
         idx + 1,
         r.name,
         r.quantity,
-        r.selling_price,
         r.actual_price,
         new Date(r.created_at).toLocaleString('en-IN', {
           timeZone: 'Asia/Kolkata'
         })
-
       ]);
+
       total += Number(r.actual_price);
     });
 
