@@ -92,10 +92,18 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, "public", "login.html"));
 });
 
+
 // -------------------- START SERVER --------------------
 const PORT = process.env.PORT || 8080;
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
+});
+
+// Graceful shutdown (Railway container stop)
+process.on("SIGTERM", () => {
+  console.log("🛑 SIGTERM received. Shutting down gracefully...");
+  process.exit(0);
 });
 
 // optional Loader.io verification
