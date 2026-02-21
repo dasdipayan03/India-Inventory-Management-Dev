@@ -46,6 +46,11 @@ app.use(
         "https://cdnjs.cloudflare.com",
         "https://cdn.jsdelivr.net"
       ],
+      "connect-src": [
+        "'self'",
+        "https://cdn.jsdelivr.net",
+        "https://cdnjs.cloudflare.com"
+      ],
     },
   })
 );
