@@ -662,7 +662,7 @@
 
         async function loadItemNames() {
             try {
-                const r = await fetch(API_PREFIX + '/items/names', {
+                const r = await authFetch(API_PREFIX + '/items/names', {
                     headers: { Authorization: 'Bearer ' + token }
                 });
                 if (r.ok) {
@@ -680,7 +680,7 @@
 
         async function loadInvoiceNumbers() {
             try {
-                const r = await fetch(API_PREFIX + '/invoices/numbers', {
+                const r = await authFetch(API_PREFIX + '/invoices/numbers', {
                     headers: { Authorization: 'Bearer ' + token }
                 });
 
@@ -705,12 +705,36 @@
 
         const API_PREFIX = '/api';
         const token = localStorage.getItem('token');
+        // 🔒 AUTH CHECK ON PAGE LOAD
+        if (!token) {
+            alert("Session expired. Please login again.");
+            window.location.href = "login.html";
+        }
+
+        // 🔒 GLOBAL 401 HANDLER WRAPPER
+        async function authFetch(url, options = {}) {
+            options.headers = options.headers || {};
+            options.headers["Authorization"] = "Bearer " + token;
+
+            const response = await fetch(url, options);
+
+            if (response.status === 401) {
+                localStorage.removeItem("token");
+                alert("Session expired. Please login again.");
+                window.location.href = "login.html";
+                return;
+            }
+
+            return response;
+        }
         let userGstRate = 18; // Default fallback
         let itemNames = [];
         let invoiceNumbers = []; // 🔥 SEARCH DROPDOWN CACHE
 
         document.addEventListener('DOMContentLoaded', () => {
-
+            if (!token) {
+                window.location.href = "login.html";
+            }
 
 
             const downloadModal = document.getElementById('downloadModal');
@@ -807,7 +831,7 @@
                 await loadItemNames();
                 await loadInvoiceNumbers();
                 try {
-                    const gstR = await fetch(API_PREFIX + '/shop-info', { headers: authHeaders() });
+                    const gstR = await authFetch(API_PREFIX + '/shop-info', { headers: authHeaders() });
                     const gstJ = await gstR.json();
                     if (gstJ.success && gstJ.settings) {
                         const s = gstJ.settings;
@@ -828,7 +852,7 @@
                 } catch (e) { }
 
                 try {
-                    const r = await fetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
+                    const r = await authFetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
                     const j = await r.json();
                     if (j.success) {
                         invoiceNoEl.textContent = j.invoice_no;
@@ -847,7 +871,7 @@
                     gst_no: gstInput.value.trim(),
                     gst_rate: parseFloat(document.getElementById('gstRateInput').value) || 18
                 };
-                const r = await fetch(API_PREFIX + '/shop-info', {
+                const r = await authFetch(API_PREFIX + '/shop-info', {
                     method: 'POST',
                     headers: authHeaders(),
                     body: JSON.stringify(data)
@@ -1010,7 +1034,7 @@
                     if (d || q > 0 || p > 0) data.items.push({ description: d, quantity: q, rate: p });
                 });
                 if (!data.items.length) return alert('Add at least one item');
-                const res = await fetch(API_PREFIX + '/invoices', {
+                const res = await authFetch(API_PREFIX + '/invoices', {
                     method: 'POST', headers: authHeaders(), body:
                         JSON.stringify(data)
                 });
@@ -1026,7 +1050,7 @@
                     recalcTotals();
 
                     try {
-                        const r = await fetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
+                        const r = await authFetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
                         const next = await r.json();
                         if (next.success) {
                             invoiceNoEl.textContent = next.invoice_no;
@@ -1047,7 +1071,7 @@
                 addItemRow();
                 recalcTotals();
                 try {
-                    const r = await fetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
+                    const r = await authFetch(API_PREFIX + '/invoices/new', { headers: authHeaders() });
                     const j = await r.json();
                     if (j.success) {
                         invoiceNoEl.textContent = j.invoice_no;
@@ -1062,7 +1086,7 @@
             searchBtn.onclick = async () => {
                 const inv = searchInput.value.trim();
                 if (!inv) return;
-                const r = await fetch(API_PREFIX + '/invoices/' + encodeURIComponent(inv), {
+                const r = await authFetch(API_PREFIX + '/invoices/' + encodeURIComponent(inv), {
                     headers: {
                         Authorization: 'Bearer ' +
                             token
