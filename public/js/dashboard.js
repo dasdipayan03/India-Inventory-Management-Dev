@@ -454,7 +454,7 @@ function renderAnalyticsChart(data) {
         ],
         borderRadius: 0,          // ❌ no round
         borderSkipped: false,
-        barPercentage: 0.3,       // 👈 thin
+        barPercentage: 0.5,       // 👈 thin
         categoryPercentage: 0.4   // 👈 spacing
       }]
     },
