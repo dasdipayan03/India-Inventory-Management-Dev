@@ -156,6 +156,25 @@
       background: #d9edf7;
     }
 
+    .analytics-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s ease;
+    }
+
+    .analytics-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .analytics-title {
+      font-weight: 600;
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #1f2937;
+    }
+
     @media (max-width: 576px) {
       .main {
         padding-left: 10px !important;
@@ -374,8 +393,9 @@
 
 
       </div>
-      <div style="margin-top: 40px;">
-        <h3>Business Overview</h3>
+
+      <div class="card p-3 mt-4">
+        <h5 class="mb-3">Business Overview</h5>
         <canvas id="analyticsChart" height="120"></canvas>
       </div>
 

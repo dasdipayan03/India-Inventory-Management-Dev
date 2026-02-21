@@ -440,7 +440,7 @@ function renderAnalyticsChart(data) {
   window.analyticsChartInstance = new Chart(ctx, {
     type: "bar",
     data: {
-      labels: ["Total Stock Value", "Total Sales", "Monthly Sales"],
+      labels: ["Total Stock", "Total Sales", "Monthly Sales"],
       datasets: [{
         data: [
           Number(data.total_stock),
@@ -448,16 +448,48 @@ function renderAnalyticsChart(data) {
           Number(data.monthly_sales)
         ],
         backgroundColor: [
-          "#2563eb",
-          "#16a34a",
-          "#f59e0b"
-        ]
+          "rgba(37, 99, 235, 0.85)",
+          "rgba(22, 163, 74, 0.85)",
+          "rgba(245, 158, 11, 0.85)"
+        ],
+        borderRadius: 12,
+        borderSkipped: false
       }]
     },
     options: {
       responsive: true,
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true } }
+      animation: {
+        duration: 1000,
+        easing: "easeOutQuart"
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#111827",
+          padding: 10,
+          callbacks: {
+            label: function (context) {
+              return "₹ " + context.parsed.y.toLocaleString("en-IN");
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: "rgba(0,0,0,0.05)"
+          },
+          ticks: {
+            callback: function (value) {
+              return "₹ " + value.toLocaleString("en-IN");
+            }
+          }
+        }
+      }
     }
   });
 }
