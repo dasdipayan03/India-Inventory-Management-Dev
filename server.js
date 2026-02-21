@@ -56,25 +56,29 @@ app.use("/api", require("./routes/inventory"));
 app.use("/api", require("./routes/invoices")); // ✅ invoice routes
 
 // -------------------- DEBUG ROUTES --------------------
-app.get("/debug-env", (req, res) => {
-  res.json({
-    NODE_ENV: process.env.NODE_ENV || "not set",
-    PORT: process.env.PORT || "not set",
-    DATABASE_URL: process.env.DATABASE_URL ? "✅ exists" : "❌ missing",
-    JWT_SECRET: process.env.JWT_SECRET ? "✅ exists" : "❌ missing",
-    EMAIL_USER: process.env.EMAIL_USER ? "✅ exists" : "❌ missing",
-    EMAIL_PASS: process.env.EMAIL_PASS ? "✅ exists" : "❌ missing",
-  });
-});
+if (process.env.NODE_ENV !== "production") {
 
-app.get("/debug-db", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT NOW()");
-    res.json({ status: "✅ DB Connected", time: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ status: "❌ DB Error", message: err.message });
-  }
-});
+  app.get("/debug-env", (req, res) => {
+    res.json({
+      NODE_ENV: process.env.NODE_ENV || "not set",
+      PORT: process.env.PORT || "not set",
+      DATABASE_URL: process.env.DATABASE_URL ? "✅ exists" : "❌ missing",
+      JWT_SECRET: process.env.JWT_SECRET ? "✅ exists" : "❌ missing",
+      EMAIL_USER: process.env.EMAIL_USER ? "✅ exists" : "❌ missing",
+      EMAIL_PASS: process.env.EMAIL_PASS ? "✅ exists" : "❌ missing",
+    });
+  });
+
+  app.get("/debug-db", async (req, res) => {
+    try {
+      const result = await pool.query("SELECT NOW()");
+      res.json({ status: "✅ DB Connected", time: result.rows[0] });
+    } catch (err) {
+      res.status(500).json({ status: "❌ DB Error", message: err.message });
+    }
+  });
+
+}
 
 // -------------------- FRONTEND --------------------
 app.use(express.static(path.join(__dirname, "public")));

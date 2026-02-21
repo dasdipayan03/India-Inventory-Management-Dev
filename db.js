@@ -13,6 +13,8 @@ const pool = new Pool({
     require: true,
     rejectUnauthorized: false,
   },
+  max: 10,                 // ✅ LIMIT MAX CONNECTIONS (Safe)
+  idleTimeoutMillis: 30000 // ✅ Close idle connections after 30s
 });
 
 // Optional: Listen for connection and error events
