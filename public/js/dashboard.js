@@ -182,8 +182,8 @@ async function addStock() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Add failed");
     alert(data.message || "Added");
-    await loadAnalytics();
     await loadItemNames();
+    await loadAnalytics();
     [
       "manualNewItem",
       "newItemSearch",
@@ -406,6 +406,66 @@ async function submitDebt() {
     alert(err.message || "Server error");
   }
 }
+/* ---------------------- Debts End --------------------- */
+
+
+/* ================= ANALYTICS ================= */
+
+async function loadAnalytics() {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch("/api/analytics/summary", {
+    headers: {
+      Authorization: "Bearer " + token
+    }
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("token");
+    window.location.href = "login.html";
+    return;
+  }
+
+  const data = await res.json();
+  renderAnalyticsChart(data);
+}
+
+function renderAnalyticsChart(data) {
+  const ctx = document.getElementById("analyticsChart");
+
+  if (window.analyticsChartInstance) {
+    window.analyticsChartInstance.destroy();
+  }
+
+  window.analyticsChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["Total Stock Value", "Total Sales", "Monthly Sales"],
+      datasets: [{
+        data: [
+          Number(data.total_stock),
+          Number(data.total_sales),
+          Number(data.monthly_sales)
+        ],
+        backgroundColor: [
+          "#2563eb",
+          "#16a34a",
+          "#f59e0b"
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+
+
+
+
 
 async function searchLedger() {
   const number = document.getElementById("cdSearchInput").value.trim();
@@ -505,61 +565,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Item Report search dropdown
   setupFilterInput("itemReportSearch", "itemReportDropdown", () => { }
   );
-
-
-
-  // ================= ANALYTICS LOAD =================
-  async function loadAnalytics() {
-    const token = localStorage.getItem("token");
-
-    const res = await fetch("/api/analytics/summary", {
-      headers: {
-        Authorization: "Bearer " + token
-      }
-    });
-
-    if (res.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "login.html";
-      return;
-    }
-
-    const data = await res.json();
-    renderAnalyticsChart(data);
-  }
-
-  // ================= RENDER CHART =================
-  function renderAnalyticsChart(data) {
-    const ctx = document.getElementById("analyticsChart");
-
-    new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: ["Total Stock Value", "Total Sales", "Monthly Sales"],
-        datasets: [{
-          data: [
-            data.total_stock,
-            data.total_sales,
-            data.monthly_sales
-          ],
-          backgroundColor: [
-            "#2563eb",
-            "#16a34a",
-            "#f59e0b"
-          ]
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: { beginAtZero: true }
-        }
-      }
-    });
-  }
 
 
 
