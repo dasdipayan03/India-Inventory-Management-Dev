@@ -430,8 +430,13 @@ async function loadAnalytics() {
   renderAnalyticsChart(data);
 }
 
+
+
 function renderAnalyticsChart(data) {
-  const ctx = document.getElementById("analyticsChart");
+  const canvas = document.getElementById("analyticsChart");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
 
   if (window.analyticsChartInstance) {
     window.analyticsChartInstance.destroy();
@@ -448,18 +453,21 @@ function renderAnalyticsChart(data) {
           Number(data.monthly_sales)
         ],
         backgroundColor: [
-          "rgba(37, 99, 235, 0.85)",
-          "rgba(22, 163, 74, 0.85)",
-          "rgba(245, 158, 11, 0.85)"
+          "#3b82f6",
+          "#22c55e",
+          "#f59e0b"
         ],
-        borderRadius: 12,
-        borderSkipped: false
+        borderRadius: 0,            // ❌ no round corner
+        borderSkipped: false,
+        barPercentage: 0.35,        // 👈 thin bars
+        categoryPercentage: 0.45    // 👈 spacing control
       }]
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       animation: {
-        duration: 1000,
+        duration: 800,
         easing: "easeOutQuart"
       },
       plugins: {
@@ -476,7 +484,14 @@ function renderAnalyticsChart(data) {
       },
       scales: {
         x: {
-          grid: { display: false }
+          grid: { display: false },
+          ticks: {
+            font: {
+              size: 13,
+              weight: "600"
+            },
+            color: "#374151"
+          }
         },
         y: {
           beginAtZero: true,
@@ -484,6 +499,7 @@ function renderAnalyticsChart(data) {
             color: "rgba(0,0,0,0.05)"
           },
           ticks: {
+            color: "#6b7280",
             callback: function (value) {
               return "₹ " + value.toLocaleString("en-IN");
             }
