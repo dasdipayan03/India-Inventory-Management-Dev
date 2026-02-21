@@ -590,6 +590,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 
   await loadItemNames();
+  await loadAnalytics();
 });
 
 
