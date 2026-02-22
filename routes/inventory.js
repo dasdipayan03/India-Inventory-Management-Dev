@@ -164,6 +164,7 @@ router.get("/items/report", async (req, res) => {
 router.get("/items/low-stock", async (req, res) => {
   try {
     const user_id = getUserId(req);
+
     const result = await pool.query(
       `
       WITH sales_30 AS (
@@ -195,11 +196,13 @@ router.get("/items/low-stock", async (req, res) => {
         )
       ORDER BY days_left ASC
       `,
-      [user_id, WARNING_DAYS]
+      [user_id, STOCK_CONFIG.WARNING_DAYS]
     );
+
     res.json(result.rows);
+
   } catch (err) {
-    console.error("Stock alert error:", err.message);
+    console.error("Stock alert error FULL:", err);
     res.status(500).json({ error: "Server error" });
   }
 });
