@@ -153,6 +153,34 @@ router.get("/items/report", async (req, res) => {
   }
 });
 
+
+
+// ----------------- LOW STOCK ITEMS -----------------
+router.get("/items/low-stock", async (req, res) => {
+  try {
+    const user_id = getUserId(req);
+
+    const result = await pool.query(
+      `
+      SELECT name AS item_name, quantity AS available_qty
+      FROM items
+      WHERE user_id = $1
+      AND quantity <= 2
+      ORDER BY quantity ASC
+      `,
+      [user_id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Low stock error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
+
+
 // ----------------- ITEM WISE STOCK & SALES REPORT (PDF) -----------------
 router.get("/items/report/pdf", async (req, res) => {
   try {
