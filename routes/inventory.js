@@ -165,7 +165,7 @@ router.get("/items/low-stock", async (req, res) => {
       SELECT name AS item_name, quantity AS available_qty
       FROM items
       WHERE user_id = $1
-      AND quantity <= 2
+      AND quantity <= 5
       ORDER BY quantity ASC
       `,
       [user_id]

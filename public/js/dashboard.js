@@ -305,14 +305,25 @@ function renderLowStock(rows) {
 
   rows.forEach(r => {
     const tr = document.createElement("tr");
-    tr.style.backgroundColor = "#fee2e2";
-    tr.style.color = "#991b1b";
+
+    const qty = Number(r.available_qty);
+
+    if (qty <= 2) {
+      // 🔴 Low
+      tr.style.backgroundColor = "#fee2e2";
+      tr.style.color = "#991b1b";
+    } else {
+      // 🟡 Medium
+      tr.style.backgroundColor = "#fef9c3";
+      tr.style.color = "#92400e";
+    }
+
     tr.style.fontWeight = "600";
 
     tr.innerHTML = `
-      <td>${escapeHtml(r.item_name)}</td>
-      <td>${Number(r.available_qty).toFixed(2)}</td>
-    `;
+    <td>${escapeHtml(r.item_name)}</td>
+    <td>${qty.toFixed(2)}</td>
+  `;
 
     tbody.appendChild(tr);
   });
