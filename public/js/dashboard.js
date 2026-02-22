@@ -531,6 +531,7 @@ function renderAnalyticsChart(data) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       animation: {
         duration: 1000,
         easing: "easeOutQuart"
@@ -554,7 +555,9 @@ function renderAnalyticsChart(data) {
         y: {
           beginAtZero: true,
           grid: {
-            color: "rgba(0,0,0,0.05)"
+            display: true,                 
+            color: "rgba(0,0,0,0.08)",     
+            lineWidth: 1
           },
           ticks: {
             callback: function (value) {
@@ -610,7 +613,7 @@ async function loadLast12MonthsChart() {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         animation: false,
         plugins: {
           legend: { display: false }
