@@ -504,7 +504,7 @@ let last12Chart;
 
 async function loadLast12MonthsChart() {
   try {
-    const res = await fetch(`${apiBase}/sales/last-12-months`, {
+    const res = await fetch(`${apiBase}/sales/last-13-months`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
