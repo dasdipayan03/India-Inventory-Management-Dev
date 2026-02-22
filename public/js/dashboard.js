@@ -409,7 +409,7 @@ async function submitDebt() {
 /* ---------------------- Debts End --------------------- */
 
 
-/* ================= ANALYTICS ================= */
+/* ================= ANALYTICS SUMMARY STOCK, TOTAL SALE, MONTHLY SALE CHART ================= */
 
 async function loadAnalytics() {
   const token = localStorage.getItem("token");
@@ -496,6 +496,58 @@ function renderAnalyticsChart(data) {
   });
 }
 
+
+
+
+
+let last12Chart;
+
+async function loadLast12MonthsChart() {
+  try {
+    const res = await fetch(`${apiBase}/sales/last-12-months`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    if (!res.ok) throw new Error("Chart load failed");
+
+    const rows = await res.json();
+
+    const labels = rows.map(r => r.month);
+    const data = rows.map(r => parseFloat(r.total_sales));
+
+    const ctx = document.getElementById("last12MonthsChart");
+
+    if (!ctx) return;
+
+    if (last12Chart) {
+      last12Chart.destroy();
+    }
+
+    last12Chart = new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "Monthly Sales",
+          data: data,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error("Chart error:", err);
+  }
+}
 
 
 

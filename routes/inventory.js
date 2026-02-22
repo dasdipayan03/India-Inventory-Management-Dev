@@ -616,7 +616,7 @@ router.use((err, req, res, next) => {
 });
 
 
-// ===================== ANALYTICS SUMMARY =====================
+// ===================== ANALYTICS SUMMARY STOCK, TOTAL SALE, MONTHLY SALE CHART =====================
 router.get("/analytics/summary", authMiddleware, async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -657,4 +657,35 @@ router.get("/analytics/summary", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Failed to load analytics" });
   }
 });
+
+
+// ----------------- LAST 12 MONTH SALES CHART -----------------
+router.get("/sales/last-12-months", async (req, res) => {
+  try {
+    const user_id = getUserId(req);
+
+    const result = await pool.query(
+      `
+      SELECT
+        TO_CHAR(
+          DATE_TRUNC('month', s.created_at AT TIME ZONE 'Asia/Kolkata'),
+          'Mon YYYY'
+        ) AS month,
+        SUM(s.total_price) AS total_sales
+      FROM sales s
+      WHERE s.user_id = $1
+        AND s.created_at >= NOW() - INTERVAL '12 months'
+      GROUP BY month
+      ORDER BY MIN(s.created_at)
+      `,
+      [user_id]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Last 12 months chart error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;
