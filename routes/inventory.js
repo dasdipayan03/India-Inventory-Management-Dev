@@ -187,7 +187,7 @@ router.get("/items/low-stock", async (req, res) => {
       WHERE i.user_id = $1
         AND COALESCE(s.sold_30_days, 0) > 0
         AND (
-          (i.quantity / NULLIF((s.sold_30_days / 30.0),0)) <= 7
+          (i.quantity / NULLIF((s.sold_30_days / 30.0),0)) <= 50
         )
       ORDER BY days_left ASC
       `,
