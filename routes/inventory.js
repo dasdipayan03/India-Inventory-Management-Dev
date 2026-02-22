@@ -8,8 +8,8 @@ const { authMiddleware, getUserId } = require("../middleware/auth");
 const router = express.Router();
 // ===== STOCK ALERT CONFIG =====
 const STOCK_CONFIG = {
-  CRITICAL_DAYS: 3,
-  WARNING_DAYS: 5
+  CRITICAL_DAYS: 4,
+  WARNING_DAYS: 15
 };
 
 // ✅ Protect all routes
@@ -199,7 +199,19 @@ router.get("/items/low-stock", async (req, res) => {
       [user_id, STOCK_CONFIG.WARNING_DAYS]
     );
 
-    res.json(result.rows);
+    const rowsWithStatus = result.rows.map(r => {
+      let status = "";
+
+      if (r.days_left <= STOCK_CONFIG.CRITICAL_DAYS) {
+        status = "LOW";
+      } else if (r.days_left <= STOCK_CONFIG.WARNING_DAYS) {
+        status = "MEDIUM";
+      }
+
+      return { ...r, status };
+    });
+
+    res.json(rowsWithStatus);
 
   } catch (err) {
     console.error("Stock alert error FULL:", err);

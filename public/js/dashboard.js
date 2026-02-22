@@ -1,3 +1,4 @@
+// public/js/dashboard.js
 /* ---------------------- Config --------------------- */
 const apiBase = window.location.origin.includes("localhost")
   ? "http://localhost:4000/api"
@@ -5,10 +6,6 @@ const apiBase = window.location.origin.includes("localhost")
 
 let itemNames = [];
 let currentItemReportRows = [];
-
-// 🔴 Stock Alert Thresholds
-const CRITICAL_DAYS = 3;
-const WARNING_DAYS = 5;
 
 /* ---------------------- AUTH ----------------------- */
 async function checkAuth() {
@@ -314,16 +311,13 @@ function renderLowStock(rows) {
     const daysLeft = Number(r.days_left);
 
     let statusText = "";
-    let rowClass = "";
 
-    if (daysLeft <= CRITICAL_DAYS) {
-      statusText = "LOW";
+    let rowClass = "";
+    if (r.status === "LOW") {
       rowClass = "critical-stock-row";
-    } else if (daysLeft <= WARNING_DAYS) {
-      statusText = "MEDIUM";
+    } else if (r.status === "MEDIUM") {
       rowClass = "warning-stock-row";
     }
-
     tr.classList.add(rowClass);
 
     tr.innerHTML = `
@@ -332,8 +326,8 @@ function renderLowStock(rows) {
       <td>${r.sold_30_days}</td>
       <td>${daysLeft.toFixed(2)} days</td>
       <td>
-      <span class="${daysLeft <= 3 ? 'badge bg-danger' : 'badge bg-warning text-dark'}">
-        ${statusText}
+      <span class="${r.status === 'LOW' ? 'badge bg-danger' : 'badge bg-warning text-dark'}">
+        ${r.status}
       </span>
       </td>
     `;
