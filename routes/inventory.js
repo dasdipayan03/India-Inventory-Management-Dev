@@ -6,6 +6,11 @@ const ExcelJS = require("exceljs");
 const { authMiddleware, getUserId } = require("../middleware/auth");
 
 const router = express.Router();
+// ===== STOCK ALERT CONFIG =====
+const STOCK_CONFIG = {
+  CRITICAL_DAYS: 3,
+  WARNING_DAYS: 5
+};
 
 // ✅ Protect all routes
 router.use(authMiddleware);
@@ -155,13 +160,12 @@ router.get("/items/report", async (req, res) => {
 
 
 
-// ----------------- LOW STOCK ITEMS -----------------
 // ----------------- STOCK ALERTS (Days of Stock Model) -----------------
 router.get("/items/low-stock", async (req, res) => {
   try {
     const user_id = getUserId(req);
     const result = await pool.query(
-          `
+      `
       WITH sales_30 AS (
         SELECT 
           item_id,
