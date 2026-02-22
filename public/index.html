@@ -175,15 +175,15 @@
       color: #1f2937;
     }
 
-    /* 🔴 Low stock row */
-    #lowStockBody tr.low-stock-row td {
+    /* 🔴 Critical */
+    #lowStockBody tr.critical-stock-row td {
       background-color: #fee2e2 !important;
       color: #991b1b !important;
       font-weight: 600;
     }
 
-    /* 🟡 Medium stock row */
-    #lowStockBody tr.medium-stock-row td {
+    /* 🟡 Warning */
+    #lowStockBody tr.warning-stock-row td {
       background-color: #fef9c3 !important;
       color: #92400e !important;
       font-weight: 600;
@@ -359,7 +359,7 @@
       <div id="lowStockCard" class="card shadow-sm p-3 mb-4 mt-4" style="display:none;">
         <h5 class="text-danger mb-3">
           <i class="fas fa-exclamation-triangle"></i>
-          Stock Alerts - Low & Medium (<span id="lowStockCount">0</span>)
+          Stock Alerts (<span id="lowStockCount">0</span>)
         </h5>
 
         <div class="table-responsive">

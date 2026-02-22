@@ -313,10 +313,10 @@ function renderLowStock(rows) {
     let rowClass = "";
 
     if (daysLeft <= 3) {
-      statusText = "CRITICAL";
+      statusText = "LOW";
       rowClass = "critical-stock-row";
     } else if (daysLeft <= 7) {
-      statusText = "WARNING";
+      statusText = "MEDIUM";
       rowClass = "warning-stock-row";
     }
 
@@ -327,7 +327,11 @@ function renderLowStock(rows) {
       <td>${qty.toFixed(2)}</td>
       <td>${r.sold_30_days}</td>
       <td>${daysLeft.toFixed(2)} days</td>
-      <td><strong>${statusText}</strong></td>
+      <td>
+      <span class="${daysLeft <= 3 ? 'badge bg-danger' : 'badge bg-warning text-dark'}">
+        ${statusText}
+      </span>
+      </td>
     `;
 
     tbody.appendChild(tr);
