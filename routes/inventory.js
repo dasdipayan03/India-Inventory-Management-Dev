@@ -660,7 +660,7 @@ router.get("/analytics/summary", authMiddleware, async (req, res) => {
 
 
 // ----------------- LAST 13 MONTH SALES CHART -----------------
-router.get("/sales/last-12-months", async (req, res) => {
+router.get("/sales/last-13-months", async (req, res) => {
   try {
     const user_id = getUserId(req);
 
@@ -668,7 +668,7 @@ router.get("/sales/last-12-months", async (req, res) => {
       `
       WITH months AS (
         SELECT DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '12 months' 
-               + (INTERVAL '1 month' * generate_series(0,11)) AS month_start
+               + (INTERVAL '1 month' * generate_series(0,12)) AS month_start
       )
       SELECT 
         TO_CHAR(m.month_start, 'Mon YYYY') AS month,
@@ -685,7 +685,7 @@ router.get("/sales/last-12-months", async (req, res) => {
 
     res.json(result.rows);
   } catch (err) {
-    console.error("Last 12 months chart error:", err.message);
+    console.error("Last 13 months chart error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });
