@@ -555,9 +555,7 @@ function renderAnalyticsChart(data) {
         y: {
           beginAtZero: true,
           grid: {
-            display: true,                 
-            color: "rgba(0,0,0,0.08)",     
-            lineWidth: 1
+            color: "rgba(0,0,0,0.05)"
           },
           ticks: {
             callback: function (value) {
