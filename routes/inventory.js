@@ -659,7 +659,7 @@ router.get("/analytics/summary", authMiddleware, async (req, res) => {
 });
 
 
-// ----------------- LAST 12 MONTH SALES CHART -----------------
+// ----------------- LAST 13 MONTH SALES CHART -----------------
 router.get("/sales/last-12-months", async (req, res) => {
   try {
     const user_id = getUserId(req);
@@ -667,7 +667,7 @@ router.get("/sales/last-12-months", async (req, res) => {
     const result = await pool.query(
       `
       WITH months AS (
-        SELECT DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months' 
+        SELECT DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '12 months' 
                + (INTERVAL '1 month' * generate_series(0,11)) AS month_start
       )
       SELECT 
