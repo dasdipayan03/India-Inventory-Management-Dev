@@ -7,8 +7,8 @@ let itemNames = [];
 let currentItemReportRows = [];
 
 // 🔴 Stock Alert Thresholds
-const CRITICAL_DAYS = 4;
-const WARNING_DAYS = 15;
+const CRITICAL_DAYS = 2;
+const WARNING_DAYS = 5;
 
 /* ---------------------- AUTH ----------------------- */
 async function checkAuth() {
