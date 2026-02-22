@@ -550,16 +550,12 @@ function renderAnalyticsChart(data) {
       },
       scales: {
         x: {
-          grid: {
-            display: false   // vertical lines hide
-          }
+          grid: { display: false }
         },
         y: {
           beginAtZero: true,
           grid: {
-            display: true,              
-            color: "rgba(0,0,0,0.08)",  
-            lineWidth: 1
+            color: "rgba(0, 0, 0, 0.15)"
           },
           ticks: {
             callback: function (value) {
