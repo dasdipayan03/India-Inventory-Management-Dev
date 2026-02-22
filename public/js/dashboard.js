@@ -6,6 +6,10 @@ const apiBase = window.location.origin.includes("localhost")
 let itemNames = [];
 let currentItemReportRows = [];
 
+// 🔴 Stock Alert Thresholds
+const CRITICAL_DAYS = 4;
+const WARNING_DAYS = 15;
+
 /* ---------------------- AUTH ----------------------- */
 async function checkAuth() {
   const token = localStorage.getItem("token");
@@ -312,10 +316,10 @@ function renderLowStock(rows) {
     let statusText = "";
     let rowClass = "";
 
-    if (daysLeft <= 3) {
+    if (daysLeft <= CRITICAL_DAYS) {
       statusText = "LOW";
       rowClass = "critical-stock-row";
-    } else if (daysLeft <= 7) {
+    } else if (daysLeft <= WARNING_DAYS) {
       statusText = "MEDIUM";
       rowClass = "warning-stock-row";
     }
