@@ -532,12 +532,18 @@ async function loadLast12MonthsChart() {
         datasets: [{
           label: "Monthly Sales",
           data: data,
+          backgroundColor: "#2563eb",
+          borderColor: "#1e40af",
           borderWidth: 1
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: true,
+        animation: false,
+        plugins: {
+          legend: { display: true }
+        },
         scales: {
           y: { beginAtZero: true }
         }
