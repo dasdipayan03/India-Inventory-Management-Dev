@@ -53,6 +53,10 @@ function setupSidebar() {
         .querySelectorAll(".form-section")
         .forEach((s) => s.classList.remove("active"));
       document.getElementById(btn.dataset.section).classList.add("active");
+      // 🔴 LOW STOCK LOAD WHEN STOCK REPORT OPEN
+      if (btn.dataset.section === "itemReportSection") {
+        loadLowStock();
+      }
       document
         .querySelectorAll(".sidebar button")
         .forEach((b) => b.classList.remove("active"));
@@ -264,6 +268,55 @@ function renderItemReport(rows) {
   });
 }
 
+
+// ----------------- LOW STOCK LOAD & RENDER -----------------
+async function loadLowStock() {
+  try {
+    const res = await fetch(`${apiBase}/items/low-stock`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to load low stock");
+
+    const rows = await res.json();
+    renderLowStock(rows);
+
+  } catch (err) {
+    console.error("Low stock load error:", err);
+  }
+}
+
+function renderLowStock(rows) {
+  const card = document.getElementById("lowStockCard");
+  const tbody = document.getElementById("lowStockBody");
+  const countEl = document.getElementById("lowStockCount");
+
+  tbody.innerHTML = "";
+
+  if (!rows || rows.length === 0) {
+    card.style.display = "none";
+    return;
+  }
+
+  card.style.display = "block";
+  countEl.textContent = rows.length;
+
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.style.backgroundColor = "#fee2e2";
+    tr.style.color = "#991b1b";
+    tr.style.fontWeight = "600";
+
+    tr.innerHTML = `
+      <td>${escapeHtml(r.item_name)}</td>
+      <td>${Number(r.available_qty).toFixed(2)}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
 
 
 /* ---------------------- sale report table --------------------- */
@@ -679,6 +732,11 @@ window.addEventListener("DOMContentLoaded", async () => {
       `.sidebar button[data-section="${lastSection}"]`
     );
     if (btn) btn.classList.add("active");
+
+    // 🔴 LOW STOCK LOAD ON REFRESH
+    if (lastSection === "itemReportSection") {
+      loadLowStock();
+    }
   }
 
   await loadItemNames();
