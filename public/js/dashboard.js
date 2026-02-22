@@ -307,19 +307,28 @@ function renderLowStock(rows) {
     const tr = document.createElement("tr");
 
     const qty = Number(r.available_qty);
+    const daysLeft = Number(r.days_left);
 
-    if (qty <= 2) {
-      tr.classList.add("low-stock-row");
-    } else {
-      tr.classList.add("medium-stock-row");
+    let statusText = "";
+    let rowClass = "";
+
+    if (daysLeft <= 3) {
+      statusText = "CRITICAL";
+      rowClass = "critical-stock-row";
+    } else if (daysLeft <= 7) {
+      statusText = "WARNING";
+      rowClass = "warning-stock-row";
     }
 
-    tr.style.fontWeight = "600";
+    tr.classList.add(rowClass);
 
     tr.innerHTML = `
-    <td>${escapeHtml(r.item_name)}</td>
-    <td>${qty.toFixed(2)}</td>
-  `;
+      <td>${escapeHtml(r.item_name)}</td>
+      <td>${qty.toFixed(2)}</td>
+      <td>${r.sold_30_days}</td>
+      <td>${daysLeft.toFixed(2)} days</td>
+      <td><strong>${statusText}</strong></td>
+    `;
 
     tbody.appendChild(tr);
   });
