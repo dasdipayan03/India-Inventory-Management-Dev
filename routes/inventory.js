@@ -156,24 +156,48 @@ router.get("/items/report", async (req, res) => {
 
 
 // ----------------- LOW STOCK ITEMS -----------------
+// ----------------- STOCK ALERTS (Days of Stock Model) -----------------
 router.get("/items/low-stock", async (req, res) => {
   try {
     const user_id = getUserId(req);
 
     const result = await pool.query(
       `
-      SELECT name AS item_name, quantity AS available_qty
-      FROM items
-      WHERE user_id = $1
-      AND quantity <= 5
-      ORDER BY quantity ASC
+      WITH sales_30 AS (
+        SELECT 
+          item_name,
+          SUM(quantity) AS sold_30_days
+        FROM sales
+        WHERE user_id = $1
+        AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY item_name
+      )
+      SELECT 
+        i.name AS item_name,
+        i.quantity AS available_qty,
+        COALESCE(s.sold_30_days, 0) AS sold_30_days,
+        ROUND(
+          CASE 
+            WHEN COALESCE(s.sold_30_days, 0) = 0 THEN NULL
+            ELSE (i.quantity / (s.sold_30_days / 30.0))
+          END
+        , 2) AS days_left
+      FROM items i
+      LEFT JOIN sales_30 s 
+        ON s.item_name = i.name
+      WHERE i.user_id = $1
+      AND COALESCE(s.sold_30_days, 0) > 0
+      AND (
+        (i.quantity / (s.sold_30_days / 30.0)) <= 7
+      )
+      ORDER BY days_left ASC
       `,
       [user_id]
     );
 
     res.json(result.rows);
   } catch (err) {
-    console.error("Low stock error:", err.message);
+    console.error("Stock alert error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });
