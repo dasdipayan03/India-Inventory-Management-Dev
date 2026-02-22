@@ -175,6 +175,20 @@
       color: #1f2937;
     }
 
+    /* 🔴 Low stock */
+    .low-stock-row {
+      background-color: #fee2e2 !important;
+      color: #991b1b !important;
+      font-weight: 600;
+    }
+
+    /* 🟡 Medium stock */
+    .medium-stock-row {
+      background-color: #fef9c3 !important;
+      color: #92400e !important;
+      font-weight: 600;
+    }
+
     @media (max-width: 576px) {
       .main {
         padding-left: 10px !important;
@@ -342,7 +356,7 @@
       </div>
 
       <!-- 🔴 LOW STOCK CARD -->
-      <div id="lowStockCard" class="card shadow-sm p-3 mb-3" style="display:none;">
+      <div id="lowStockCard" class="card shadow-sm p-3 mb-4 mt-4" style="display:none;">
         <h5 class="text-danger mb-3">
           <i class="fas fa-exclamation-triangle"></i>
           Stock Alerts (Low & Medium) (<span id="lowStockCount">0</span>)

@@ -309,13 +309,9 @@ function renderLowStock(rows) {
     const qty = Number(r.available_qty);
 
     if (qty <= 2) {
-      // 🔴 Low
-      tr.style.backgroundColor = "#fee2e2";
-      tr.style.color = "#991b1b";
+      tr.classList.add("low-stock-row");
     } else {
-      // 🟡 Medium
-      tr.style.backgroundColor = "#fef9c3";
-      tr.style.color = "#92400e";
+      tr.classList.add("medium-stock-row");
     }
 
     tr.style.fontWeight = "600";
