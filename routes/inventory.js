@@ -666,17 +666,19 @@ router.get("/sales/last-12-months", async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT
-        TO_CHAR(
-          DATE_TRUNC('month', s.created_at AT TIME ZONE 'Asia/Kolkata'),
-          'Mon YYYY'
-        ) AS month,
-        SUM(s.total_price) AS total_sales
-      FROM sales s
-      WHERE s.user_id = $1
-        AND s.created_at >= NOW() - INTERVAL '12 months'
-      GROUP BY month
-      ORDER BY MIN(s.created_at)
+      WITH months AS (
+        SELECT DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months' 
+               + (INTERVAL '1 month' * generate_series(0,11)) AS month_start
+      )
+      SELECT 
+        TO_CHAR(m.month_start, 'Mon YYYY') AS month,
+        COALESCE(SUM(s.total_price), 0) AS total_sales
+      FROM months m
+      LEFT JOIN sales s
+        ON DATE_TRUNC('month', s.created_at AT TIME ZONE 'Asia/Kolkata') = m.month_start
+        AND s.user_id = $1
+      GROUP BY m.month_start
+      ORDER BY m.month_start ASC
       `,
       [user_id]
     );
