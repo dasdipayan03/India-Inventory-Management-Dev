@@ -160,17 +160,16 @@ router.get("/items/report", async (req, res) => {
 router.get("/items/low-stock", async (req, res) => {
   try {
     const user_id = getUserId(req);
-
     const result = await pool.query(
-      `
+          `
       WITH sales_30 AS (
         SELECT 
-          item_name,
+          item_id,
           SUM(quantity) AS sold_30_days
         FROM sales
         WHERE user_id = $1
-        AND created_at >= NOW() - INTERVAL '30 days'
-        GROUP BY item_name
+          AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY item_id
       )
       SELECT 
         i.name AS item_name,
@@ -179,22 +178,21 @@ router.get("/items/low-stock", async (req, res) => {
         ROUND(
           CASE 
             WHEN COALESCE(s.sold_30_days, 0) = 0 THEN NULL
-            ELSE (i.quantity / (s.sold_30_days / 30.0))
+            ELSE (i.quantity / NULLIF((s.sold_30_days / 30.0),0))
           END
         , 2) AS days_left
       FROM items i
       LEFT JOIN sales_30 s 
-        ON s.item_name = i.name
+        ON s.item_id = i.id
       WHERE i.user_id = $1
-      AND COALESCE(s.sold_30_days, 0) > 0
-      AND (
-        (i.quantity / (s.sold_30_days / 30.0)) <= 7
-      )
+        AND COALESCE(s.sold_30_days, 0) > 0
+        AND (
+          (i.quantity / NULLIF((s.sold_30_days / 30.0),0)) <= 7
+        )
       ORDER BY days_left ASC
       `,
       [user_id]
     );
-
     res.json(result.rows);
   } catch (err) {
     console.error("Stock alert error:", err.message);
