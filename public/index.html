@@ -175,6 +175,20 @@
       color: #1f2937;
     }
 
+    .chart-box {
+      position: relative;
+      height: 350px;
+      /* 👈 Laptop height */
+      width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      .chart-box {
+        height: 250px;
+        /* 👈 Mobile height */
+      }
+    }
+
     /* 🔴 Critical */
     #lowStockBody tr.critical-stock-row td {
       background-color: #fee2e2 !important;
@@ -433,12 +447,16 @@
 
       <div class="card p-3 mt-4">
         <h5 class="mb-3">Business Overview</h5>
-        <canvas id="analyticsChart" height="180"></canvas>
+        <div class="chart-box">
+          <canvas id="analyticsChart"></canvas>
+        </div>
       </div>
 
       <div class="card p-3 mt-4">
         <h5 class="mb-3">Last 13 Months Sales</h5>
-        <canvas id="last12MonthsChart" height="180"></canvas>
+        <div class="chart-box">
+          <canvas id="last12MonthsChart"></canvas>
+        </div>
       </div>
 
     </div>
