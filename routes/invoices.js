@@ -211,19 +211,51 @@ router.get("/invoices/numbers", authMiddleware, async (req, res) => {
 /* ---------------------- GET: All Invoices List ---------------------- */
 router.get("/invoices", authMiddleware, async (req, res) => {
   try {
+    const rawQuery = String(req.query.q || "").trim().toLowerCase();
+    const limit = Math.min(
+      Math.max(Number.parseInt(req.query.limit, 10) || 100, 1),
+      200,
+    );
+    const params = [req.user.id];
+    const filters = [];
+
+    if (rawQuery) {
+      params.push(`%${rawQuery}%`);
+      const textFilterIndex = params.length;
+
+      filters.push(`LOWER(i.invoice_no) LIKE $${textFilterIndex}`);
+      filters.push(`LOWER(COALESCE(i.customer_name, '')) LIKE $${textFilterIndex}`);
+      filters.push(`LOWER(COALESCE(i.contact, '')) LIKE $${textFilterIndex}`);
+
+      const numericQuery = rawQuery.replace(/\D/g, "");
+      if (numericQuery) {
+        params.push(`%${numericQuery}%`);
+        const dateFilterIndex = params.length;
+        filters.push(
+          `TO_CHAR(i.date AT TIME ZONE 'Asia/Kolkata', 'YYYYMMDD') LIKE $${dateFilterIndex}`,
+        );
+      }
+    }
+
+    const whereClause = filters.length ? `AND (${filters.join(" OR ")})` : "";
     const { rows } = await pool.query(
       `
-            SELECT 
-                date,
-                invoice_no,
-                customer_name,
-                contact,
-                total_amount
-            FROM invoices
-            WHERE user_id = $1
-            ORDER BY date DESC, id DESC
+            SELECT
+                i.date,
+                i.invoice_no,
+                i.customer_name,
+                i.contact,
+                i.total_amount,
+                COUNT(ii.id)::int AS item_count
+            FROM invoices i
+            LEFT JOIN invoice_items ii ON ii.invoice_id = i.id
+            WHERE i.user_id = $1
+            ${whereClause}
+            GROUP BY i.id
+            ORDER BY i.date DESC, i.id DESC
+            LIMIT ${limit}
             `,
-      [req.user.id],
+      params,
     );
 
     res.json({ success: true, invoices: rows });
