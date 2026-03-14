@@ -137,7 +137,6 @@
         line-height: 1.65;
       }
 
-      .chip-row,
       .mini-row,
       .actions,
       .search-actions,
@@ -148,7 +147,6 @@
         gap: 10px;
       }
 
-      .chip,
       .mini {
         display: inline-flex;
         align-items: center;
@@ -162,7 +160,6 @@
         font-weight: 700;
       }
 
-      .chip strong,
       .mini strong {
         color: var(--navy);
       }
@@ -1032,18 +1029,6 @@
             </p>
           </div>
         </div>
-        <div class="chip-row">
-          <div class="chip">
-            <i class="fa-regular fa-file-lines"></i>
-            Invoice
-            <strong id="topInvoiceNo">--</strong>
-          </div>
-          <div class="chip">
-            <i class="fa-regular fa-clock"></i>
-            Updated
-            <strong id="topInvoiceDate">--</strong>
-          </div>
-        </div>
       </header>
 
       <section class="hero">
@@ -1496,8 +1481,6 @@
 
         const $ = (id) => document.getElementById(id);
         const dom = {
-          topInvoiceNo: $("topInvoiceNo"),
-          topInvoiceDate: $("topInvoiceDate"),
           invoiceNo: $("invoiceNo"),
           invoiceDate: $("invoiceDate"),
           summaryInvoiceNo: $("summaryInvoiceNo"),
@@ -1607,12 +1590,12 @@
 
         const updateInvoiceMeta = (invoiceNo, dateValue) => {
           const label = safeDate(dateValue);
-          [dom.invoiceNo, dom.topInvoiceNo, dom.summaryInvoiceNo].forEach(
-            (el) => (el.textContent = invoiceNo || "--"),
-          );
-          [dom.invoiceDate, dom.topInvoiceDate, dom.summaryInvoiceDate].forEach(
-            (el) => (el.textContent = label),
-          );
+          [dom.invoiceNo, dom.summaryInvoiceNo].forEach((el) => {
+            el.textContent = invoiceNo || "--";
+          });
+          [dom.invoiceDate, dom.summaryInvoiceDate].forEach((el) => {
+            el.textContent = label;
+          });
         };
 
         const updateProfile = () => {
