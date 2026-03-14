@@ -581,25 +581,98 @@
         grid-column: 1 / -1;
       }
 
+      .result-totals {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .result-tile {
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(248, 251, 255, 0.94);
+      }
+
+      .result-tile span {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .result-tile strong {
+        display: block;
+        margin-top: 6px;
+        color: var(--ink);
+        font-size: 16px;
+        line-height: 1.35;
+      }
+
       .preview-item {
-        padding: 16px;
+        padding: 14px;
         border-radius: 18px;
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.82);
+        display: grid;
+        gap: 10px;
+      }
+
+      .preview-item-head {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .preview-item-head h3 {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.45;
+      }
+
+      .preview-item-no {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.12);
+        color: var(--navy);
+        font-size: 12px;
+        font-weight: 800;
       }
 
       .preview-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        color: var(--muted);
-        font-size: 13px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
       }
 
-      .preview-row span {
-        padding: 6px 10px;
-        border-radius: 999px;
+      .preview-chip {
+        padding: 8px 10px;
+        border-radius: 14px;
         background: rgba(23, 49, 93, 0.06);
+        display: grid;
+        gap: 4px;
+      }
+
+      .preview-chip span {
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .preview-chip strong {
+        color: var(--ink);
+        font-size: 13px;
+        line-height: 1.35;
       }
 
       .history-grid {
@@ -707,6 +780,11 @@
           gap: 10px;
         }
 
+        .result-totals {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px;
+        }
+
         .shop-summary,
         .shop-body {
           padding-left: 18px;
@@ -737,14 +815,32 @@
         }
 
         .preview-row {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 8px;
-          font-size: 12px;
         }
 
-        .preview-row span {
-          width: 100%;
-          display: flex;
-          justify-content: space-between;
+        .result-tile {
+          padding: 10px;
+        }
+
+        .result-tile strong {
+          font-size: 14px;
+        }
+
+        .preview-item-head {
+          align-items: center;
+        }
+
+        .preview-item-head h3 {
+          font-size: 14px;
+        }
+
+        .preview-chip {
+          padding: 8px;
+        }
+
+        .preview-chip strong {
+          font-size: 12px;
         }
 
         .table-wrap {
@@ -1853,13 +1949,25 @@
         const renderDetail = (invoice) => {
           const itemsHtml = invoice.items
             .map(
-              (item) => `
+              (item, index) => `
                 <div class="preview-item">
-                  <h3>${escapeHtml(item.description)}</h3>
+                  <div class="preview-item-head">
+                    <h3>${escapeHtml(item.description)}</h3>
+                    <span class="preview-item-no">#${index + 1}</span>
+                  </div>
                   <div class="preview-row">
-                    <span>Qty <strong>${escapeHtml(item.quantity)}</strong></span>
-                    <span>Rate <strong>${formatMoney(item.rate)}</strong></span>
-                    <span>Amount <strong>${formatMoney(item.amount)}</strong></span>
+                    <div class="preview-chip">
+                      <span>Qty</span>
+                      <strong>${escapeHtml(item.quantity)}</strong>
+                    </div>
+                    <div class="preview-chip">
+                      <span>Rate</span>
+                      <strong>${formatMoney(item.rate)}</strong>
+                    </div>
+                    <div class="preview-chip">
+                      <span>Amount</span>
+                      <strong>${formatMoney(item.amount)}</strong>
+                    </div>
                   </div>
                 </div>
               `,
@@ -1880,6 +1988,20 @@
                 <div><span>Customer</span><strong>${escapeHtml(invoice.customer_name || "-")}</strong></div>
                 <div><span>Contact</span><strong>${escapeHtml(invoice.contact || "-")}</strong></div>
                 <div class="wide"><span>Address</span><strong>${escapeHtml(invoice.address || "-")}</strong></div>
+              </div>
+              <div class="result-totals">
+                <div class="result-tile">
+                  <span>Subtotal</span>
+                  <strong>${formatMoney(invoice.subtotal)}</strong>
+                </div>
+                <div class="result-tile">
+                  <span>GST</span>
+                  <strong>${formatMoney(invoice.gst_amount)}</strong>
+                </div>
+                <div class="result-tile">
+                  <span>Total</span>
+                  <strong>${formatMoney(invoice.total_amount)}</strong>
+                </div>
               </div>
               ${itemsHtml || `<div class="empty"><h3>No items found</h3><p class="sub">This invoice does not have item rows.</p></div>`}
               <div class="result-actions">
