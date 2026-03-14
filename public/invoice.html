@@ -1,3 +1,4 @@
+bujhte parchi na exactly kothai ki change korbo
 <!doctype html>
 <html lang="en">
   <head>
@@ -41,11 +42,14 @@
         position: sticky;
         top: 0;
         z-index: 1000;
+
         display: flex;
         align-items: center;
         gap: 10px;
-        background: #2c3e50;
+
+        background: #fff;
         padding: 12px;
+
         border-radius: 10px;
         box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
         margin-bottom: 14px;
@@ -54,7 +58,8 @@
       .topbar h2 {
         margin: 0;
         font-size: 1.2rem;
-        color: #ffffff;
+        /* flex: 1 1 100%; */
+        text-align: center;
       }
 
       .header-back {
@@ -619,14 +624,20 @@
       </header>
 
       <main>
-        <section class="card">
-          <details>
+        <div class="right gst-box">
+          <details
+            style="
+              background: #fff;
+              padding: 6px 8px;
+              border-radius: 6px;
+              border: 1px solid #ddd;
+            "
+          >
             <summary style="cursor: pointer; font-weight: 600">
               Add shop information one time for invoice
             </summary>
-
             <div
-              style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px"
+              style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px"
             >
               <input id="shopName" type="text" placeholder="Shop Name" />
               <input id="shopAddress" type="text" placeholder="Shop Address" />
@@ -641,7 +652,7 @@
               <button id="saveGstBtn" class="btn small">Save</button>
             </div>
           </details>
-        </section>
+        </div>
 
         <section class="card invoice-card">
           <div class="card-header">
