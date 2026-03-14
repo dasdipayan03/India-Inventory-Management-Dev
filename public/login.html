@@ -2,8 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>India Inventory Management — Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>India Inventory Management - Login</title>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
@@ -11,85 +11,91 @@
     <style>
       * {
         box-sizing: border-box;
-        font-family: "Segoe UI", Arial, sans-serif;
       }
 
       :root {
         --accent: #0ea5e9;
         --accent-dark: #0284c7;
-        --muted: #6b7280;
-        --bg: #f8fafc;
-        --card: #ffffff;
+        --ink: #0f172a;
+        --muted: #64748b;
+        --panel: rgba(255, 255, 255, 0.88);
+        --panel-border: rgba(148, 163, 184, 0.22);
+        --soft-blue: #e0f2fe;
+        --surface: #ffffff;
+        --danger: #ef4444;
+        --success: #22c55e;
+        --shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
+      }
+
+      html {
+        color-scheme: light;
       }
 
       body {
         margin: 0;
-        background: linear-gradient(
-          135deg,
-          rgba(14, 165, 233, 0.06),
-          rgba(2, 132, 199, 0.03)
-        );
-        margin: 0;
         min-height: 100vh;
+        padding: 24px;
+        font-family: "Segoe UI", Arial, sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 34%),
+          radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.12), transparent 32%),
+          linear-gradient(135deg, #dff2fb 0%, #eef8fc 44%, #f8fbff 100%);
+      }
+
+      a {
+        color: inherit;
       }
 
       .site {
-        width: 100%;
-        min-height: 100vh;
-        border-radius: 0;
+        max-width: 1140px;
+        min-height: calc(100vh - 48px);
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(340px, 430px) minmax(0, 1fr);
+        background: rgba(255, 255, 255, 0.76);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 28px;
         overflow: hidden;
-        display: flex;
-        flex-direction: column;
-        grid-template-rows: 1fr auto;
-        background: #e3f2fb;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
       }
 
-      /* ---------- LEFT AUTH ---------- */
+      .auth,
+      .promo {
+        padding: 34px clamp(20px, 4vw, 40px);
+      }
+
       .auth {
-        padding: 20px 16px;
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.82)),
+          linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(2, 132, 199, 0.04));
+        border-right: 1px solid rgba(226, 232, 240, 0.85);
         display: flex;
-        flex-direction: column;
-        align-items: stretch;
       }
 
-      .auth-card {
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(6px);
-        border-radius: 14px;
-        padding: 10px;
-        margin-bottom: 20px;
-      }
-
-      .auth-head {
-        margin-bottom: 0px;
-      }
-
-      .auth-head h2 {
-        font-size: 26px;
-        font-weight: 700;
-        letter-spacing: -0.3px;
+      .auth-inner {
+        width: 100%;
+        max-width: 370px;
+        margin: auto 0;
       }
 
       .brand {
         display: flex;
-        gap: 14px;
         align-items: center;
-        margin-bottom: 0px;
+        gap: 14px;
+        margin-bottom: 28px;
       }
 
-      /* .logo {
+      .logo {
         width: 56px;
         height: 56px;
-        border-radius: 12px;
-        background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-        color: #fff;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        box-shadow: 0 6px 18px rgba(14, 165, 233, 0.18);
-      } */
+        display: grid;
+        place-items: center;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(2, 132, 199, 0.06));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      }
 
       .logo img {
         width: 56px;
@@ -99,171 +105,570 @@
 
       .brand h1 {
         margin: 0;
-        font-size: 18px;
-        color: #0f172a;
-        font-weight: 600;
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
       }
 
       .brand p {
-        margin: 0;
-        color: var(--muted);
+        margin: 4px 0 0;
         font-size: 13px;
+        color: var(--muted);
       }
 
-      #msg {
-        min-height: 0px;
-        margin-top: 6px;
+      .auth-head {
+        margin-bottom: 18px;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.1);
+        color: var(--accent-dark);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .auth-head h2 {
+        margin: 0 0 8px;
+        font-size: 30px;
+        line-height: 1.1;
+        letter-spacing: -0.04em;
+      }
+
+      .auth-head p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .auth-card {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow:
+          0 18px 32px rgba(15, 23, 42, 0.08),
+          inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      }
+
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
 
       .form {
         display: none;
-        animation: fadeIn 0.3s ease;
-        margin-top: 6px;
+        animation: fade-in 0.25s ease;
       }
 
       .form.active {
         display: block;
-        margin-top: 6px;
       }
 
-      .input-group {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: linear-gradient(#ffffff, #f9fbfd);
-        border: 1px solid #e5edf5;
-        border-radius: 12px;
-        padding: 12px 14px;
-        margin-bottom: 14px;
-        transition: all 0.25s ease;
+      .form-title {
+        margin: 0 0 16px;
       }
 
-      .input-group i {
+      .form-title strong {
+        display: block;
+        font-size: 18px;
+      }
+
+      .form-title span {
+        display: block;
+        margin-top: 4px;
+        font-size: 13px;
         color: var(--muted);
       }
 
+      .input-group {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 14px;
+        padding: 13px 14px;
+        border: 1px solid #dbe4ee;
+        border-radius: 14px;
+        background: linear-gradient(180deg, #ffffff, #f8fbfd);
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease,
+          transform 0.2s ease;
+      }
+
+      .input-group i {
+        color: #94a3b8;
+        font-size: 15px;
+      }
+
       .input-group input {
-        border: none;
-        outline: none;
+        width: 100%;
+        border: 0;
+        outline: 0;
+        padding: 0;
         background: transparent;
-        flex: 1;
+        color: var(--ink);
         font-size: 14px;
-        color: #0f172a;
+        font-family: inherit;
+      }
+
+      .input-group input::placeholder {
+        color: #94a3b8;
+      }
+
+      .input-group:focus-within {
+        border-color: rgba(14, 165, 233, 0.9);
+        box-shadow:
+          0 0 0 4px rgba(14, 165, 233, 0.12),
+          0 10px 24px rgba(14, 165, 233, 0.12);
+        transform: translateY(-1px);
+      }
+
+      .password-group input {
+        padding-right: 34px;
+      }
+
+      .toggle-password {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 999px;
+        transition:
+          color 0.2s ease,
+          background-color 0.2s ease;
+      }
+
+      .toggle-password:hover,
+      .toggle-password.active {
+        color: var(--accent-dark);
+        background: rgba(14, 165, 233, 0.12);
       }
 
       .btn {
         width: 100%;
-        padding: 13px;
-        border: none;
-        border-radius: 12px;
+        margin-top: 6px;
+        padding: 14px 18px;
+        border: 0;
+        border-radius: 14px;
         background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-        color: #fff;
+        color: #ffffff;
+        font: inherit;
         font-weight: 700;
         cursor: pointer;
         box-shadow:
-          0 10px 24px rgba(14, 165, 233, 0.35),
-          0 2px 0 rgba(255, 255, 255, 0.25) inset;
-        transition: all 0.25s ease;
+          0 14px 32px rgba(14, 165, 233, 0.34),
+          inset 0 1px 0 rgba(255, 255, 255, 0.24);
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease,
+          opacity 0.2s ease;
       }
 
       .btn:hover {
         transform: translateY(-1px);
-        box-shadow: 0 14px 32px rgba(14, 165, 233, 0.45);
+        box-shadow: 0 18px 36px rgba(14, 165, 233, 0.38);
       }
 
       .btn:active {
         transform: translateY(0);
       }
 
+      .btn:disabled {
+        opacity: 0.7;
+        cursor: wait;
+        transform: none;
+        box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2);
+      }
+
       .small-links {
-        text-align: center;
-        margin-top: 8px;
+        margin-top: 12px;
         font-size: 13px;
+        line-height: 1.6;
+        text-align: center;
         color: var(--muted);
       }
 
       .small-links a {
-        color: var(--accent);
-        text-decoration: none;
+        color: var(--accent-dark);
         font-weight: 600;
+        text-decoration: none;
       }
 
       .small-links a:hover {
         text-decoration: underline;
       }
 
-      /* ---------- RIGHT PROMO ---------- */
-      .promo {
-        order: -1;
+      .install-card {
         display: flex;
-        flex-direction: column;
-        gap: 18px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 16px;
+        padding: 12px;
+        border: 1px solid #dbeafe;
+        border-radius: 14px;
+        background: linear-gradient(135deg, rgba(224, 242, 254, 0.8), rgba(255, 255, 255, 0.95));
+      }
+
+      .install-card-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .install-icon {
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+        color: #ffffff;
+        box-shadow: 0 10px 22px rgba(14, 165, 233, 0.2);
+      }
+
+      .install-text strong {
+        display: block;
+        font-size: 13px;
+      }
+
+      .install-text span {
+        display: block;
+        margin-top: 2px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .install-app-btn {
+        display: inline-flex;
+        align-items: center;
         justify-content: center;
+        padding: 9px 13px;
+        border-radius: 10px;
+        background: var(--surface);
+        color: var(--accent-dark);
+        border: 1px solid rgba(14, 165, 233, 0.18);
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+
+      .install-app-btn:hover {
+        background: var(--soft-blue);
+      }
+
+      .promo {
+        display: flex;
+        align-items: center;
+        background:
+          radial-gradient(circle at top, rgba(14, 165, 233, 0.16), transparent 38%),
+          linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(232, 245, 252, 0.9));
+      }
+
+      .promo-shell {
+        width: 100%;
+        max-width: 620px;
+        margin-left: auto;
+      }
+
+      .promo-copy {
+        margin-bottom: 22px;
+      }
+
+      .promo-copy h3 {
+        margin: 0 0 10px;
+        font-size: clamp(28px, 4vw, 40px);
+        line-height: 1.02;
+        letter-spacing: -0.05em;
+      }
+
+      .promo-copy p {
+        margin: 0;
+        max-width: 52ch;
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.7;
       }
 
       .slides {
         position: relative;
-        height: 220px;
-        border-radius: 16px;
-        background: linear-gradient(180deg, #5fc8ff, #eaf6fb);
+        min-height: 248px;
+        margin-bottom: 18px;
         padding: 22px;
+        border-radius: 24px;
+        background:
+          linear-gradient(180deg, rgba(95, 200, 255, 0.4), rgba(234, 246, 251, 0.96)),
+          linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.7));
+        border: 1px solid rgba(186, 230, 253, 0.9);
         box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.6),
-          0 20px 40px rgba(2, 6, 23, 0.12);
+          inset 0 1px 0 rgba(255, 255, 255, 0.8),
+          0 24px 44px rgba(15, 23, 42, 0.12);
       }
 
       .slide {
         position: absolute;
-        inset: 0;
-        padding: 18px;
+        inset: 22px;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        gap: 8px;
+        gap: 10px;
         opacity: 0;
-        transform: translateY(8px);
-        transition: all 0.6s ease;
-        text-align: left;
+        transform: translateY(10px);
+        animation: slide-cycle 20s infinite;
       }
 
-      .slide h3 {
+      .slide:nth-child(1) {
+        animation-delay: 0s;
+      }
+
+      .slide:nth-child(2) {
+        animation-delay: 4s;
+      }
+
+      .slide:nth-child(3) {
+        animation-delay: 8s;
+      }
+
+      .slide:nth-child(4) {
+        animation-delay: 12s;
+      }
+
+      .slide:nth-child(5) {
+        animation-delay: 16s;
+      }
+
+      .slide-icon {
+        width: 48px;
+        height: 48px;
+        display: grid;
+        place-items: center;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.6);
+        color: var(--accent-dark);
+        font-size: 20px;
+        box-shadow: 0 10px 24px rgba(14, 165, 233, 0.12);
+      }
+
+      .slide h4 {
         margin: 0;
-        font-size: 18px;
-        color: #0f172a;
-        text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+        font-size: 26px;
+        line-height: 1.05;
+        letter-spacing: -0.04em;
       }
 
       .slide p {
         margin: 0;
-        color: var(--muted);
+        max-width: 34ch;
+        color: #334155;
         font-size: 14px;
-        line-height: 1.45;
+        line-height: 1.65;
       }
 
-      .slide:nth-child(1) {
-        animation: slideAnim 15s infinite 0s;
+      .features {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
       }
 
-      .slide:nth-child(2) {
-        animation: slideAnim 15s infinite 3s;
+      .feature {
+        display: flex;
+        gap: 12px;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.76);
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
       }
 
-      .slide:nth-child(3) {
-        animation: slideAnim 15s infinite 6s;
+      .feature i {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        color: var(--accent-dark);
+        background: rgba(14, 165, 233, 0.12);
+        flex-shrink: 0;
       }
 
-      .slide:nth-child(4) {
-        animation: slideAnim 15s infinite 9s;
+      .feature strong {
+        display: block;
+        margin-bottom: 5px;
+        font-size: 14px;
       }
 
-      .slide:nth-child(5) {
-        animation: slideAnim 15s infinite 12s;
+      .feature span {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
       }
 
-      @keyframes slideAnim {
+      .site-footer {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 24px;
+        border-top: 1px solid rgba(226, 232, 240, 0.95);
+        background: rgba(255, 255, 255, 0.92);
+      }
+
+      .footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+      }
+
+      .footer-links a {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .footer-links a:hover {
+        color: var(--accent-dark);
+        text-decoration: underline;
+      }
+
+      .copyright {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .popup-overlay,
+      .footer-popup-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(6px);
+      }
+
+      .popup-overlay.active,
+      .footer-popup-overlay.active {
+        display: flex;
+      }
+
+      .popup-box,
+      .footer-popup {
+        width: min(100%, 460px);
+        background: #ffffff;
+        border-radius: 22px;
+        box-shadow: 0 20px 48px rgba(15, 23, 42, 0.24);
+        animation: pop-up 0.25s ease;
+      }
+
+      .popup-box {
+        padding: 28px 26px;
+        text-align: center;
+      }
+
+      .popup-box i {
+        font-size: 42px;
+      }
+
+      .popup-box.success i {
+        color: var(--success);
+      }
+
+      .popup-box.error i {
+        color: var(--danger);
+      }
+
+      .popup-box h3 {
+        margin: 10px 0 8px;
+        font-size: 22px;
+      }
+
+      .popup-box p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .footer-popup {
+        padding: 26px;
+      }
+
+      .footer-popup h3 {
+        margin: 0 0 10px;
+        font-size: 19px;
+      }
+
+      .footer-popup p {
+        margin: 8px 0;
+        color: #334155;
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .close-btn {
+        width: 100%;
+        margin-top: 16px;
+        padding: 12px 18px;
+        border: 0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+        color: #ffffff;
+        font: inherit;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes pop-up {
+        from {
+          opacity: 0;
+          transform: translateY(16px) scale(0.96);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes slide-cycle {
         0% {
           opacity: 0;
-          transform: translateY(8px);
+          transform: translateY(10px);
         }
 
         6% {
@@ -271,1085 +676,739 @@
           transform: translateY(0);
         }
 
-        24% {
+        18% {
           opacity: 1;
           transform: translateY(0);
         }
 
-        30% {
+        24% {
           opacity: 0;
-          transform: translateY(-8px);
+          transform: translateY(-10px);
         }
 
         100% {
           opacity: 0;
-          transform: translateY(-8px);
-        }
-      }
-
-      .dots {
-        display: flex;
-        gap: 8px;
-        margin-top: 8px;
-        align-items: center;
-      }
-
-      .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: #e6eef6;
-      }
-
-      .dot.active {
-        background: var(--accent);
-        box-shadow: 0 6px 14px rgba(14, 165, 233, 0.16);
-      }
-
-      .features {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 12px;
-        margin-top: 8px;
-      }
-
-      .feature {
-        transition: all 0.25s ease;
-        background: #fff;
-        border-radius: 10px;
-        padding: 12px;
-        border: 1px solid #eef6fb;
-        display: flex;
-        gap: 10px;
-      }
-
-      .feature:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 24px rgba(2, 6, 23, 0.12);
-      }
-
-      .feature i {
-        font-size: 18px;
-        color: var(--accent);
-        min-width: 28px;
-        text-align: center;
-      }
-
-      .feature strong {
-        display: block;
-        font-size: 14px;
-        color: #0f172a;
-      }
-
-      .feature span {
-        font-size: 13px;
-        color: var(--muted);
-      }
-
-      .about {
-        margin-top: 12px;
-        font-size: 13px;
-        color: var(--muted);
-        line-height: 1.55;
-      }
-
-      /* success popup */
-      #successScreen {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.35);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 1000;
-        animation: fadeIn 0.3s ease;
-      }
-
-      .success-box {
-        background: #fff;
-        padding: 30px 40px;
-        border-radius: 14px;
-        text-align: center;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-      }
-
-      .success-box i {
-        font-size: 40px;
-        color: #22c55e;
-        margin-bottom: 10px;
-      }
-
-      .success-box h3 {
-        margin: 6px 0;
-        color: #0f172a;
-      }
-
-      .success-box p {
-        margin: 0;
-        color: var(--muted);
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(-6px);
-        }
-
-        to {
-          opacity: 1;
-          transform: none;
+          transform: translateY(-10px);
         }
       }
 
       @media (max-width: 980px) {
+        body {
+          padding: 12px;
+        }
+
         .site {
+          min-height: auto;
           grid-template-columns: 1fr;
-          max-width: 740px;
+        }
+
+        .auth {
+          border-right: 0;
+          border-top: 1px solid rgba(226, 232, 240, 0.85);
         }
 
         .promo {
           order: -1;
-          padding: 10px;
         }
 
-        .slides {
-          height: 80px;
+        .promo-shell,
+        .auth-inner {
+          max-width: none;
         }
 
         .features {
           grid-template-columns: 1fr;
         }
+
+        .site-footer {
+          flex-direction: column;
+          text-align: center;
+        }
       }
 
-      @media (max-width: 420px) {
-        body {
-          padding: 0px;
-        }
-
-        .auth {
-          padding: 20px 16px;
-          max-width: 500px;
-          width: 100%;
-        }
-
+      @media (max-width: 640px) {
+        .auth,
         .promo {
-          padding: 10px;
+          padding: 24px 18px;
+        }
+
+        .auth-card,
+        .footer-popup {
+          padding: 20px;
+        }
+
+        .brand {
+          align-items: flex-start;
+        }
+
+        .auth-head h2 {
+          font-size: 26px;
+        }
+
+        .promo-copy h3 {
+          font-size: 30px;
         }
 
         .slides {
-          height: 150px;
-          padding: 14px;
+          min-height: 220px;
+          padding: 18px;
         }
 
-        .brand h1 {
-          font-size: 16px;
+        .slide {
+          inset: 18px;
         }
-      }
 
-      .site-footer {
-        background: #ffffff;
-        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
-        border-top: 1px solid #e5e7eb;
-        padding: 14px 22px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        /* allows wrapping on smaller screens */
-        font-family: "Segoe UI", Arial, sans-serif;
-        position: relative;
-        z-index: 10;
-      }
+        .slide h4 {
+          font-size: 22px;
+        }
 
-      .footer-links {
-        display: flex;
-        gap: 18px;
-        font-size: 13px;
-        flex-wrap: wrap;
-      }
-
-      .footer-links a {
-        color: #6b7280;
-        text-decoration: none;
-        transition: color 0.2s ease;
-        cursor: pointer;
-        white-space: nowrap;
-      }
-
-      .footer-links a:hover {
-        color: #0ea5e9;
-        text-decoration: underline;
-      }
-
-      .copyright {
-        font-size: 13px;
-        color: #6b7280;
-      }
-
-      /* ✅ Responsive Smart Footer */
-      @media (max-width: 600px) {
-        .site-footer {
+        .install-card {
           flex-direction: column;
-          justify-content: center;
-          text-align: center;
-          gap: 6px;
-          padding: 16px 10px;
+          align-items: stretch;
         }
 
-        .footer-links {
-          justify-content: center;
-          gap: 14px;
-          font-size: 14px;
-        }
-
-        .copyright {
-          margin-top: 4px;
-          font-size: 13px;
-          color: #6b7280;
+        .install-app-btn {
+          width: 100%;
         }
       }
-
-      /* ===== 🌐 Modern Responsive Footer Popup ===== */
-      .footer-popup-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.45);
-        backdrop-filter: blur(4px);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 9998;
-        padding: 16px;
-      }
-
-      .footer-popup-overlay.active {
-        display: flex;
-      }
-
-      .footer-popup {
-        background: #ffffff;
-        border-radius: 14px;
-        width: 100%;
-        max-width: 460px;
-        padding: 26px 28px;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
-        text-align: left;
-        animation: fadeUp 0.35s ease;
-        font-family: "Segoe UI", Arial, sans-serif;
-      }
-
-      .footer-popup h3 {
-        margin: 0 0 10px;
-        font-size: 18px;
-        color: #0f172a;
-        font-weight: 700;
-        border-bottom: 1px solid #e5e7eb;
-        padding-bottom: 6px;
-      }
-
-      .footer-popup p {
-        color: #374151;
-        font-size: 14px;
-        line-height: 1.6;
-        margin: 8px 0;
-      }
-
-      .footer-popup .close-btn {
-        margin-top: 16px;
-        background: #0ea5e9;
-        color: #fff;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 18px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.25s ease;
-        width: 100%;
-      }
-
-      .footer-popup .close-btn:hover {
-        background: #0284c7;
-        transform: translateY(-1px);
-      }
-
-      /* ✨ Smooth entrance */
-      @keyframes fadeUp {
-        from {
-          opacity: 0;
-          transform: translateY(25px);
-        }
-
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      /* ===== 📱 Mobile-Friendly Adjustments ===== */
-      @media (max-width: 480px) {
-        .footer-popup {
-          padding: 20px;
-          max-width: 90%;
-          font-size: 15px;
-          text-align: center;
-        }
-
-        .footer-popup h3 {
-          font-size: 17px;
-        }
-
-        .footer-popup p {
-          font-size: 13.5px;
-        }
-
-        .footer-popup .close-btn {
-          padding: 10px 12px;
-          font-size: 13.5px;
-        }
-      }
-
-      .popup-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.35);
-        display: none;
-        align-items: center;
-        justify-content: center;
-        z-index: 2000;
-        animation: fadeIn 0.3s ease;
-      }
-
-      .popup-box {
-        background: #fff;
-        padding: 32px 42px;
-        border-radius: 16px;
-        text-align: center;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-        transform: scale(0.95);
-        animation: popUp 0.35s ease forwards;
-      }
-
-      .popup-box i {
-        font-size: 44px;
-        margin-bottom: 10px;
-      }
-
-      .popup-box.success i {
-        color: #22c55e;
-      }
-
-      .popup-box.error i {
-        color: #ef4444;
-      }
-
-      .popup-box h3 {
-        margin: 8px 0;
-        font-size: 20px;
-        color: #0f172a;
-      }
-
-      .popup-box p {
-        margin: 0;
-        font-size: 14px;
-        color: #6b7280;
-      }
-
-      .password-group {
-        position: relative;
-      }
-
-      .toggle-password {
-        position: absolute;
-        right: 12px;
-        font-size: 15px;
-        color: #94a3b8;
-        cursor: pointer;
-        transition: all 0.25s ease;
-        padding: 4px;
-        border-radius: 50%;
-      }
-
-      .toggle-password:hover {
-        color: #0ea5e9;
-        background: rgba(14, 165, 233, 0.08);
-        box-shadow: 0 0 8px rgba(14, 165, 233, 0.2);
-      }
-
-      .toggle-password.active {
-        color: #0284c7;
-        background: rgba(14, 165, 233, 0.12);
-        box-shadow: 0 0 10px rgba(2, 132, 199, 0.3);
-        transform: scale(1.1);
-      }
-
-      .toggle-password {
-        opacity: 0.8;
-      }
-
-      .toggle-password.active {
-        opacity: 1;
-      }
-
-      .input-group:focus-within {
-        border-color: var(--accent);
-        box-shadow:
-          0 0 0 3px rgba(14, 165, 233, 0.12),
-          0 6px 18px rgba(14, 165, 233, 0.18);
-        transform: translateY(-1px);
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-        }
-
-        to {
-          opacity: 1;
-        }
-      }
-
-      @keyframes popUp {
-        0% {
-          opacity: 0;
-          transform: scale(0.9);
-        }
-
-        100% {
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-
-      /* Android Install Card */
-
-      .install-card {
-        margin-top: 14px;
-        background: #f8fafc;
-        border-radius: 10px;
-        padding: 12px;
-        border: 1px solid #e2e8f0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .install-card-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .install-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        background: #0ea5e9;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-      }
-
-      .install-text {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .install-text strong {
-        font-size: 13px;
-        color: #0f172a;
-      }
-
-      .install-text span {
-        font-size: 11px;
-        color: #64748b;
-      }
-
-      .install-app-btn {
-        background: #0ea5e9;
-        color: white;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        text-decoration: none;
-        font-weight: 600;
-      }
-
-      .install-app-btn:hover {
-        background: #0284c7;
-      }
-
-      /* ✨ Smart occasion system (improved full fit) */
-      /* .slides:has(.poster-active) .slide {
-            animation: none !important;
-            opacity: 0 !important;
-            transform: none !important;
-          } */
-
-      /* Full-area festive poster */
-      /* .slides:has(.poster-active) .poster-active {
-            position: absolute !important;
-            inset: 0 !important;
-            width: 100%;
-            height: 100%;
-            display: flex !important;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            border-radius: 12px;
-            text-align: center;
-            animation: none !important;
-            opacity: 1 !important;
-            transform: none !important;
-          } */
-
-      /* 🎆 Happy New Year 2026 Poster */
-      /* .newyear-poster {
-            background: linear-gradient(135deg, #f18339bf, #69f35abf);
-            padding: 24px;
-          }
-
-          .newyear-poster h2 {
-            font-size: 2.1rem;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            color: #2720fb;
-          }
-
-          .ny-badge {
-            padding: 6px 14px;
-            border-radius: 999px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #38bdf8, #0ea5e9);
-            color: #020617;
-            margin-bottom: 8px;
-          } */
     </style>
   </head>
-
   <body>
     <div class="site" role="main">
-      <!-- LEFT AUTH -->
-      <div class="auth">
-        <div class="brand">
-          <div class="logo">
-            <img src="/images/app_logo.png" alt="IIM" />
+      <section class="promo" aria-label="Product highlights">
+        <div class="promo-shell">
+          <div class="promo-copy">
+            <span class="eyebrow">Built for Indian shops</span>
+            <h3>Manage stock, billing, and customer dues from one dashboard.</h3>
+            <p>
+              India Inventory Management helps retail businesses stay on top of
+              stock movement, invoice creation, and daily sales reporting
+              without the spreadsheet headache.
+            </p>
           </div>
-          <div>
-            <h1>India Inventory Management (BETA)</h1>
-            <!-- <h1>India Inventory Management</h1> -->
-            <p>A Stock & Sale Management System For Your Shop</p>
+
+          <div class="slides" aria-hidden="true">
+            <div class="slide">
+              <span class="slide-icon"><i class="fa-solid fa-boxes-stacked"></i></span>
+              <h4>Smart Stock Management</h4>
+              <p>
+                Add items, adjust quantity, and keep buying and selling rates in
+                sync in real time.
+              </p>
+            </div>
+
+            <div class="slide">
+              <span class="slide-icon"><i class="fa-solid fa-clipboard-list"></i></span>
+              <h4>Live Stock Reports</h4>
+              <p>
+                Review item-wise stock availability, sold quantity, and current
+                balance instantly.
+              </p>
+            </div>
+
+            <div class="slide">
+              <span class="slide-icon"><i class="fa-solid fa-file-invoice"></i></span>
+              <h4>Sales and Invoices</h4>
+              <p>
+                Generate clean invoices while stock updates automatically in the
+                background.
+              </p>
+            </div>
+
+            <div class="slide">
+              <span class="slide-icon"><i class="fa-solid fa-chart-column"></i></span>
+              <h4>Downloadable Reports</h4>
+              <p>
+                Export date-wise sales reports as PDF or Excel whenever your
+                business needs them.
+              </p>
+            </div>
+
+            <div class="slide">
+              <span class="slide-icon"><i class="fa-solid fa-user-clock"></i></span>
+              <h4>Customer Due Tracking</h4>
+              <p>
+                Follow pending payments, due history, and customer balances in a
+                single place.
+              </p>
+            </div>
+          </div>
+
+          <div class="features">
+            <div class="feature">
+              <i class="fa-solid fa-layer-group"></i>
+              <div>
+                <strong>Stock Control</strong>
+                <span>
+                  Manage unlimited items with cleaner, real-time quantity
+                  tracking.
+                </span>
+              </div>
+            </div>
+
+            <div class="feature">
+              <i class="fa-solid fa-file-invoice-dollar"></i>
+              <div>
+                <strong>Billing Flow</strong>
+                <span>
+                  Create invoices quickly and keep sale entries organized.
+                </span>
+              </div>
+            </div>
+
+            <div class="feature">
+              <i class="fa-solid fa-chart-line"></i>
+              <div>
+                <strong>Sales Reports</strong>
+                <span>
+                  Understand business performance from clear report exports.
+                </span>
+              </div>
+            </div>
+
+            <div class="feature">
+              <i class="fa-solid fa-hand-holding-dollar"></i>
+              <div>
+                <strong>Due Management</strong>
+                <span>
+                  Track pending amounts and payment updates with less manual
+                  follow-up.
+                </span>
+              </div>
+            </div>
           </div>
         </div>
+      </section>
 
-        <div class="auth-head">
-          <h2>Welcome</h2>
-        </div>
-        <div id="msg"></div>
-        <!-- LOGIN -->
-        <div class="auth-card">
-          <div class="form active" id="login">
-            <div class="input-group">
-              <i class="fa-solid fa-envelope"></i>
-              <input
-                id="loginEmail"
-                type="email"
-                placeholder="Email"
-                autocomplete="email"
-              />
+      <section class="auth" aria-label="Authentication">
+        <div class="auth-inner">
+          <div class="brand">
+            <div class="logo">
+              <img src="/images/app_logo.png" alt="India Inventory Management logo" />
             </div>
-            <div class="input-group password-group">
-              <i class="fa-solid fa-lock"></i>
-              <input
-                id="loginPassword"
-                type="password"
-                placeholder="Password"
-                autocomplete="current-password"
-              />
-              <i
-                class="fa-solid fa-eye toggle-password"
-                id="togglePassword"
-              ></i>
+            <div>
+              <h1>India Inventory Management</h1>
+              <p>A stock and sale management system for your shop</p>
             </div>
-            <button id="loginBtn" class="btn">
-              <i class="fa-solid fa-right-to-bracket"></i> Login
-            </button>
-            <div class="small-links">
-              <a href="#" id="forgotLink">Forgot password?</a> |
-              <a href="#" id="createAccountLink">Create an account</a>
-            </div>
-            <!-- Android App Install Card -->
-            <div id="installCard" class="install-card">
-              <div class="install-card-left">
-                <div class="install-icon">
-                  <i class="fa-brands fa-android"></i>
-                </div>
+          </div>
 
-                <div class="install-text">
-                  <strong>Install Android App</strong>
-                  <!-- <strong>Install Android App (Comming Soon)</strong> -->
-                  <span>Faster access to your inventory.</span>
-                </div>
+          <div class="auth-head">
+            <span class="eyebrow">Secure access</span>
+            <h2>Welcome back</h2>
+            <p>Sign in to continue managing inventory, invoices, and reports.</p>
+          </div>
+
+          <div class="auth-card">
+            <div id="msg" class="visually-hidden" aria-live="polite"></div>
+
+            <form class="form active" id="login" novalidate>
+              <div class="form-title">
+                <strong>Log in</strong>
+                <span>Use your registered email address and password.</span>
               </div>
 
-              <a
-                href="/apk/India Inventory Management.apk"
-                class="install-app-btn"
-              >
-                Install
-              </a>
-            </div>
-          </div>
+              <div class="input-group">
+                <i class="fa-solid fa-envelope"></i>
+                <input
+                  id="loginEmail"
+                  type="email"
+                  placeholder="Email"
+                  autocomplete="email"
+                />
+              </div>
 
-          <!-- REGISTER -->
-          <div class="form" id="register">
-            <div class="input-group">
-              <i class="fa-solid fa-shop"></i>
-              <input id="regName" type="text" placeholder="Shop Name" />
-            </div>
-            <div class="input-group">
-              <i class="fa-solid fa-envelope"></i>
-              <input id="regEmail" type="email" placeholder="Email" />
-            </div>
-            <div class="input-group">
-              <i class="fa-solid fa-lock"></i>
-              <input id="regPassword" type="password" placeholder="Password" />
-            </div>
-            <button id="registerBtn" class="btn">
-              <i class="fa-solid fa-user-plus"></i> Register
-            </button>
-            <div class="small-links">
-              <a href="#" id="backToLogin1">Back to login</a>
-            </div>
-          </div>
+              <div class="input-group password-group">
+                <i class="fa-solid fa-lock"></i>
+                <input
+                  id="loginPassword"
+                  type="password"
+                  placeholder="Password"
+                  autocomplete="current-password"
+                />
+                <i
+                  class="fa-solid fa-eye toggle-password"
+                  id="togglePassword"
+                  role="button"
+                  tabindex="0"
+                  aria-label="Show password"
+                ></i>
+              </div>
 
-          <!-- FORGOT -->
-          <div class="form" id="forgot">
-            <div class="input-group">
-              <i class="fa-solid fa-envelope"></i>
-              <input
-                id="forgotEmail"
-                type="email"
-                placeholder="Enter your email"
-              />
-            </div>
-            <button id="forgotBtn" class="btn">
-              <i class="fa-solid fa-paper-plane"></i> Send Reset Link
-            </button>
-            <div class="small-links">
-              <a href="#" id="backToLogin2">Back to login</a>
-            </div>
+              <button id="loginBtn" class="btn" type="submit">
+                <i class="fa-solid fa-right-to-bracket"></i> Login
+              </button>
+
+              <div class="small-links">
+                <a href="#" id="forgotLink">Forgot password?</a> |
+                <a href="#" id="createAccountLink">Create an account</a>
+              </div>
+
+              <div id="installCard" class="install-card">
+                <div class="install-card-left">
+                  <div class="install-icon">
+                    <i class="fa-brands fa-android"></i>
+                  </div>
+
+                  <div class="install-text">
+                    <strong>Install Android App</strong>
+                    <span>Faster access to your inventory.</span>
+                  </div>
+                </div>
+
+                <a
+                  href="/apk/India Inventory Management.apk"
+                  class="install-app-btn"
+                  download
+                >
+                  Install
+                </a>
+              </div>
+            </form>
+
+            <form class="form" id="register" novalidate>
+              <div class="form-title">
+                <strong>Create account</strong>
+                <span>Register your shop to start using the dashboard.</span>
+              </div>
+
+              <div class="input-group">
+                <i class="fa-solid fa-shop"></i>
+                <input
+                  id="regName"
+                  type="text"
+                  placeholder="Shop Name"
+                  autocomplete="organization"
+                />
+              </div>
+
+              <div class="input-group">
+                <i class="fa-solid fa-envelope"></i>
+                <input
+                  id="regEmail"
+                  type="email"
+                  placeholder="Email"
+                  autocomplete="email"
+                />
+              </div>
+
+              <div class="input-group">
+                <i class="fa-solid fa-lock"></i>
+                <input
+                  id="regPassword"
+                  type="password"
+                  placeholder="Password"
+                  autocomplete="new-password"
+                />
+              </div>
+
+              <button id="registerBtn" class="btn" type="submit">
+                <i class="fa-solid fa-user-plus"></i> Register
+              </button>
+
+              <div class="small-links">
+                <a href="#" id="backToLogin1">Back to login</a>
+              </div>
+            </form>
+
+            <form class="form" id="forgot" novalidate>
+              <div class="form-title">
+                <strong>Reset password</strong>
+                <span>We will send a reset link to your registered email.</span>
+              </div>
+
+              <div class="input-group">
+                <i class="fa-solid fa-envelope"></i>
+                <input
+                  id="forgotEmail"
+                  type="email"
+                  placeholder="Enter your email"
+                  autocomplete="email"
+                />
+              </div>
+
+              <button id="forgotBtn" class="btn" type="submit">
+                <i class="fa-solid fa-paper-plane"></i> Send Reset Link
+              </button>
+
+              <div class="small-links">
+                <a href="#" id="backToLogin2">Back to login</a>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
-      <!-- RIGHT PROMO -->
-      <div class="promo">
-        <div class="slides">
-          <!-- Occasion poster (only add this when needed) -->
-          <!--
-              <div class="slide poster-active newyear-poster">
-                <div class="ny-badge">🎉 2026</div>
-                <h2>Happy New Year</h2>
-              </div> 
-              -->
+      </section>
 
-          <!-- Normal slides -->
-          <div class="slide">
-            <h3>📦 Smart Stock Management</h3>
-            <p>
-              Add new items and update stock quantities with buying & selling
-              rates.
-            </p>
-          </div>
-
-          <div class="slide">
-            <h3>📋 Stock Report</h3>
-            <p>
-              View item-wise stock availability, sold quantity, and current
-              balance instantly.
-            </p>
-          </div>
-
-          <div class="slide">
-            <h3>🧾 Sale & Invoice</h3>
-            <p>
-              Create professional invoices while stock updates automatically in
-              real time.
-            </p>
-          </div>
-
-          <div class="slide">
-            <h3>📊 Sales Report</h3>
-            <p>
-              Generate date-wise sales reports and download them as PDF or
-              Excel.
-            </p>
-          </div>
-
-          <div class="slide">
-            <h3>👥 Customer Due Management</h3>
-            <p>
-              Track customer credits, pending dues, and payment history easily.
-            </p>
-          </div>
-        </div>
-
-        <div class="features">
-          <div class="feature">
-            <i class="fa-solid fa-boxes-stacked"></i>
-            <div>
-              <strong>Stock Control</strong>
-              <span
-                >Add & manage unlimited items with real-time quantity
-                tracking.</span
-              >
-            </div>
-          </div>
-
-          <div class="feature">
-            <i class="fa-solid fa-file-invoice-dollar"></i>
-            <div>
-              <strong>Billing & Invoices</strong>
-              <span
-                >Generate clean invoices and manage sales without manual
-                effort.</span
-              >
-            </div>
-          </div>
-
-          <div class="feature">
-            <i class="fa-solid fa-chart-line"></i>
-            <div>
-              <strong>Sales Reports</strong>
-              <span
-                >Analyze business performance with downloadable reports.</span
-              >
-            </div>
-          </div>
-
-          <div class="feature">
-            <i class="fa-solid fa-user-clock"></i>
-            <div>
-              <strong>Customer Dues</strong>
-              <span
-                >Track pending payments and customer balances accurately.</span
-              >
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- === FOOTER === -->
-      <div class="site-footer" role="contentinfo">
+      <footer class="site-footer" role="contentinfo">
         <div class="footer-links">
           <a href="#" class="footer-link" data-type="about">About</a>
           <a href="#" class="footer-link" data-type="contact">Contact</a>
           <a href="#" class="footer-link" data-type="privacy">Privacy</a>
         </div>
-        <div class="copyright">© 2025 India Inventory Management</div>
-      </div>
+        <div class="copyright">
+          &copy; <span id="currentYear"></span> India Inventory Management
+        </div>
+      </footer>
     </div>
 
-    <!-- === POPUP OVERLAY === -->
     <div id="footerPopupOverlay" class="footer-popup-overlay">
       <div class="footer-popup">
         <h3 id="popupTitle"></h3>
-        <p id="popupContent"></p>
-        <button class="close-btn" id="popupClose">Close</button>
+        <div id="popupContent"></div>
+        <button class="close-btn" id="popupClose" type="button">Close</button>
       </div>
     </div>
 
-    <!-- GLOBAL POPUPS -->
     <div id="successScreen" class="popup-overlay">
       <div class="popup-box success">
         <i class="fa-solid fa-circle-check"></i>
-        <h3>Success!</h3>
-        <p id="successText">Action completed successfully!</p>
+        <h3>Success</h3>
+        <p id="successText">Action completed successfully.</p>
       </div>
     </div>
 
     <div id="errorScreen" class="popup-overlay">
       <div class="popup-box error">
         <i class="fa-solid fa-circle-xmark"></i>
-        <h3>Error!</h3>
-        <p id="errorText">Something went wrong!</p>
+        <h3>Error</h3>
+        <p id="errorText">Something went wrong.</p>
       </div>
     </div>
 
-    <!-- ORIGINAL JS + MODIFIED SUCCESS + FORM SWITCH -->
-    <script defer>
+    <script>
+      if (localStorage.getItem("token")) {
+        window.location.replace("index.html");
+      }
+    </script>
+
+    <script>
       document.addEventListener("DOMContentLoaded", () => {
         const apiBase = window.location.origin.includes("localhost")
           ? "http://localhost:4000/api/auth"
           : "/api/auth";
         const msgEl = document.getElementById("msg");
-        const successScreen = document.getElementById("successScreen");
-        const successText = document.getElementById("successText");
+        const forms = {
+          login: document.getElementById("login"),
+          register: document.getElementById("register"),
+          forgot: document.getElementById("forgot"),
+        };
+        const fields = {
+          loginEmail: document.getElementById("loginEmail"),
+          loginPassword: document.getElementById("loginPassword"),
+          regName: document.getElementById("regName"),
+          regEmail: document.getElementById("regEmail"),
+          regPassword: document.getElementById("regPassword"),
+          forgotEmail: document.getElementById("forgotEmail"),
+        };
+        const buttons = {
+          login: document.getElementById("loginBtn"),
+          register: document.getElementById("registerBtn"),
+          forgot: document.getElementById("forgotBtn"),
+        };
+        const popupEls = {
+          success: {
+            overlay: document.getElementById("successScreen"),
+            text: document.getElementById("successText"),
+          },
+          error: {
+            overlay: document.getElementById("errorScreen"),
+            text: document.getElementById("errorText"),
+          },
+        };
+        const footerPopupOverlay = document.getElementById("footerPopupOverlay");
+        const popupTitle = document.getElementById("popupTitle");
+        const popupContent = document.getElementById("popupContent");
+        const popupClose = document.getElementById("popupClose");
+        const togglePassword = document.getElementById("togglePassword");
+        const installCard = document.getElementById("installCard");
 
-        // Unified popup function — global, works for all (success + error)
-        const showPopup = (type, message, redirectUrl = null, delay = 2000) => {
-          const popup = document.getElementById(
-            type === "success" ? "successScreen" : "errorScreen",
-          );
-          const textEl = document.getElementById(
-            type === "success" ? "successText" : "errorText",
-          );
-          if (!popup || !textEl) return;
-          textEl.textContent = message;
-          popup.style.display = "flex";
+        document.getElementById("currentYear").textContent = String(
+          new Date().getFullYear(),
+        );
 
-          if (type === "success") {
-            setTimeout(() => {
-              popup.style.display = "none";
-              if (redirectUrl) window.location.href = redirectUrl;
-            }, delay);
-          }
+        const switchForm = (target) => {
+          Object.entries(forms).forEach(([name, form]) => {
+            form.classList.toggle("active", name === target);
+          });
+        };
 
-          if (type === "error") {
-            const handleClickOutside = (event) => {
-              const box = popup.querySelector(".popup-box");
-              if (!box.contains(event.target)) {
-                popup.style.display = "none";
-                document.removeEventListener("click", handleClickOutside);
-              }
-            };
-            setTimeout(() => {
-              document.addEventListener("click", handleClickOutside);
-            }, 100);
+        const clearForms = () => {
+          Object.values(fields).forEach((field) => {
+            field.value = "";
+          });
+        };
+
+        const withPendingState = async (button, label, task) => {
+          const originalLabel = button.innerHTML;
+          button.disabled = true;
+          button.innerHTML = label;
+
+          try {
+            await task();
+          } finally {
+            button.disabled = false;
+            button.innerHTML = originalLabel;
           }
         };
-        // end popup function
 
-        const clearForms = () =>
-          [
-            "loginEmail",
-            "loginPassword",
-            "regName",
-            "regEmail",
-            "regPassword",
-            "forgotEmail",
-          ].forEach((id) => {
-            const el = document.getElementById(id);
-            if (el) el.value = "";
-          });
+        const hidePopup = (type) => {
+          popupEls[type].overlay.classList.remove("active");
+        };
 
-        // Register
-        document
-          .getElementById("registerBtn")
-          .addEventListener("click", async () => {
-            const name = regName.value.trim(),
-              email = regEmail.value.trim(),
-              password = regPassword.value;
+        const showPopup = (type, message, redirectUrl = null, delay = 2000) => {
+          const popup = popupEls[type];
 
-            if (!name || !email || !password)
-              return showPopup("error", "All fields required!");
+          msgEl.textContent = message;
+          popup.text.textContent = message;
+          popup.overlay.classList.add("active");
 
-            try {
-              const res = await fetch(apiBase + "/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ name, email, password }),
-              });
+          if (type === "success") {
+            window.setTimeout(() => {
+              hidePopup("success");
+              if (redirectUrl) {
+                window.location.href = redirectUrl;
+              }
+            }, delay);
+            return;
+          }
 
-              const data = await res.json();
-              if (!res.ok) throw new Error(data.error || "Register failed");
-
-              clearForms();
-
-              // ✅ unified popup
-              showPopup("success", "🎉 Registration successful!");
-
-              // after popup disappears, switch to login form
-              setTimeout(() => {
-                document.getElementById("register").classList.remove("active");
-                document.getElementById("login").classList.add("active");
-              }, 1500);
-            } catch (err) {
-              showPopup("error", err.message);
+          const closeError = (event) => {
+            if (event.type === "keydown" && event.key !== "Escape") {
+              return;
             }
-          });
 
-        // Login
-        document
-          .getElementById("loginBtn")
-          .addEventListener("click", async () => {
-            const email = loginEmail.value.trim(),
-              password = loginPassword.value;
-            if (!email || !password)
-              return showPopup("error", "All fields required!");
-            try {
-              const res = await fetch(apiBase + "/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
-              });
-              const data = await res.json();
-              if (!res.ok) throw new Error(data.error || "Login failed");
-              localStorage.setItem("token", data.token);
-              localStorage.setItem("user", JSON.stringify(data.user));
-              showPopup("success", "✅ Login successful!", "index.html", 1200);
-            } catch (err) {
-              showPopup("error", err.message);
+            const box = popup.overlay.querySelector(".popup-box");
+            if (event.type === "click" && box && box.contains(event.target)) {
+              return;
             }
+
+            hidePopup("error");
+            document.removeEventListener("click", closeError);
+            document.removeEventListener("keydown", closeError);
+          };
+
+          window.setTimeout(() => {
+            document.addEventListener("click", closeError);
+            document.addEventListener("keydown", closeError);
+          }, 100);
+        };
+
+        const postJSON = async (path, payload) => {
+          const response = await fetch(`${apiBase}${path}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
           });
 
-        // Forgot Password
-        document
-          .getElementById("forgotBtn")
-          .addEventListener("click", async () => {
-            const email = forgotEmail.value.trim();
-            if (!email)
-              return showPopup("error", "Enter your registered email!");
-            try {
-              const res = await fetch(apiBase + "/forgot-password", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email }),
-              });
-              const data = await res.json();
-              if (!res.ok) throw new Error(data.error || "Error");
-              showPopup(
-                "success",
-                data.message || "Reset link sent on your registered email!",
-              );
-              clearForms();
-            } catch (err) {
-              showPopup("error", err.message);
-            }
-          });
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (error) {
+            data = {};
+          }
 
-        // Form switching
-        const loginForm = document.getElementById("login");
-        const registerForm = document.getElementById("register");
-        const forgotForm = document.getElementById("forgot");
-        document.getElementById("forgotLink").addEventListener("click", (e) => {
-          e.preventDefault();
-          loginForm.classList.remove("active");
-          registerForm.classList.remove("active");
-          forgotForm.classList.add("active");
+          if (!response.ok) {
+            throw new Error(data.error || data.message || "Request failed");
+          }
+
+          return data;
+        };
+
+        forms.login.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const email = fields.loginEmail.value.trim();
+          const password = fields.loginPassword.value;
+
+          if (!email || !password) {
+            showPopup("error", "All fields required.");
+            return;
+          }
+
+          await withPendingState(
+            buttons.login,
+            '<i class="fa-solid fa-spinner fa-spin"></i> Signing in...',
+            async () => {
+              try {
+                const data = await postJSON("/login", { email, password });
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
+                showPopup("success", "Login successful.", "index.html", 1200);
+              } catch (error) {
+                showPopup("error", error.message);
+              }
+            },
+          );
         });
+
+        forms.register.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const name = fields.regName.value.trim();
+          const email = fields.regEmail.value.trim();
+          const password = fields.regPassword.value;
+
+          if (!name || !email || !password) {
+            showPopup("error", "All fields required.");
+            return;
+          }
+
+          await withPendingState(
+            buttons.register,
+            '<i class="fa-solid fa-spinner fa-spin"></i> Creating account...',
+            async () => {
+              try {
+                await postJSON("/register", { name, email, password });
+                clearForms();
+                showPopup("success", "Registration successful.");
+                window.setTimeout(() => switchForm("login"), 1500);
+              } catch (error) {
+                showPopup("error", error.message);
+              }
+            },
+          );
+        });
+
+        forms.forgot.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const email = fields.forgotEmail.value.trim();
+
+          if (!email) {
+            showPopup("error", "Enter your registered email.");
+            return;
+          }
+
+          await withPendingState(
+            buttons.forgot,
+            '<i class="fa-solid fa-spinner fa-spin"></i> Sending link...',
+            async () => {
+              try {
+                const data = await postJSON("/forgot-password", { email });
+                clearForms();
+                showPopup(
+                  "success",
+                  data.message || "Reset link sent to your registered email.",
+                );
+              } catch (error) {
+                showPopup("error", error.message);
+              }
+            },
+          );
+        });
+
+        document.getElementById("forgotLink").addEventListener("click", (event) => {
+          event.preventDefault();
+          switchForm("forgot");
+        });
+
         document
           .getElementById("createAccountLink")
-          .addEventListener("click", (e) => {
-            e.preventDefault();
-            loginForm.classList.remove("active");
-            forgotForm.classList.remove("active");
-            registerForm.classList.add("active");
+          .addEventListener("click", (event) => {
+            event.preventDefault();
+            switchForm("register");
           });
-        document
-          .getElementById("backToLogin1")
-          .addEventListener("click", (e) => {
-            e.preventDefault();
-            registerForm.classList.remove("active");
-            loginForm.classList.add("active");
-          });
-        document
-          .getElementById("backToLogin2")
-          .addEventListener("click", (e) => {
-            e.preventDefault();
-            forgotForm.classList.remove("active");
-            loginForm.classList.add("active");
-          });
-      });
 
-      // Show/Hide Password Toggle
-      document.addEventListener("DOMContentLoaded", () => {
-        const togglePassword = document.getElementById("togglePassword");
-        const passwordInput = document.getElementById("loginPassword");
+        document.getElementById("backToLogin1").addEventListener("click", (event) => {
+          event.preventDefault();
+          switchForm("login");
+        });
 
-        if (togglePassword && passwordInput) {
-          togglePassword.addEventListener("click", () => {
-            const isHidden = passwordInput.type === "password";
-            passwordInput.type = isHidden ? "text" : "password";
-            togglePassword.classList.toggle("fa-eye");
-            togglePassword.classList.toggle("fa-eye-slash");
-            togglePassword.classList.toggle("active");
+        document.getElementById("backToLogin2").addEventListener("click", (event) => {
+          event.preventDefault();
+          switchForm("login");
+        });
+
+        const togglePasswordVisibility = () => {
+          const isHidden = fields.loginPassword.type === "password";
+          fields.loginPassword.type = isHidden ? "text" : "password";
+          togglePassword.classList.toggle("fa-eye", !isHidden);
+          togglePassword.classList.toggle("fa-eye-slash", isHidden);
+          togglePassword.classList.toggle("active", isHidden);
+          togglePassword.setAttribute(
+            "aria-label",
+            isHidden ? "Hide password" : "Show password",
+          );
+        };
+
+        if (togglePassword) {
+          togglePassword.addEventListener("click", togglePasswordVisibility);
+          togglePassword.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              togglePasswordVisibility();
+            }
           });
         }
-      });
 
-      document.addEventListener("DOMContentLoaded", () => {
-        const card = document.getElementById("installCard");
-
-        // Show only Android devices
-        if (!/Android/i.test(navigator.userAgent)) {
-          card.style.display = "none";
+        if (installCard && !/Android/i.test(navigator.userAgent)) {
+          installCard.style.display = "none";
         }
-      });
 
-      // FOOTER SCRIPT
-      const footerPopupOverlay = document.getElementById("footerPopupOverlay");
-      const popupTitle = document.getElementById("popupTitle");
-      const popupContent = document.getElementById("popupContent");
-      const popupClose = document.getElementById("popupClose");
+        const footerData = {
+          about: {
+            title: "About India Inventory Management",
+            content: `
+              <p>
+                <strong>India Inventory Management</strong> is a cloud-based
+                platform designed to simplify stock tracking, billing, sales
+                reports, and customer due management for small shops and
+                retailers.
+              </p>
+              <p>
+                The goal is to reduce repetitive work, keep inventory data up
+                to date, and make daily business operations easier to manage
+                from one place.
+              </p>
+            `,
+          },
+          contact: {
+            title: "Contact Us",
+            content: `
+              <p><strong>Email:</strong> support@india-inventory.com</p>
+              <p><strong>Phone:</strong> +91 98xxx xxxxx</p>
+              <p><strong>Hours:</strong> Mon-Sat, 10 AM - 6 PM</p>
+            `,
+          },
+          privacy: {
+            title: "Privacy Policy",
+            content: `
+              <p>
+                We value your privacy. Your data is stored securely and is not
+                shared without a valid reason.
+              </p>
+              <p>
+                When you reset your password, you may receive an email from
+                forgot.indiainventory@gmail.com. That is an official password
+                reset address.
+              </p>
+            `,
+          },
+        };
 
-      const footerData = {
-        about: {
-          title: "About India Inventory Management",
-          content: `
-        <p>
-          <strong>India Inventory Management</strong> is a modern, cloud-based platform built to simplify business operations
-          for small shops and retailers across India. It helps you manage <b>stock, sales, invoices, customer debts,</b> and
-          <b>reports</b> — all in one place.
-        </p>
+        document.querySelectorAll(".footer-link").forEach((link) => {
+          link.addEventListener("click", (event) => {
+            event.preventDefault();
+            const data = footerData[link.dataset.type];
+            if (!data) {
+              return;
+            }
 
-        <p>
-          Designed with simplicity and efficiency in mind, the system automates repetitive tasks, provides real-time updates,
-          and ensures your data is securely stored in the cloud. Whether you run a local store or a growing distribution
-          business, our goal is to make inventory and billing management effortless.
-        </p>
+            popupTitle.textContent = data.title;
+            popupContent.innerHTML = data.content;
+            footerPopupOverlay.classList.add("active");
+          });
+        });
 
-        <p>
-          <em>Empowering businesses with technology, precision, and peace of mind — that’s the heart of India Inventory Management.</em>
-        </p>
-        `,
-        },
+        popupClose.addEventListener("click", () => {
+          footerPopupOverlay.classList.remove("active");
+        });
 
-        contact: {
-          title: "Contact Us",
-          content: `📧 support@india-inventory.com<br>
-            📞 +91 98xxx xxxxx<br>
-            🕒 Mon–Sat, 10 AM – 6 PM`,
-        },
-        privacy: {
-          title: "Privacy Policy",
-          content: `We value your privacy — all your data is securely stored and never shared.
-                By using our platform, you agree to responsible and secure data handling.
-                <p>
-                Notice: When you Reset your password, you may receive password reset emails from forgot.indiainventory@gmail.com
-                Please do not worry — this is our official email address.
-                </p>`,
-        },
-      };
-
-      document.querySelectorAll(".footer-link").forEach((link) => {
-        link.addEventListener("click", (e) => {
-          e.preventDefault();
-          const type = link.dataset.type;
-          const data = footerData[type];
-          popupTitle.textContent = data.title;
-          popupContent.innerHTML = data.content;
-          footerPopupOverlay.classList.add("active");
+        footerPopupOverlay.addEventListener("click", (event) => {
+          if (event.target === footerPopupOverlay) {
+            footerPopupOverlay.classList.remove("active");
+          }
         });
       });
-
-      popupClose.addEventListener("click", () => {
-        footerPopupOverlay.classList.remove("active");
-      });
-
-      footerPopupOverlay.addEventListener("click", (e) => {
-        if (e.target === footerPopupOverlay) {
-          footerPopupOverlay.classList.remove("active");
-        }
-      });
-    </script>
-
-    <script>
-      const token = localStorage.getItem("token");
-      if (token) window.location.replace("index.html");
     </script>
   </body>
 </html>
