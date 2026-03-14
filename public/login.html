@@ -38,8 +38,16 @@
         font-family: "Segoe UI", Arial, sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 34%),
-          radial-gradient(circle at bottom right, rgba(56, 189, 248, 0.12), transparent 32%),
+          radial-gradient(
+            circle at top left,
+            rgba(14, 165, 233, 0.18),
+            transparent 34%
+          ),
+          radial-gradient(
+            circle at bottom right,
+            rgba(56, 189, 248, 0.12),
+            transparent 32%
+          ),
           linear-gradient(135deg, #dff2fb 0%, #eef8fc 44%, #f8fbff 100%);
       }
 
@@ -68,8 +76,16 @@
 
       .auth {
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.82)),
-          linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(2, 132, 199, 0.04));
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.96),
+            rgba(255, 255, 255, 0.82)
+          ),
+          linear-gradient(
+            135deg,
+            rgba(14, 165, 233, 0.08),
+            rgba(2, 132, 199, 0.04)
+          );
         border-right: 1px solid rgba(226, 232, 240, 0.85);
         display: flex;
       }
@@ -93,7 +109,11 @@
         display: grid;
         place-items: center;
         border-radius: 16px;
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(2, 132, 199, 0.06));
+        background: linear-gradient(
+          135deg,
+          rgba(14, 165, 233, 0.14),
+          rgba(2, 132, 199, 0.06)
+        );
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
       }
 
@@ -181,7 +201,7 @@
       }
 
       .form-title {
-        margin: 0 0 16px;
+        margin: 0 0 18px;
       }
 
       .form-title strong {
@@ -194,6 +214,61 @@
         margin-top: 4px;
         font-size: 13px;
         color: var(--muted);
+        line-height: 1.55;
+      }
+
+      .form-status {
+        display: none;
+        margin-bottom: 16px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid transparent;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .form-status.active {
+        display: block;
+        animation: fade-in 0.25s ease;
+      }
+
+      .form-status.info {
+        background: rgba(14, 165, 233, 0.08);
+        border-color: rgba(14, 165, 233, 0.16);
+        color: #075985;
+      }
+
+      .form-status.success {
+        background: rgba(34, 197, 94, 0.08);
+        border-color: rgba(34, 197, 94, 0.18);
+        color: #166534;
+      }
+
+      .form-status.error {
+        background: rgba(239, 68, 68, 0.08);
+        border-color: rgba(239, 68, 68, 0.18);
+        color: #b91c1c;
+      }
+
+      .input-stack {
+        margin-bottom: 14px;
+      }
+
+      .field-label {
+        display: block;
+        margin: 0 0 7px;
+        color: #334155;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .field-hint {
+        min-height: 18px;
+        margin: 6px 2px 0;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
       }
 
       .input-group {
@@ -201,7 +276,6 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-bottom: 14px;
         padding: 13px 14px;
         border: 1px solid #dbe4ee;
         border-radius: 14px;
@@ -240,6 +314,28 @@
         transform: translateY(-1px);
       }
 
+      .input-stack.is-invalid .input-group {
+        border-color: rgba(239, 68, 68, 0.5);
+        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+      }
+
+      .input-stack.is-invalid .field-hint {
+        color: #b91c1c;
+      }
+
+      .input-stack.is-valid .input-group {
+        border-color: rgba(34, 197, 94, 0.45);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.08);
+      }
+
+      .input-stack.is-valid .field-hint {
+        color: #15803d;
+      }
+
+      .input-group.has-action input {
+        padding-right: 42px;
+      }
+
       .password-group input {
         padding-right: 34px;
       }
@@ -249,19 +345,41 @@
         right: 12px;
         top: 50%;
         transform: translateY(-50%);
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        background: transparent;
         color: #94a3b8;
         cursor: pointer;
-        padding: 6px;
         border-radius: 999px;
         transition:
           color 0.2s ease,
-          background-color 0.2s ease;
+          background-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .toggle-password i {
+        color: inherit;
+        font-size: 15px;
+        pointer-events: none;
       }
 
       .toggle-password:hover,
       .toggle-password.active {
         color: var(--accent-dark);
         background: rgba(14, 165, 233, 0.12);
+      }
+
+      .toggle-password:focus-visible,
+      .btn:focus-visible,
+      .close-btn:focus-visible,
+      .footer-links a:focus-visible,
+      .install-app-btn:focus-visible,
+      .small-links a:focus-visible {
+        outline: 3px solid rgba(14, 165, 233, 0.22);
+        outline-offset: 3px;
       }
 
       .btn {
@@ -327,7 +445,11 @@
         padding: 12px;
         border: 1px solid #dbeafe;
         border-radius: 14px;
-        background: linear-gradient(135deg, rgba(224, 242, 254, 0.8), rgba(255, 255, 255, 0.95));
+        background: linear-gradient(
+          135deg,
+          rgba(224, 242, 254, 0.8),
+          rgba(255, 255, 255, 0.95)
+        );
       }
 
       .install-card-left {
@@ -382,8 +504,16 @@
         display: flex;
         align-items: center;
         background:
-          radial-gradient(circle at top, rgba(14, 165, 233, 0.16), transparent 38%),
-          linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(232, 245, 252, 0.9));
+          radial-gradient(
+            circle at top,
+            rgba(14, 165, 233, 0.16),
+            transparent 38%
+          ),
+          linear-gradient(
+            160deg,
+            rgba(255, 255, 255, 0.96),
+            rgba(232, 245, 252, 0.9)
+          );
       }
 
       .promo-shell {
@@ -394,12 +524,14 @@
 
       .promo-copy {
         margin-bottom: 22px;
+        display: grid;
+        gap: 14px;
       }
 
       .promo-copy h3 {
-        margin: 0 0 10px;
+        margin: 0;
         font-size: clamp(28px, 4vw, 40px);
-        line-height: 1.02;
+        line-height: 1.04;
         letter-spacing: -0.05em;
       }
 
@@ -411,15 +543,50 @@
         line-height: 1.7;
       }
 
+      .promo-highlights {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .promo-highlights li {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(186, 230, 253, 0.95);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+        color: #0f172a;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .promo-highlights i {
+        color: var(--accent-dark);
+      }
+
       .slides {
         position: relative;
         min-height: 248px;
-        margin-bottom: 18px;
+        margin-bottom: 20px;
         padding: 22px;
         border-radius: 24px;
         background:
-          linear-gradient(180deg, rgba(95, 200, 255, 0.4), rgba(234, 246, 251, 0.96)),
-          linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.7));
+          linear-gradient(
+            180deg,
+            rgba(95, 200, 255, 0.4),
+            rgba(234, 246, 251, 0.96)
+          ),
+          linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.2),
+            rgba(255, 255, 255, 0.7)
+          );
         border: 1px solid rgba(186, 230, 253, 0.9);
         box-shadow:
           inset 0 1px 0 rgba(255, 255, 255, 0.8),
@@ -458,6 +625,21 @@
         animation-delay: 16s;
       }
 
+      .slide-tag {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.65);
+        color: #075985;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
       .slide-icon {
         width: 48px;
         height: 48px;
@@ -479,7 +661,7 @@
 
       .slide p {
         margin: 0;
-        max-width: 34ch;
+        max-width: 38ch;
         color: #334155;
         font-size: 14px;
         line-height: 1.65;
@@ -499,6 +681,16 @@
         background: rgba(255, 255, 255, 0.76);
         border: 1px solid rgba(226, 232, 240, 0.9);
         box-shadow: 0 14px 28px rgba(15, 23, 42, 0.06);
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease,
+          border-color 0.2s ease;
+      }
+
+      .feature:hover {
+        transform: translateY(-2px);
+        border-color: rgba(125, 211, 252, 0.9);
+        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.08);
       }
 
       .feature i {
@@ -551,6 +743,10 @@
       .footer-links a:hover {
         color: var(--accent-dark);
         text-decoration: underline;
+      }
+
+      .footer-links a:focus-visible {
+        border-radius: 999px;
       }
 
       .copyright {
@@ -613,6 +809,7 @@
       }
 
       .footer-popup {
+        width: min(100%, 520px);
         padding: 26px;
       }
 
@@ -621,11 +818,68 @@
         font-size: 19px;
       }
 
+      #popupContent {
+        display: grid;
+        gap: 12px;
+      }
+
       .footer-popup p {
         margin: 8px 0;
         color: #334155;
         font-size: 14px;
         line-height: 1.65;
+      }
+
+      .footer-popup a {
+        color: var(--accent-dark);
+        font-weight: 600;
+        text-decoration: none;
+      }
+
+      .footer-popup a:hover {
+        text-decoration: underline;
+      }
+
+      .footer-popup-card {
+        padding: 14px 15px;
+        border-radius: 16px;
+        background: linear-gradient(180deg, #f8fbff, #eef7ff);
+        border: 1px solid rgba(186, 230, 253, 0.95);
+      }
+
+      .footer-popup-card strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: #0f172a;
+      }
+
+      .footer-popup ul {
+        margin: 0;
+        padding-left: 18px;
+        color: #334155;
+      }
+
+      .footer-popup li + li {
+        margin-top: 6px;
+      }
+
+      .footer-popup-copy {
+        margin: 0;
+      }
+
+      .footer-popup-kicker {
+        display: inline-flex;
+        width: fit-content;
+        margin-bottom: 10px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.1);
+        color: #075985;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
       }
 
       .close-btn {
@@ -692,6 +946,17 @@
         }
       }
 
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
+        }
+      }
+
       @media (max-width: 980px) {
         body {
           padding: 12px;
@@ -722,19 +987,24 @@
 
         .site-footer {
           flex-direction: column;
+          align-items: center;
           text-align: center;
         }
       }
 
       @media (max-width: 640px) {
+        body {
+          padding: 8px;
+        }
+
         .auth,
         .promo {
-          padding: 24px 18px;
+          padding: 22px 16px;
         }
 
         .auth-card,
         .footer-popup {
-          padding: 20px;
+          padding: 18px;
         }
 
         .brand {
@@ -746,11 +1016,19 @@
         }
 
         .promo-copy h3 {
-          font-size: 30px;
+          font-size: 28px;
+        }
+
+        .promo-copy p {
+          font-size: 14px;
+        }
+
+        .promo-highlights {
+          gap: 8px;
         }
 
         .slides {
-          min-height: 220px;
+          min-height: 260px;
           padding: 18px;
         }
 
@@ -762,13 +1040,48 @@
           font-size: 22px;
         }
 
+        .slide p {
+          max-width: none;
+        }
+
         .install-card {
           flex-direction: column;
           align-items: stretch;
+          padding: 14px;
+        }
+
+        .install-card-left {
+          align-items: flex-start;
         }
 
         .install-app-btn {
           width: 100%;
+        }
+
+        .footer-links {
+          justify-content: center;
+        }
+
+        .copyright {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 420px) {
+        .site {
+          border-radius: 20px;
+        }
+
+        .auth-card {
+          border-radius: 18px;
+        }
+
+        .form-title strong {
+          font-size: 17px;
+        }
+
+        .btn {
+          padding: 13px 16px;
         }
       }
     </style>
@@ -779,57 +1092,84 @@
         <div class="promo-shell">
           <div class="promo-copy">
             <span class="eyebrow">Built for Indian shops</span>
-            <h3>Manage stock, billing, and customer dues from one dashboard.</h3>
+            <h3>
+              Run stock, billing, and customer dues from one focused workspace.
+            </h3>
             <p>
-              India Inventory Management helps retail businesses stay on top of
-              stock movement, invoice creation, and daily sales reporting
-              without the spreadsheet headache.
+              India Inventory Management keeps daily shop operations cleaner,
+              faster, and easier to review without juggling registers,
+              notebooks, and spreadsheets.
             </p>
+            <ul class="promo-highlights">
+              <li><i class="fa-solid fa-bolt"></i> Faster sale entry</li>
+              <li>
+                <i class="fa-solid fa-file-arrow-down"></i> Export-ready reports
+              </li>
+              <li>
+                <i class="fa-solid fa-clock-rotate-left"></i> Real-time stock
+                updates
+              </li>
+            </ul>
           </div>
 
           <div class="slides" aria-hidden="true">
             <div class="slide">
-              <span class="slide-icon"><i class="fa-solid fa-boxes-stacked"></i></span>
-              <h4>Smart Stock Management</h4>
+              <span class="slide-tag">Inventory</span>
+              <span class="slide-icon"
+                ><i class="fa-solid fa-boxes-stacked"></i
+              ></span>
+              <h4>Track stock without guesswork</h4>
               <p>
-                Add items, adjust quantity, and keep buying and selling rates in
-                sync in real time.
+                Update quantity, buying price, and selling price in one place so
+                your stock position always stays current.
               </p>
             </div>
 
             <div class="slide">
-              <span class="slide-icon"><i class="fa-solid fa-clipboard-list"></i></span>
-              <h4>Live Stock Reports</h4>
+              <span class="slide-tag">Reporting</span>
+              <span class="slide-icon"
+                ><i class="fa-solid fa-clipboard-list"></i
+              ></span>
+              <h4>See what is available right now</h4>
               <p>
-                Review item-wise stock availability, sold quantity, and current
-                balance instantly.
+                Review item-wise availability, sold quantity, and current
+                balance in a report that is easy to understand.
               </p>
             </div>
 
             <div class="slide">
-              <span class="slide-icon"><i class="fa-solid fa-file-invoice"></i></span>
-              <h4>Sales and Invoices</h4>
+              <span class="slide-tag">Billing</span>
+              <span class="slide-icon"
+                ><i class="fa-solid fa-file-invoice"></i
+              ></span>
+              <h4>Generate invoices in fewer steps</h4>
               <p>
-                Generate clean invoices while stock updates automatically in the
-                background.
+                Create customer invoices quickly while the system updates stock
+                automatically in the background.
               </p>
             </div>
 
             <div class="slide">
-              <span class="slide-icon"><i class="fa-solid fa-chart-column"></i></span>
-              <h4>Downloadable Reports</h4>
+              <span class="slide-tag">Exports</span>
+              <span class="slide-icon"
+                ><i class="fa-solid fa-chart-column"></i
+              ></span>
+              <h4>Download reports when you need them</h4>
               <p>
-                Export date-wise sales reports as PDF or Excel whenever your
-                business needs them.
+                Export sales reports as PDF or Excel so you can share, print,
+                and review business performance easily.
               </p>
             </div>
 
             <div class="slide">
-              <span class="slide-icon"><i class="fa-solid fa-user-clock"></i></span>
-              <h4>Customer Due Tracking</h4>
+              <span class="slide-tag">Collections</span>
+              <span class="slide-icon"
+                ><i class="fa-solid fa-user-clock"></i
+              ></span>
+              <h4>Follow dues with less manual work</h4>
               <p>
-                Follow pending payments, due history, and customer balances in a
-                single place.
+                Keep pending payments, due history, and customer balances
+                organized from one dashboard.
               </p>
             </div>
           </div>
@@ -840,8 +1180,8 @@
               <div>
                 <strong>Stock Control</strong>
                 <span>
-                  Manage unlimited items with cleaner, real-time quantity
-                  tracking.
+                  Keep item quantities, buying rates, and selling rates aligned
+                  in one clean flow.
                 </span>
               </div>
             </div>
@@ -851,7 +1191,8 @@
               <div>
                 <strong>Billing Flow</strong>
                 <span>
-                  Create invoices quickly and keep sale entries organized.
+                  Create polished invoices faster and reduce manual billing work
+                  at the counter.
                 </span>
               </div>
             </div>
@@ -861,7 +1202,8 @@
               <div>
                 <strong>Sales Reports</strong>
                 <span>
-                  Understand business performance from clear report exports.
+                  Review business performance with clearer summaries and export
+                  options.
                 </span>
               </div>
             </div>
@@ -871,8 +1213,8 @@
               <div>
                 <strong>Due Management</strong>
                 <span>
-                  Track pending amounts and payment updates with less manual
-                  follow-up.
+                  Stay on top of customer balances and payment follow-up without
+                  extra notebooks.
                 </span>
               </div>
             </div>
@@ -884,7 +1226,10 @@
         <div class="auth-inner">
           <div class="brand">
             <div class="logo">
-              <img src="/images/app_logo.png" alt="India Inventory Management logo" />
+              <img
+                src="/images/app_logo.png"
+                alt="India Inventory Management logo"
+              />
             </div>
             <div>
               <h1>India Inventory Management</h1>
@@ -895,7 +1240,9 @@
           <div class="auth-head">
             <span class="eyebrow">Secure access</span>
             <h2>Welcome back</h2>
-            <p>Sign in to continue managing inventory, invoices, and reports.</p>
+            <p>
+              Sign in to continue managing inventory, invoices, and reports.
+            </p>
           </div>
 
           <div class="auth-card">
@@ -904,34 +1251,70 @@
             <form class="form active" id="login" novalidate>
               <div class="form-title">
                 <strong>Log in</strong>
-                <span>Use your registered email address and password.</span>
+                <span
+                  >Use your registered shop email address and password.</span
+                >
+              </div>
+              <div
+                class="form-status"
+                id="loginStatus"
+                aria-live="polite"
+              ></div>
+
+              <div class="input-stack">
+                <label class="field-label" for="loginEmail"
+                  >Email address</label
+                >
+                <div class="input-group">
+                  <i class="fa-solid fa-envelope"></i>
+                  <input
+                    id="loginEmail"
+                    type="email"
+                    placeholder="Email"
+                    autocomplete="email"
+                    inputmode="email"
+                    autocapitalize="none"
+                    aria-describedby="loginEmailHint"
+                    required
+                  />
+                </div>
+                <p
+                  class="field-hint"
+                  id="loginEmailHint"
+                  data-default-message="Use the email linked to your shop account."
+                >
+                  Use the email linked to your shop account.
+                </p>
               </div>
 
-              <div class="input-group">
-                <i class="fa-solid fa-envelope"></i>
-                <input
-                  id="loginEmail"
-                  type="email"
-                  placeholder="Email"
-                  autocomplete="email"
-                />
-              </div>
-
-              <div class="input-group password-group">
-                <i class="fa-solid fa-lock"></i>
-                <input
-                  id="loginPassword"
-                  type="password"
-                  placeholder="Password"
-                  autocomplete="current-password"
-                />
-                <i
-                  class="fa-solid fa-eye toggle-password"
-                  id="togglePassword"
-                  role="button"
-                  tabindex="0"
-                  aria-label="Show password"
-                ></i>
+              <div class="input-stack">
+                <label class="field-label" for="loginPassword">Password</label>
+                <div class="input-group password-group has-action">
+                  <i class="fa-solid fa-lock"></i>
+                  <input
+                    id="loginPassword"
+                    type="password"
+                    placeholder="Password"
+                    autocomplete="current-password"
+                    aria-describedby="loginPasswordHint"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="toggle-password"
+                    data-toggle-password="loginPassword"
+                    aria-label="Show password"
+                  >
+                    <i class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
+                <p
+                  class="field-hint"
+                  id="loginPasswordHint"
+                  data-default-message="Password is case-sensitive."
+                >
+                  Password is case-sensitive.
+                </p>
               </div>
 
               <button id="loginBtn" class="btn" type="submit">
@@ -970,35 +1353,124 @@
                 <strong>Create account</strong>
                 <span>Register your shop to start using the dashboard.</span>
               </div>
+              <div
+                class="form-status"
+                id="registerStatus"
+                aria-live="polite"
+              ></div>
 
-              <div class="input-group">
-                <i class="fa-solid fa-shop"></i>
-                <input
-                  id="regName"
-                  type="text"
-                  placeholder="Shop Name"
-                  autocomplete="organization"
-                />
+              <div class="input-stack">
+                <label class="field-label" for="regName">Shop name</label>
+                <div class="input-group">
+                  <i class="fa-solid fa-shop"></i>
+                  <input
+                    id="regName"
+                    type="text"
+                    placeholder="Shop Name"
+                    autocomplete="organization"
+                    maxlength="80"
+                    aria-describedby="regNameHint"
+                    required
+                  />
+                </div>
+                <p
+                  class="field-hint"
+                  id="regNameHint"
+                  data-default-message="Use the business name customers know."
+                >
+                  Use the business name customers know.
+                </p>
               </div>
 
-              <div class="input-group">
-                <i class="fa-solid fa-envelope"></i>
-                <input
-                  id="regEmail"
-                  type="email"
-                  placeholder="Email"
-                  autocomplete="email"
-                />
+              <div class="input-stack">
+                <label class="field-label" for="regEmail">Business email</label>
+                <div class="input-group">
+                  <i class="fa-solid fa-envelope"></i>
+                  <input
+                    id="regEmail"
+                    type="email"
+                    placeholder="Email"
+                    autocomplete="email"
+                    inputmode="email"
+                    autocapitalize="none"
+                    aria-describedby="regEmailHint"
+                    required
+                  />
+                </div>
+                <p
+                  class="field-hint"
+                  id="regEmailHint"
+                  data-default-message="This email will be used to sign in and receive password reset links."
+                >
+                  This email will be used to sign in and receive password reset
+                  links.
+                </p>
               </div>
 
-              <div class="input-group">
-                <i class="fa-solid fa-lock"></i>
-                <input
-                  id="regPassword"
-                  type="password"
-                  placeholder="Password"
-                  autocomplete="new-password"
-                />
+              <div class="input-stack">
+                <label class="field-label" for="regPassword"
+                  >Create password</label
+                >
+                <div class="input-group password-group has-action">
+                  <i class="fa-solid fa-lock"></i>
+                  <input
+                    id="regPassword"
+                    type="password"
+                    placeholder="Password"
+                    autocomplete="new-password"
+                    minlength="6"
+                    aria-describedby="regPasswordHint"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="toggle-password"
+                    data-toggle-password="regPassword"
+                    aria-label="Show password"
+                  >
+                    <i class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
+                <p
+                  class="field-hint"
+                  id="regPasswordHint"
+                  data-default-message="Use at least 6 characters for better account security."
+                >
+                  Use at least 6 characters for better account security.
+                </p>
+              </div>
+
+              <div class="input-stack">
+                <label class="field-label" for="regConfirmPassword">
+                  Confirm password
+                </label>
+                <div class="input-group password-group has-action">
+                  <i class="fa-solid fa-shield-halved"></i>
+                  <input
+                    id="regConfirmPassword"
+                    type="password"
+                    placeholder="Confirm Password"
+                    autocomplete="new-password"
+                    minlength="6"
+                    aria-describedby="regConfirmPasswordHint"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="toggle-password"
+                    data-toggle-password="regConfirmPassword"
+                    aria-label="Show password"
+                  >
+                    <i class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
+                <p
+                  class="field-hint"
+                  id="regConfirmPasswordHint"
+                  data-default-message="Re-enter the same password to avoid typing mistakes."
+                >
+                  Re-enter the same password to avoid typing mistakes.
+                </p>
               </div>
 
               <button id="registerBtn" class="btn" type="submit">
@@ -1013,17 +1485,42 @@
             <form class="form" id="forgot" novalidate>
               <div class="form-title">
                 <strong>Reset password</strong>
-                <span>We will send a reset link to your registered email.</span>
+                <span
+                  >We will send a reset link to your registered email
+                  address.</span
+                >
               </div>
+              <div
+                class="form-status"
+                id="forgotStatus"
+                aria-live="polite"
+              ></div>
 
-              <div class="input-group">
-                <i class="fa-solid fa-envelope"></i>
-                <input
-                  id="forgotEmail"
-                  type="email"
-                  placeholder="Enter your email"
-                  autocomplete="email"
-                />
+              <div class="input-stack">
+                <label class="field-label" for="forgotEmail"
+                  >Registered email</label
+                >
+                <div class="input-group">
+                  <i class="fa-solid fa-envelope"></i>
+                  <input
+                    id="forgotEmail"
+                    type="email"
+                    placeholder="Enter your email"
+                    autocomplete="email"
+                    inputmode="email"
+                    autocapitalize="none"
+                    aria-describedby="forgotEmailHint"
+                    required
+                  />
+                </div>
+                <p
+                  class="field-hint"
+                  id="forgotEmailHint"
+                  data-default-message="Check your inbox and spam folder after you request a reset link."
+                >
+                  Check your inbox and spam folder after you request a reset
+                  link.
+                </p>
               </div>
 
               <button id="forgotBtn" class="btn" type="submit">
@@ -1050,24 +1547,34 @@
       </footer>
     </div>
 
-    <div id="footerPopupOverlay" class="footer-popup-overlay">
-      <div class="footer-popup">
+    <div
+      id="footerPopupOverlay"
+      class="footer-popup-overlay"
+      aria-hidden="true"
+    >
+      <div
+        class="footer-popup"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="popupTitle"
+      >
+        <span class="footer-popup-kicker">Quick Info</span>
         <h3 id="popupTitle"></h3>
         <div id="popupContent"></div>
         <button class="close-btn" id="popupClose" type="button">Close</button>
       </div>
     </div>
 
-    <div id="successScreen" class="popup-overlay">
-      <div class="popup-box success">
+    <div id="successScreen" class="popup-overlay" aria-hidden="true">
+      <div class="popup-box success" role="dialog" aria-modal="true">
         <i class="fa-solid fa-circle-check"></i>
         <h3>Success</h3>
         <p id="successText">Action completed successfully.</p>
       </div>
     </div>
 
-    <div id="errorScreen" class="popup-overlay">
-      <div class="popup-box error">
+    <div id="errorScreen" class="popup-overlay" aria-hidden="true">
+      <div class="popup-box error" role="dialog" aria-modal="true">
         <i class="fa-solid fa-circle-xmark"></i>
         <h3>Error</h3>
         <p id="errorText">Something went wrong.</p>
@@ -1097,7 +1604,13 @@
           regName: document.getElementById("regName"),
           regEmail: document.getElementById("regEmail"),
           regPassword: document.getElementById("regPassword"),
+          regConfirmPassword: document.getElementById("regConfirmPassword"),
           forgotEmail: document.getElementById("forgotEmail"),
+        };
+        const statusEls = {
+          login: document.getElementById("loginStatus"),
+          register: document.getElementById("registerStatus"),
+          forgot: document.getElementById("forgotStatus"),
         };
         const buttons = {
           login: document.getElementById("loginBtn"),
@@ -1114,26 +1627,86 @@
             text: document.getElementById("errorText"),
           },
         };
-        const footerPopupOverlay = document.getElementById("footerPopupOverlay");
+        const footerPopupOverlay =
+          document.getElementById("footerPopupOverlay");
         const popupTitle = document.getElementById("popupTitle");
         const popupContent = document.getElementById("popupContent");
         const popupClose = document.getElementById("popupClose");
-        const togglePassword = document.getElementById("togglePassword");
         const installCard = document.getElementById("installCard");
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        let activeFooterTrigger = null;
+        let cleanupErrorListeners = () => {};
 
         document.getElementById("currentYear").textContent = String(
           new Date().getFullYear(),
         );
 
+        const normalizeShopName = (value) => value.replace(/\s+/g, " ").trim();
+
+        const getInputStack = (input) => input?.closest(".input-stack");
+
+        const resetInputState = (input) => {
+          const stack = getInputStack(input);
+          const hint = stack?.querySelector(".field-hint");
+          if (!stack || !hint) {
+            return;
+          }
+
+          stack.classList.remove("is-valid", "is-invalid");
+          hint.textContent = hint.dataset.defaultMessage || "";
+        };
+
+        const setInputState = (input, state, message) => {
+          const stack = getInputStack(input);
+          const hint = stack?.querySelector(".field-hint");
+          if (!stack || !hint) {
+            return;
+          }
+
+          stack.classList.remove("is-valid", "is-invalid");
+          if (state) {
+            stack.classList.add(`is-${state}`);
+          }
+          hint.textContent = message || hint.dataset.defaultMessage || "";
+        };
+
+        const clearFormStatus = (formName) => {
+          const statusEl = statusEls[formName];
+          if (!statusEl) {
+            return;
+          }
+
+          statusEl.className = "form-status";
+          statusEl.textContent = "";
+        };
+
+        const setFormStatus = (formName, type, message) => {
+          const statusEl = statusEls[formName];
+          if (!statusEl || !message) {
+            return;
+          }
+
+          statusEl.className = `form-status ${type} active`;
+          statusEl.textContent = message;
+        };
+
         const switchForm = (target) => {
           Object.entries(forms).forEach(([name, form]) => {
             form.classList.toggle("active", name === target);
           });
+          Object.keys(statusEls).forEach(clearFormStatus);
+          Object.values(fields).forEach(resetInputState);
         };
 
-        const clearForms = () => {
-          Object.values(fields).forEach((field) => {
+        const clearSelectedFields = (fieldNames) => {
+          fieldNames.forEach((fieldName) => {
+            const field = fields[fieldName];
+            if (!field) {
+              return;
+            }
+
             field.value = "";
+            resetInputState(field);
           });
         };
 
@@ -1152,14 +1725,17 @@
 
         const hidePopup = (type) => {
           popupEls[type].overlay.classList.remove("active");
+          popupEls[type].overlay.setAttribute("aria-hidden", "true");
         };
 
         const showPopup = (type, message, redirectUrl = null, delay = 2000) => {
           const popup = popupEls[type];
 
+          cleanupErrorListeners();
           msgEl.textContent = message;
           popup.text.textContent = message;
           popup.overlay.classList.add("active");
+          popup.overlay.setAttribute("aria-hidden", "false");
 
           if (type === "success") {
             window.setTimeout(() => {
@@ -1186,18 +1762,54 @@
             document.removeEventListener("keydown", closeError);
           };
 
+          cleanupErrorListeners = () => {
+            document.removeEventListener("click", closeError);
+            document.removeEventListener("keydown", closeError);
+          };
+
           window.setTimeout(() => {
             document.addEventListener("click", closeError);
             document.addEventListener("keydown", closeError);
           }, 100);
         };
 
+        const closeFooterPopup = () => {
+          footerPopupOverlay.classList.remove("active");
+          footerPopupOverlay.setAttribute("aria-hidden", "true");
+          if (activeFooterTrigger) {
+            activeFooterTrigger.focus();
+          }
+          activeFooterTrigger = null;
+        };
+
+        const openFooterPopup = (type, trigger) => {
+          const data = footerData[type];
+          if (!data) {
+            showPopup("error", "We could not open that section right now.");
+            return;
+          }
+
+          activeFooterTrigger = trigger || null;
+          popupTitle.textContent = data.title;
+          popupContent.innerHTML = data.content;
+          footerPopupOverlay.classList.add("active");
+          footerPopupOverlay.setAttribute("aria-hidden", "false");
+          window.setTimeout(() => popupClose.focus(), 0);
+        };
+
         const postJSON = async (path, payload) => {
-          const response = await fetch(`${apiBase}${path}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
+          let response;
+          try {
+            response = await fetch(`${apiBase}${path}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+          } catch (error) {
+            throw new Error(
+              "Unable to reach the server. Please check your connection and try again.",
+            );
+          }
 
           let data = {};
           try {
@@ -1213,14 +1825,70 @@
           return data;
         };
 
-        forms.login.addEventListener("submit", async (event) => {
-          event.preventDefault();
+        const validateLoginForm = () => {
+          clearFormStatus("login");
+          resetInputState(fields.loginEmail);
+          resetInputState(fields.loginPassword);
 
           const email = fields.loginEmail.value.trim();
           const password = fields.loginPassword.value;
+          let firstInvalidField = null;
 
-          if (!email || !password) {
-            showPopup("error", "All fields required.");
+          if (!email) {
+            setInputState(
+              fields.loginEmail,
+              "invalid",
+              "Enter your registered email.",
+            );
+            firstInvalidField = fields.loginEmail;
+          } else if (!emailPattern.test(email)) {
+            setInputState(
+              fields.loginEmail,
+              "invalid",
+              "Please enter a valid email address.",
+            );
+            firstInvalidField = fields.loginEmail;
+          } else {
+            setInputState(
+              fields.loginEmail,
+              "valid",
+              "Email format looks good.",
+            );
+          }
+
+          if (!password) {
+            setInputState(
+              fields.loginPassword,
+              "invalid",
+              "Enter your password.",
+            );
+            firstInvalidField = firstInvalidField || fields.loginPassword;
+          } else {
+            setInputState(
+              fields.loginPassword,
+              "valid",
+              "Password looks ready.",
+            );
+          }
+
+          if (firstInvalidField) {
+            firstInvalidField.focus();
+            setFormStatus(
+              "login",
+              "error",
+              "Please correct the highlighted fields.",
+            );
+            return null;
+          }
+
+          return { email, password };
+        };
+
+        forms.login.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const payload = validateLoginForm();
+          if (!payload) {
             return;
           }
 
@@ -1229,26 +1897,136 @@
             '<i class="fa-solid fa-spinner fa-spin"></i> Signing in...',
             async () => {
               try {
-                const data = await postJSON("/login", { email, password });
+                const data = await postJSON("/login", payload);
                 localStorage.setItem("token", data.token);
                 localStorage.setItem("user", JSON.stringify(data.user));
+                setFormStatus(
+                  "login",
+                  "success",
+                  "Login successful. Redirecting...",
+                );
                 showPopup("success", "Login successful.", "index.html", 1200);
               } catch (error) {
+                setFormStatus(
+                  "login",
+                  "error",
+                  "Login failed. Check your email and password, then try again.",
+                );
                 showPopup("error", error.message);
               }
             },
           );
         });
 
+        const validateRegisterForm = () => {
+          clearFormStatus("register");
+          resetInputState(fields.regName);
+          resetInputState(fields.regEmail);
+          resetInputState(fields.regPassword);
+          resetInputState(fields.regConfirmPassword);
+
+          const name = normalizeShopName(fields.regName.value);
+          const email = fields.regEmail.value.trim();
+          const password = fields.regPassword.value;
+          const confirmPassword = fields.regConfirmPassword.value;
+          let firstInvalidField = null;
+
+          fields.regName.value = name;
+
+          if (!name) {
+            setInputState(fields.regName, "invalid", "Shop name is required.");
+            firstInvalidField = fields.regName;
+          } else if (name.length < 3) {
+            setInputState(
+              fields.regName,
+              "invalid",
+              "Shop name should be at least 3 characters long.",
+            );
+            firstInvalidField = fields.regName;
+          } else {
+            setInputState(fields.regName, "valid", "Shop name looks good.");
+          }
+
+          if (!email) {
+            setInputState(
+              fields.regEmail,
+              "invalid",
+              "Business email is required.",
+            );
+            firstInvalidField = firstInvalidField || fields.regEmail;
+          } else if (!emailPattern.test(email)) {
+            setInputState(
+              fields.regEmail,
+              "invalid",
+              "Please enter a valid business email.",
+            );
+            firstInvalidField = firstInvalidField || fields.regEmail;
+          } else {
+            setInputState(fields.regEmail, "valid", "Email format looks good.");
+          }
+
+          if (!password) {
+            setInputState(
+              fields.regPassword,
+              "invalid",
+              "Create a password to continue.",
+            );
+            firstInvalidField = firstInvalidField || fields.regPassword;
+          } else if (password.length < 6) {
+            setInputState(
+              fields.regPassword,
+              "invalid",
+              "Password must be at least 6 characters long.",
+            );
+            firstInvalidField = firstInvalidField || fields.regPassword;
+          } else {
+            setInputState(
+              fields.regPassword,
+              "valid",
+              "Password strength is acceptable.",
+            );
+          }
+
+          if (!confirmPassword) {
+            setInputState(
+              fields.regConfirmPassword,
+              "invalid",
+              "Please confirm your password.",
+            );
+            firstInvalidField = firstInvalidField || fields.regConfirmPassword;
+          } else if (confirmPassword !== password) {
+            setInputState(
+              fields.regConfirmPassword,
+              "invalid",
+              "Confirm password must match the password above.",
+            );
+            firstInvalidField = firstInvalidField || fields.regConfirmPassword;
+          } else {
+            setInputState(
+              fields.regConfirmPassword,
+              "valid",
+              "Passwords match.",
+            );
+          }
+
+          if (firstInvalidField) {
+            firstInvalidField.focus();
+            setFormStatus(
+              "register",
+              "error",
+              "Please fix the highlighted fields before creating your account.",
+            );
+            return null;
+          }
+
+          return { name, email, password };
+        };
+
         forms.register.addEventListener("submit", async (event) => {
           event.preventDefault();
 
-          const name = fields.regName.value.trim();
-          const email = fields.regEmail.value.trim();
-          const password = fields.regPassword.value;
-
-          if (!name || !email || !password) {
-            showPopup("error", "All fields required.");
+          const payload = validateRegisterForm();
+          if (!payload) {
             return;
           }
 
@@ -1257,24 +2035,90 @@
             '<i class="fa-solid fa-spinner fa-spin"></i> Creating account...',
             async () => {
               try {
-                await postJSON("/register", { name, email, password });
-                clearForms();
-                showPopup("success", "Registration successful.");
-                window.setTimeout(() => switchForm("login"), 1500);
+                await postJSON("/register", payload);
+                clearSelectedFields([
+                  "regName",
+                  "regEmail",
+                  "regPassword",
+                  "regConfirmPassword",
+                ]);
+                setFormStatus(
+                  "register",
+                  "success",
+                  "Account created successfully. Redirecting you to login...",
+                );
+                showPopup(
+                  "success",
+                  "Account created successfully. Please log in.",
+                );
+                window.setTimeout(() => {
+                  switchForm("login");
+                  setFormStatus(
+                    "login",
+                    "info",
+                    "Your account is ready. Log in to continue.",
+                  );
+                }, 1500);
               } catch (error) {
-                showPopup("error", error.message);
+                const message = /already registered/i.test(error.message)
+                  ? "This email is already registered. Try logging in instead."
+                  : error.message;
+                setFormStatus("register", "error", message);
+                showPopup("error", message);
               }
             },
           );
         });
 
+        const validateForgotForm = () => {
+          clearFormStatus("forgot");
+          resetInputState(fields.forgotEmail);
+
+          const email = fields.forgotEmail.value.trim();
+          if (!email) {
+            setInputState(
+              fields.forgotEmail,
+              "invalid",
+              "Enter your registered email address.",
+            );
+            fields.forgotEmail.focus();
+            setFormStatus(
+              "forgot",
+              "error",
+              "Please enter a valid email to continue.",
+            );
+            return null;
+          }
+
+          if (!emailPattern.test(email)) {
+            setInputState(
+              fields.forgotEmail,
+              "invalid",
+              "Please enter a valid email address.",
+            );
+            fields.forgotEmail.focus();
+            setFormStatus(
+              "forgot",
+              "error",
+              "Please enter a valid email to continue.",
+            );
+            return null;
+          }
+
+          setInputState(
+            fields.forgotEmail,
+            "valid",
+            "We will send the password reset link to this email.",
+          );
+
+          return email;
+        };
+
         forms.forgot.addEventListener("submit", async (event) => {
           event.preventDefault();
 
-          const email = fields.forgotEmail.value.trim();
-
+          const email = validateForgotForm();
           if (!email) {
-            showPopup("error", "Enter your registered email.");
             return;
           }
 
@@ -1284,22 +2128,33 @@
             async () => {
               try {
                 const data = await postJSON("/forgot-password", { email });
-                clearForms();
-                showPopup(
+                clearSelectedFields(["forgotEmail"]);
+                const successMessage =
+                  data.message ||
+                  "If the email exists, a reset link has been sent. Check your inbox and spam folder.";
+                setFormStatus(
+                  "forgot",
                   "success",
-                  data.message || "Reset link sent to your registered email.",
+                  `${successMessage} If you do not see it soon, check your spam folder as well.`,
                 );
+                showPopup("success", successMessage, null, 2400);
               } catch (error) {
-                showPopup("error", error.message);
+                const message = /does not exist/i.test(error.message)
+                  ? "We could not find an account with that email address."
+                  : error.message;
+                setFormStatus("forgot", "error", message);
+                showPopup("error", message);
               }
             },
           );
         });
 
-        document.getElementById("forgotLink").addEventListener("click", (event) => {
-          event.preventDefault();
-          switchForm("forgot");
-        });
+        document
+          .getElementById("forgotLink")
+          .addEventListener("click", (event) => {
+            event.preventDefault();
+            switchForm("forgot");
+          });
 
         document
           .getElementById("createAccountLink")
@@ -1308,37 +2163,158 @@
             switchForm("register");
           });
 
-        document.getElementById("backToLogin1").addEventListener("click", (event) => {
-          event.preventDefault();
-          switchForm("login");
-        });
+        document
+          .getElementById("backToLogin1")
+          .addEventListener("click", (event) => {
+            event.preventDefault();
+            switchForm("login");
+          });
 
-        document.getElementById("backToLogin2").addEventListener("click", (event) => {
-          event.preventDefault();
-          switchForm("login");
-        });
+        document
+          .getElementById("backToLogin2")
+          .addEventListener("click", (event) => {
+            event.preventDefault();
+            switchForm("login");
+          });
 
-        const togglePasswordVisibility = () => {
-          const isHidden = fields.loginPassword.type === "password";
-          fields.loginPassword.type = isHidden ? "text" : "password";
-          togglePassword.classList.toggle("fa-eye", !isHidden);
-          togglePassword.classList.toggle("fa-eye-slash", isHidden);
-          togglePassword.classList.toggle("active", isHidden);
-          togglePassword.setAttribute(
-            "aria-label",
-            isHidden ? "Hide password" : "Show password",
-          );
-        };
+        document
+          .querySelectorAll("[data-toggle-password]")
+          .forEach((toggle) => {
+            const targetInput = document.getElementById(
+              toggle.dataset.togglePassword,
+            );
+            const icon = toggle.querySelector("i");
+            if (!targetInput || !icon) {
+              return;
+            }
 
-        if (togglePassword) {
-          togglePassword.addEventListener("click", togglePasswordVisibility);
-          togglePassword.addEventListener("keydown", (event) => {
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault();
-              togglePasswordVisibility();
+            const syncToggleState = () => {
+              const isHidden = targetInput.type === "password";
+              icon.classList.toggle("fa-eye", isHidden);
+              icon.classList.toggle("fa-eye-slash", !isHidden);
+              toggle.classList.toggle("active", !isHidden);
+              toggle.setAttribute(
+                "aria-label",
+                isHidden ? "Show password" : "Hide password",
+              );
+            };
+
+            syncToggleState();
+            toggle.addEventListener("click", () => {
+              targetInput.type =
+                targetInput.type === "password" ? "text" : "password";
+              syncToggleState();
+            });
+          });
+
+        Object.values(fields).forEach((field) => {
+          field.addEventListener("input", () => {
+            resetInputState(field);
+            clearFormStatus(field.closest("form")?.id);
+
+            if (field === fields.regName) {
+              field.value = field.value.replace(/\s{2,}/g, " ");
+            }
+
+            if (
+              field === fields.regPassword &&
+              fields.regConfirmPassword.value
+            ) {
+              if (fields.regConfirmPassword.value === field.value) {
+                setInputState(
+                  fields.regConfirmPassword,
+                  "valid",
+                  "Passwords match.",
+                );
+              } else {
+                setInputState(
+                  fields.regConfirmPassword,
+                  "invalid",
+                  "Confirm password must match the password above.",
+                );
+              }
             }
           });
-        }
+        });
+
+        [fields.loginEmail, fields.regEmail, fields.forgotEmail].forEach(
+          (field) => {
+            field.addEventListener("blur", () => {
+              const value = field.value.trim();
+              if (!value) {
+                resetInputState(field);
+                return;
+              }
+
+              if (emailPattern.test(value)) {
+                setInputState(field, "valid", "Email format looks good.");
+              } else {
+                setInputState(
+                  field,
+                  "invalid",
+                  "Please enter a valid email address.",
+                );
+              }
+            });
+          },
+        );
+
+        fields.regName.addEventListener("blur", () => {
+          const value = normalizeShopName(fields.regName.value);
+          fields.regName.value = value;
+          if (!value) {
+            resetInputState(fields.regName);
+            return;
+          }
+
+          if (value.length < 3) {
+            setInputState(
+              fields.regName,
+              "invalid",
+              "Shop name should be at least 3 characters long.",
+            );
+          } else {
+            setInputState(fields.regName, "valid", "Shop name looks good.");
+          }
+        });
+
+        [fields.regPassword, fields.regConfirmPassword].forEach((field) => {
+          field.addEventListener("blur", () => {
+            if (!field.value) {
+              resetInputState(field);
+              return;
+            }
+
+            if (field === fields.regPassword && field.value.length < 6) {
+              setInputState(
+                field,
+                "invalid",
+                "Password must be at least 6 characters long.",
+              );
+              return;
+            }
+
+            if (
+              field === fields.regConfirmPassword &&
+              field.value !== fields.regPassword.value
+            ) {
+              setInputState(
+                field,
+                "invalid",
+                "Confirm password must match the password above.",
+              );
+              return;
+            }
+
+            setInputState(
+              field,
+              "valid",
+              field === fields.regPassword
+                ? "Password strength is acceptable."
+                : "Passwords match.",
+            );
+          });
+        });
 
         if (installCard && !/Android/i.test(navigator.userAgent)) {
           installCard.style.display = "none";
@@ -1348,39 +2324,74 @@
           about: {
             title: "About India Inventory Management",
             content: `
-              <p>
-                <strong>India Inventory Management</strong> is a cloud-based
-                platform designed to simplify stock tracking, billing, sales
-                reports, and customer due management for small shops and
-                retailers.
+              <p class="footer-popup-copy">
+                <strong>India Inventory Management</strong> helps small shops
+                and growing retail teams manage stock, billing, reports, and
+                customer dues from one practical workspace.
               </p>
-              <p>
-                The goal is to reduce repetitive work, keep inventory data up
-                to date, and make daily business operations easier to manage
-                from one place.
-              </p>
+              <div class="footer-popup-card">
+                <strong>What you can manage</strong>
+                <ul>
+                  <li>Stock quantity with buying and selling rates</li>
+                  <li>Invoices, sale entries, and printable records</li>
+                  <li>Customer dues and payment follow-up history</li>
+                </ul>
+              </div>
+              <div class="footer-popup-card">
+                <strong>Why teams use it</strong>
+                <ul>
+                  <li>Less manual work during daily billing</li>
+                  <li>Cleaner records for review and reporting</li>
+                  <li>Faster answers when customers ask for details</li>
+                </ul>
+              </div>
             `,
           },
           contact: {
             title: "Contact Us",
             content: `
-              <p><strong>Email:</strong> support@india-inventory.com</p>
-              <p><strong>Phone:</strong> +91 98xxx xxxxx</p>
-              <p><strong>Hours:</strong> Mon-Sat, 10 AM - 6 PM</p>
+              <p class="footer-popup-copy">
+                Need help with onboarding, account access, or product support?
+                Reach out using the details below.
+              </p>
+              <div class="footer-popup-card">
+                <strong>Support channels</strong>
+                <p><a href="mailto:support@india-inventory.com">support@india-inventory.com</a></p>
+                <p><a href="tel:+9198xxxxxxx">+91 98xxx xxxxx</a></p>
+                <p>Support hours: Mon-Sat, 10 AM - 6 PM</p>
+              </div>
+              <div class="footer-popup-card">
+                <strong>Best way to get quick help</strong>
+                <p>
+                  Share your shop name, registered email, and the issue you are
+                  facing so the support team can respond faster.
+                </p>
+              </div>
             `,
           },
           privacy: {
             title: "Privacy Policy",
             content: `
-              <p>
-                We value your privacy. Your data is stored securely and is not
-                shared without a valid reason.
+              <p class="footer-popup-copy">
+                We handle your business data carefully and use it only to keep
+                your account, billing records, and recovery flow working
+                properly.
               </p>
-              <p>
-                When you reset your password, you may receive an email from
-                forgot.indiainventory@gmail.com. That is an official password
-                reset address.
-              </p>
+              <div class="footer-popup-card">
+                <strong>Privacy essentials</strong>
+                <ul>
+                  <li>Your account data is stored securely for product use</li>
+                  <li>We do not share your data without a valid operational reason</li>
+                  <li>Password reset emails may come from forgot.indiainventory@gmail.com</li>
+                </ul>
+              </div>
+              <div class="footer-popup-card">
+                <strong>Good to know</strong>
+                <p>
+                  Keep your password private and log out from shared devices to
+                  protect your account.
+                </p>
+              </div>
             `,
           },
         };
@@ -1388,26 +2399,33 @@
         document.querySelectorAll(".footer-link").forEach((link) => {
           link.addEventListener("click", (event) => {
             event.preventDefault();
-            const data = footerData[link.dataset.type];
-            if (!data) {
-              return;
-            }
-
-            popupTitle.textContent = data.title;
-            popupContent.innerHTML = data.content;
-            footerPopupOverlay.classList.add("active");
+            openFooterPopup(link.dataset.type, link);
           });
         });
 
-        popupClose.addEventListener("click", () => {
-          footerPopupOverlay.classList.remove("active");
-        });
+        popupClose.addEventListener("click", closeFooterPopup);
 
         footerPopupOverlay.addEventListener("click", (event) => {
           if (event.target === footerPopupOverlay) {
-            footerPopupOverlay.classList.remove("active");
+            closeFooterPopup();
           }
         });
+
+        document.addEventListener("keydown", (event) => {
+          if (
+            event.key === "Escape" &&
+            footerPopupOverlay.classList.contains("active")
+          ) {
+            closeFooterPopup();
+          }
+        });
+
+        Object.values(fields).forEach(resetInputState);
+        setFormStatus(
+          "login",
+          "info",
+          "Use your registered email and password to continue.",
+        );
       });
     </script>
   </body>
