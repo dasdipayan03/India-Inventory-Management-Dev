@@ -557,111 +557,80 @@
         background: rgba(255, 255, 255, 0.88);
       }
 
-      .result-head {
+      .result-paper {
+        display: grid;
+        gap: 14px;
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid rgba(117, 142, 180, 0.14);
+        background: rgba(255, 255, 255, 0.96);
+      }
+
+      .paper-header {
         display: flex;
         justify-content: space-between;
-        gap: 12px;
-      }
-
-      .result-total {
-        padding: 12px 14px;
-        border-radius: 18px;
-        background: rgba(14, 165, 233, 0.1);
-        color: var(--navy);
-        font-weight: 800;
-      }
-
-      .result-meta {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-      }
-
-      .result-meta .wide {
-        grid-column: 1 / -1;
-      }
-
-      .result-totals {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 10px;
-      }
-
-      .result-tile {
-        padding: 12px 14px;
-        border-radius: 16px;
-        border: 1px solid var(--line);
-        background: rgba(248, 251, 255, 0.94);
-      }
-
-      .result-tile span {
-        display: block;
-        color: var(--muted);
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .result-tile strong {
-        display: block;
-        margin-top: 6px;
-        color: var(--ink);
-        font-size: 16px;
-        line-height: 1.35;
-      }
-
-      .preview-item {
-        padding: 14px;
-        border-radius: 18px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.82);
-        display: grid;
-        gap: 10px;
-      }
-
-      .preview-item-head {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
+        gap: 14px;
         align-items: flex-start;
+        padding: 16px 18px;
+        border-radius: 20px;
+        background: #f1f7fd;
       }
 
-      .preview-item-head h3 {
-        margin: 0;
-        font-size: 15px;
-        line-height: 1.45;
+      .paper-brand {
+        display: grid;
+        gap: 6px;
       }
 
-      .preview-item-no {
+      .paper-brand-name {
+        color: var(--ink);
+        font-size: 24px;
+        font-weight: 800;
+        line-height: 1.2;
+        letter-spacing: -0.03em;
+      }
+
+      .paper-brand-meta {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .paper-title {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 28px;
-        height: 28px;
-        padding: 0 10px;
+        min-height: 38px;
+        padding: 8px 14px;
         border-radius: 999px;
-        background: rgba(14, 165, 233, 0.12);
+        background: rgba(23, 49, 93, 0.08);
         color: var(--navy);
         font-size: 12px;
         font-weight: 800;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
       }
 
-      .preview-row {
+      .paper-info-grid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 8px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
       }
 
-      .preview-chip {
-        padding: 8px 10px;
-        border-radius: 14px;
-        background: rgba(23, 49, 93, 0.06);
-        display: grid;
-        gap: 4px;
+      .paper-info {
+        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        background: rgba(248, 251, 255, 0.82);
       }
 
-      .preview-chip span {
+      .paper-info--wide {
+        grid-column: 1 / -1;
+      }
+
+      .paper-info span,
+      .paper-cell span,
+      .paper-summary-row span {
+        display: block;
         color: var(--muted);
         font-size: 10px;
         font-weight: 700;
@@ -669,10 +638,114 @@
         text-transform: uppercase;
       }
 
-      .preview-chip strong {
+      .paper-info strong {
+        display: block;
+        margin-top: 6px;
+        color: var(--ink);
+        font-size: 15px;
+        line-height: 1.45;
+        word-break: break-word;
+      }
+
+      .paper-section-title {
+        color: var(--navy);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      .paper-items {
+        display: grid;
+        gap: 10px;
+      }
+
+      .paper-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1.8fr) repeat(3, minmax(88px, 1fr));
+        gap: 10px;
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.88);
+      }
+
+      .paper-cell {
+        display: grid;
+        gap: 4px;
+        align-content: start;
+      }
+
+      .paper-cell--item {
+        gap: 6px;
+      }
+
+      .paper-item-name {
+        color: var(--ink);
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.45;
+      }
+
+      .paper-item-index {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: fit-content;
+        min-height: 24px;
+        padding: 0 8px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.12);
+        color: var(--navy);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .paper-cell strong {
         color: var(--ink);
         font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .paper-summary {
+        width: min(360px, 100%);
+        justify-self: end;
+        display: grid;
+        gap: 8px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(248, 251, 255, 0.94);
+      }
+
+      .paper-summary-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .paper-summary-row strong {
+        color: var(--ink);
+        font-size: 15px;
         line-height: 1.35;
+      }
+
+      .paper-summary-row--grand {
+        padding-top: 8px;
+        border-top: 1px solid rgba(117, 142, 180, 0.16);
+      }
+
+      .paper-summary-row--grand strong {
+        font-size: 18px;
+        color: var(--navy);
+      }
+
+      .paper-footer-note {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+        text-align: center;
       }
 
       .history-grid {
@@ -762,7 +835,6 @@
       @media (max-width: 820px) {
         .topbar,
         .toolbar,
-        .result-head,
         .result-actions,
         .modal-actions {
           flex-direction: column;
@@ -773,16 +845,6 @@
         .stats,
         .search-grid {
           grid-template-columns: 1fr;
-        }
-
-        .result-meta {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 10px;
-        }
-
-        .result-totals {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 8px;
         }
 
         .shop-summary,
@@ -805,42 +867,55 @@
           padding: 16px;
         }
 
-        .result-total {
-          padding: 10px 12px;
-          font-size: 13px;
+        .result-paper {
+          padding: 14px;
+          gap: 12px;
         }
 
-        .preview-item {
-          padding: 12px;
+        .paper-header {
+          flex-direction: column;
+          padding: 14px;
         }
 
-        .preview-row {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+        .paper-brand-name {
+          font-size: 20px;
+        }
+
+        .paper-title {
+          width: fit-content;
+        }
+
+        .paper-info-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 8px;
         }
 
-        .result-tile {
-          padding: 10px;
+        .paper-item {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px;
+          padding: 12px;
         }
 
-        .result-tile strong {
+        .paper-cell--item {
+          grid-column: 1 / -1;
+        }
+
+        .paper-summary {
+          width: 100%;
+          justify-self: stretch;
+          padding: 12px 14px;
+        }
+
+        .paper-summary-row strong {
           font-size: 14px;
         }
 
-        .preview-item-head {
-          align-items: center;
+        .paper-summary-row--grand strong {
+          font-size: 16px;
         }
 
-        .preview-item-head h3 {
-          font-size: 14px;
-        }
-
-        .preview-chip {
-          padding: 8px;
-        }
-
-        .preview-chip strong {
-          font-size: 12px;
+        .paper-footer-note {
+          font-size: 11px;
         }
 
         .table-wrap {
@@ -1947,66 +2022,100 @@
         };
 
         const renderDetail = (invoice) => {
+          const shopName = dom.shopName.value.trim() || "India Inventory Management";
+          const shopAddress = dom.shopAddress.value.trim() || "-";
+          const shopGst = dom.gstInput.value.trim() || invoice.gst_no || "-";
           const itemsHtml = invoice.items
             .map(
               (item, index) => `
-                <div class="preview-item">
-                  <div class="preview-item-head">
-                    <h3>${escapeHtml(item.description)}</h3>
-                    <span class="preview-item-no">#${index + 1}</span>
+                <div class="paper-item">
+                  <div class="paper-cell paper-cell--item">
+                    <span>Item</span>
+                    <strong class="paper-item-name">${escapeHtml(item.description)}</strong>
+                    <span class="paper-item-index">#${index + 1}</span>
                   </div>
-                  <div class="preview-row">
-                    <div class="preview-chip">
+                  <div class="paper-cell">
                       <span>Qty</span>
                       <strong>${escapeHtml(item.quantity)}</strong>
-                    </div>
-                    <div class="preview-chip">
+                  </div>
+                  <div class="paper-cell">
                       <span>Rate</span>
                       <strong>${formatMoney(item.rate)}</strong>
-                    </div>
-                    <div class="preview-chip">
+                  </div>
+                  <div class="paper-cell">
                       <span>Amount</span>
                       <strong>${formatMoney(item.amount)}</strong>
-                    </div>
                   </div>
-                </div>
+                  </div>
               `,
             )
             .join("");
 
           dom.searchResult.innerHTML = `
             <div class="result">
-              <div class="result-head">
-                <div>
-                  <div class="eyebrow">Invoice Detail</div>
-                  <h2>${escapeHtml(invoice.invoice_no)}</h2>
+              <div class="result-paper">
+                <div class="paper-header">
+                  <div class="paper-brand">
+                    <div class="paper-brand-name">${escapeHtml(shopName)}</div>
+                    <div class="paper-brand-meta">${escapeHtml(shopAddress)}</div>
+                    <div class="paper-brand-meta">GSTIN: ${escapeHtml(shopGst)}</div>
+                  </div>
+                  <div class="paper-title">Invoice</div>
                 </div>
-                <div class="result-total">Grand Total<br /><strong>${formatMoney(invoice.total_amount)}</strong></div>
-              </div>
-              <div class="result-meta">
-                <div><span>Date</span><strong>${escapeHtml(safeDate(invoice.date))}</strong></div>
-                <div><span>Customer</span><strong>${escapeHtml(invoice.customer_name || "-")}</strong></div>
-                <div><span>Contact</span><strong>${escapeHtml(invoice.contact || "-")}</strong></div>
-                <div class="wide"><span>Address</span><strong>${escapeHtml(invoice.address || "-")}</strong></div>
-              </div>
-              <div class="result-totals">
-                <div class="result-tile">
-                  <span>Subtotal</span>
-                  <strong>${formatMoney(invoice.subtotal)}</strong>
+                <div class="paper-info-grid">
+                  <div class="paper-info">
+                    <span>Invoice No</span>
+                    <strong>${escapeHtml(invoice.invoice_no)}</strong>
+                  </div>
+                  <div class="paper-info">
+                    <span>Date</span>
+                    <strong>${escapeHtml(safeDate(invoice.date))}</strong>
+                  </div>
+                  <div class="paper-info">
+                    <span>Customer</span>
+                    <strong>${escapeHtml(invoice.customer_name || "-")}</strong>
+                  </div>
+                  <div class="paper-info">
+                    <span>Contact</span>
+                    <strong>${escapeHtml(invoice.contact || "-")}</strong>
+                  </div>
+                  <div class="paper-info paper-info--wide">
+                    <span>Address</span>
+                    <strong>${escapeHtml(invoice.address || "-")}</strong>
+                  </div>
                 </div>
-                <div class="result-tile">
-                  <span>GST</span>
-                  <strong>${formatMoney(invoice.gst_amount)}</strong>
+
+                <div class="paper-items">
+                  <div class="paper-section-title">Items</div>
+                  ${
+                    itemsHtml ||
+                    `<div class="empty"><h3>No items found</h3><p class="sub">This invoice does not have item rows.</p></div>`
+                  }
                 </div>
-                <div class="result-tile">
-                  <span>Total</span>
-                  <strong>${formatMoney(invoice.total_amount)}</strong>
+
+                <div class="paper-summary">
+                  <div class="paper-summary-row">
+                    <span>Subtotal</span>
+                    <strong>${formatMoney(invoice.subtotal)}</strong>
+                  </div>
+                  <div class="paper-summary-row">
+                    <span>GST</span>
+                    <strong>${formatMoney(invoice.gst_amount)}</strong>
+                  </div>
+                  <div class="paper-summary-row paper-summary-row--grand">
+                    <span>Total</span>
+                    <strong>${formatMoney(invoice.total_amount)}</strong>
+                  </div>
                 </div>
-              </div>
-              ${itemsHtml || `<div class="empty"><h3>No items found</h3><p class="sub">This invoice does not have item rows.</p></div>`}
-              <div class="result-actions">
-                <button class="btn primary detail-download" type="button" data-inv="${escapeHtml(invoice.invoice_no)}"><i class="fa-solid fa-download"></i>Download PDF</button>
-                <button class="btn ghost detail-back" type="button"><i class="fa-solid fa-list"></i>Back to invoice list</button>
+
+                <div class="result-actions">
+                  <button class="btn primary detail-download" type="button" data-inv="${escapeHtml(invoice.invoice_no)}"><i class="fa-solid fa-download"></i>Download PDF</button>
+                  <button class="btn ghost detail-back" type="button"><i class="fa-solid fa-list"></i>Back to invoice list</button>
+                </div>
+
+                <div class="paper-footer-note">
+                  This is a system generated invoice preview. PDF download formatting remains unchanged.
+                </div>
               </div>
             </div>
           `;
