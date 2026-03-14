@@ -237,6 +237,58 @@
         align-items: start;
       }
 
+      .shop-panel {
+        padding: 0;
+        overflow: hidden;
+      }
+
+      .shop-details {
+        display: block;
+      }
+
+      .shop-summary {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        align-items: center;
+        padding: 20px 22px;
+        cursor: pointer;
+        list-style: none;
+      }
+
+      .shop-summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .shop-summary-copy {
+        min-width: 0;
+      }
+
+      .shop-summary-copy .sub {
+        margin-top: 6px;
+      }
+
+      .shop-toggle {
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        background: rgba(14, 165, 233, 0.12);
+        color: var(--navy);
+        transition: transform 0.2s ease;
+      }
+
+      .shop-details[open] .shop-toggle {
+        transform: rotate(180deg);
+      }
+
+      .shop-body {
+        padding: 0 22px 22px;
+      }
+
       .field-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -628,15 +680,31 @@
           grid-template-columns: 1fr;
         }
 
+        .shop-summary,
+        .shop-body {
+          padding-left: 18px;
+          padding-right: 18px;
+        }
+
+        .shop-summary {
+          align-items: flex-start;
+        }
+
+        .toolbar .btn,
+        .actions .btn,
+        .search-grid .btn {
+          width: 100%;
+        }
+
+        .table-wrap {
+          overflow: visible;
+        }
+
         table,
         thead,
-        tbody,
-        tr,
-        td,
-        th {
+        tbody {
           display: block;
           width: 100%;
-          min-width: 0;
         }
 
         thead {
@@ -649,31 +717,78 @@
         }
 
         tbody tr {
-          margin-bottom: 14px;
-          border-radius: 20px;
-          overflow: hidden;
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+          margin-bottom: 16px;
+          padding: 14px;
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.92);
+          box-shadow: 0 14px 26px rgba(17, 29, 58, 0.08);
         }
 
-        tbody td {
-          border-left: 1px solid rgba(117, 142, 180, 0.1);
-          border-right: 1px solid rgba(117, 142, 180, 0.1);
-          border-top: 1px solid rgba(117, 142, 180, 0.1);
-          border-bottom: 0;
-        }
-
+        tbody td,
+        tbody td:first-child,
         tbody td:last-child {
-          border-bottom: 1px solid rgba(117, 142, 180, 0.1);
+          display: block;
+          width: 100%;
+          min-width: 0;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          box-shadow: none;
         }
 
         tbody td::before {
           content: attr(data-label);
           display: block;
-          margin-bottom: 8px;
+          margin-bottom: 6px;
           color: var(--muted);
           font-size: 11px;
           font-weight: 700;
           letter-spacing: 0.08em;
           text-transform: uppercase;
+        }
+
+        tbody td[data-label="Item"],
+        tbody td[data-label="Total"],
+        tbody td[data-label="Remove"] {
+          grid-column: 1 / -1;
+        }
+
+        tbody td[data-label="Base"],
+        tbody td[data-label="GST"] {
+          padding: 12px;
+          border-radius: 16px;
+          border: 1px solid rgba(117, 142, 180, 0.16);
+          background: rgba(248, 251, 255, 0.92);
+        }
+
+        tbody td[data-label="Total"] {
+          padding: 12px;
+          border-radius: 18px;
+          border: 1px solid rgba(14, 165, 233, 0.16);
+          background: linear-gradient(
+            180deg,
+            rgba(239, 246, 255, 0.94),
+            rgba(248, 250, 252, 0.98)
+          );
+        }
+
+        tbody td[data-label="Total"] .input {
+          font-weight: 800;
+        }
+
+        tbody td[data-label="Remove"] .btn {
+          width: 100%;
+        }
+
+        .stock {
+          margin-top: 10px;
+          padding: 8px 10px;
+          border-radius: 12px;
+          background: rgba(14, 165, 233, 0.08);
         }
       }
     </style>
@@ -779,9 +894,77 @@
         </aside>
       </section>
 
+      <section class="glass shop-panel">
+        <details id="shopDetails" class="shop-details">
+          <summary class="shop-summary">
+            <div class="shop-summary-copy">
+              <div class="eyebrow">Shop Profile</div>
+              <h2>Business and tax setup</h2>
+              <p class="sub">
+                One-time setup. Keep this folded on mobile and open only when
+                you need to update shop or GST details.
+              </p>
+            </div>
+            <span class="shop-toggle">
+              <i class="fa-solid fa-chevron-down"></i>
+            </span>
+          </summary>
+
+          <div class="shop-body">
+            <div class="field-grid">
+              <div class="field">
+                <label for="shopName">Shop Name</label>
+                <input
+                  id="shopName"
+                  class="input"
+                  placeholder="Business or shop name"
+                />
+              </div>
+              <div class="field">
+                <label for="gstInput">GST Number</label>
+                <input
+                  id="gstInput"
+                  class="input"
+                  placeholder="GST number for invoice"
+                />
+              </div>
+            </div>
+
+            <div class="field-grid" style="margin-top: 14px">
+              <div class="field">
+                <label for="shopAddress">Shop Address</label>
+                <input
+                  id="shopAddress"
+                  class="input"
+                  placeholder="Shop address"
+                />
+              </div>
+              <div class="field">
+                <label for="gstRateInput">GST Rate</label>
+                <input
+                  id="gstRateInput"
+                  class="input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="GST rate without % symbol"
+                />
+              </div>
+            </div>
+
+            <div class="actions" style="margin-top: 16px">
+              <button id="saveGstBtn" class="btn primary" type="button">
+                <i class="fa-regular fa-floppy-disk"></i>
+                Save Shop Profile
+              </button>
+            </div>
+          </div>
+        </details>
+      </section>
+
       <section class="workspace">
         <div class="grid">
-          <section class="glass card">
+          <section class="glass card items-panel">
             <div class="toolbar">
               <div>
                 <div class="eyebrow">Customer</div>
@@ -862,67 +1045,6 @@
         </div>
 
         <div class="grid">
-          <section class="glass card">
-            <div class="toolbar">
-              <div>
-                <div class="eyebrow">Shop Profile</div>
-                <h2>Business and tax setup</h2>
-                <p class="sub">
-                  Save once for invoice use. GST rate changes update totals
-                  live.
-                </p>
-              </div>
-            </div>
-
-            <div class="field-grid">
-              <div class="field">
-                <label for="shopName">Shop Name</label>
-                <input
-                  id="shopName"
-                  class="input"
-                  placeholder="Business or shop name"
-                />
-              </div>
-              <div class="field">
-                <label for="gstInput">GST Number</label>
-                <input
-                  id="gstInput"
-                  class="input"
-                  placeholder="GST number for invoice"
-                />
-              </div>
-            </div>
-
-            <div class="field-grid" style="margin-top: 14px">
-              <div class="field">
-                <label for="shopAddress">Shop Address</label>
-                <input
-                  id="shopAddress"
-                  class="input"
-                  placeholder="Shop address"
-                />
-              </div>
-              <div class="field">
-                <label for="gstRateInput">GST Rate</label>
-                <input
-                  id="gstRateInput"
-                  class="input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="GST rate without % symbol"
-                />
-              </div>
-            </div>
-
-            <div class="actions" style="margin-top: 16px">
-              <button id="saveGstBtn" class="btn primary" type="button">
-                <i class="fa-regular fa-floppy-disk"></i>
-                Save Shop Profile
-              </button>
-            </div>
-          </section>
-
           <section class="glass card">
             <div class="eyebrow">Checkout</div>
             <h2>Invoice summary</h2>
@@ -1167,6 +1289,7 @@
           searchModeText: $("searchModeText"),
           searchCountText: $("searchCountText"),
           searchHintText: $("searchHintText"),
+          shopDetails: $("shopDetails"),
           shopName: $("shopName"),
           shopAddress: $("shopAddress"),
           gstInput: $("gstInput"),
@@ -1404,14 +1527,27 @@
           const res = await authFetch(API_PREFIX + "/shop-info", {
             headers: authHeaders(),
           });
-          if (!res || !res.ok) return;
+          if (!res || !res.ok) {
+            dom.shopDetails.open = true;
+            return;
+          }
           const data = await res.json();
-          if (!data.success || !data.settings) return;
+          if (!data.success || !data.settings) {
+            dom.shopDetails.open = true;
+            return;
+          }
+          const hasProfile = Boolean(
+            (data.settings.shop_name || "").trim() ||
+              (data.settings.shop_address || "").trim() ||
+              (data.settings.gst_no || "").trim() ||
+              data.settings.gst_rate != null,
+          );
           dom.shopName.value = data.settings.shop_name || "";
           dom.shopAddress.value = data.settings.shop_address || "";
           dom.gstInput.value = data.settings.gst_no || "";
           userGstRate = parseFloat(data.settings.gst_rate) || 18;
           dom.gstRateInput.value = userGstRate;
+          dom.shopDetails.open = !hasProfile;
           recalcTotals();
         }
 
@@ -1444,6 +1580,7 @@
             <td data-label="Remove">
               <button class="btn danger remove-btn" type="button">
                 <i class="fa-solid fa-xmark"></i>
+                Remove
               </button>
             </td>
           `;
