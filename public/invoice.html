@@ -173,6 +173,12 @@
         gap: 18px;
       }
 
+      .hero-main {
+        display: grid;
+        gap: 18px;
+        align-content: start;
+      }
+
       .card {
         padding: 22px;
       }
@@ -571,6 +577,10 @@
         gap: 12px;
       }
 
+      .result-meta .wide {
+        grid-column: 1 / -1;
+      }
+
       .preview-item {
         padding: 16px;
         border-radius: 18px;
@@ -584,6 +594,12 @@
         gap: 12px;
         color: var(--muted);
         font-size: 13px;
+      }
+
+      .preview-row span {
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(23, 49, 93, 0.06);
       }
 
       .history-grid {
@@ -682,9 +698,13 @@
 
         .field-grid,
         .stats,
-        .result-meta,
         .search-grid {
           grid-template-columns: 1fr;
+        }
+
+        .result-meta {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
         }
 
         .shop-summary,
@@ -701,6 +721,30 @@
         .actions .btn,
         .search-grid .btn {
           width: 100%;
+        }
+
+        .result {
+          padding: 16px;
+        }
+
+        .result-total {
+          padding: 10px 12px;
+          font-size: 13px;
+        }
+
+        .preview-item {
+          padding: 12px;
+        }
+
+        .preview-row {
+          gap: 8px;
+          font-size: 12px;
+        }
+
+        .preview-row span {
+          width: 100%;
+          display: flex;
+          justify-content: space-between;
         }
 
         .table-wrap {
@@ -832,36 +876,106 @@
       </header>
 
       <section class="hero">
-        <div class="glass card">
-          <div class="eyebrow">Live Session</div>
-          <h2>Design-rich billing, same trusted PDF export.</h2>
-          <p class="sub">
-            This invoice workspace keeps stock validation, item search, submit,
-            download, and PDF formatting untouched while lifting the visual
-            quality to match the dashboard.
-          </p>
-          <div class="stats">
-            <div class="stat">
-              <span>Current Invoice</span>
-              <strong id="invoiceNo">--</strong>
-              <small id="invoiceDate">--</small>
-            </div>
-            <div class="stat">
-              <span>Draft Status</span>
-              <strong id="draftStatusText">No draft</strong>
-              <small>Autosaved in this browser.</small>
-            </div>
-            <div class="stat">
-              <span>Filled Items</span>
-              <strong id="heroItemCount">0</strong>
-              <small id="lineCountText">0 active lines.</small>
-            </div>
-            <div class="stat">
-              <span>Customer Profile</span>
-              <strong id="customerProgress">0%</strong>
-              <small>Name, contact, address completion.</small>
+        <div class="hero-main">
+          <div class="glass card">
+            <div class="eyebrow">Live Session</div>
+            <h2>Design-rich billing, same trusted PDF export.</h2>
+            <p class="sub">
+              This invoice workspace keeps stock validation, item search,
+              submit, download, and PDF formatting untouched while lifting the
+              visual quality to match the dashboard.
+            </p>
+            <div class="stats">
+              <div class="stat">
+                <span>Current Invoice</span>
+                <strong id="invoiceNo">--</strong>
+                <small id="invoiceDate">--</small>
+              </div>
+              <div class="stat">
+                <span>Draft Status</span>
+                <strong id="draftStatusText">No draft</strong>
+                <small>Autosaved in this browser.</small>
+              </div>
+              <div class="stat">
+                <span>Filled Items</span>
+                <strong id="heroItemCount">0</strong>
+                <small id="lineCountText">0 active lines.</small>
+              </div>
+              <div class="stat">
+                <span>Customer Profile</span>
+                <strong id="customerProgress">0%</strong>
+                <small>Name, contact, address completion.</small>
+              </div>
             </div>
           </div>
+
+          <section class="glass shop-panel">
+            <details id="shopDetails" class="shop-details">
+              <summary class="shop-summary">
+                <div class="shop-summary-copy">
+                  <div class="eyebrow">Shop Profile</div>
+                  <h2>Business and tax setup</h2>
+                  <p class="sub">
+                    One-time setup. Keep this folded on mobile and open only
+                    when you need to update shop or GST details.
+                  </p>
+                </div>
+                <span class="shop-toggle">
+                  <i class="fa-solid fa-chevron-down"></i>
+                </span>
+              </summary>
+
+              <div class="shop-body">
+                <div class="field-grid">
+                  <div class="field">
+                    <label for="shopName">Shop Name</label>
+                    <input
+                      id="shopName"
+                      class="input"
+                      placeholder="Business or shop name"
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="gstInput">GST Number</label>
+                    <input
+                      id="gstInput"
+                      class="input"
+                      placeholder="GST number for invoice"
+                    />
+                  </div>
+                </div>
+
+                <div class="field-grid" style="margin-top: 14px">
+                  <div class="field">
+                    <label for="shopAddress">Shop Address</label>
+                    <input
+                      id="shopAddress"
+                      class="input"
+                      placeholder="Shop address"
+                    />
+                  </div>
+                  <div class="field">
+                    <label for="gstRateInput">GST Rate</label>
+                    <input
+                      id="gstRateInput"
+                      class="input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="GST rate without % symbol"
+                    />
+                  </div>
+                </div>
+
+                <div class="actions" style="margin-top: 16px">
+                  <button id="saveGstBtn" class="btn primary" type="button">
+                    <i class="fa-regular fa-floppy-disk"></i>
+                    Save Shop Profile
+                  </button>
+                </div>
+              </div>
+            </details>
+          </section>
         </div>
 
         <aside class="glass card summary-box">
@@ -899,74 +1013,6 @@
             pre-check.
           </p>
         </aside>
-      </section>
-
-      <section class="glass shop-panel">
-        <details id="shopDetails" class="shop-details">
-          <summary class="shop-summary">
-            <div class="shop-summary-copy">
-              <div class="eyebrow">Shop Profile</div>
-              <h2>Business and tax setup</h2>
-              <p class="sub">
-                One-time setup. Keep this folded on mobile and open only when
-                you need to update shop or GST details.
-              </p>
-            </div>
-            <span class="shop-toggle">
-              <i class="fa-solid fa-chevron-down"></i>
-            </span>
-          </summary>
-
-          <div class="shop-body">
-            <div class="field-grid">
-              <div class="field">
-                <label for="shopName">Shop Name</label>
-                <input
-                  id="shopName"
-                  class="input"
-                  placeholder="Business or shop name"
-                />
-              </div>
-              <div class="field">
-                <label for="gstInput">GST Number</label>
-                <input
-                  id="gstInput"
-                  class="input"
-                  placeholder="GST number for invoice"
-                />
-              </div>
-            </div>
-
-            <div class="field-grid" style="margin-top: 14px">
-              <div class="field">
-                <label for="shopAddress">Shop Address</label>
-                <input
-                  id="shopAddress"
-                  class="input"
-                  placeholder="Shop address"
-                />
-              </div>
-              <div class="field">
-                <label for="gstRateInput">GST Rate</label>
-                <input
-                  id="gstRateInput"
-                  class="input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="GST rate without % symbol"
-                />
-              </div>
-            </div>
-
-            <div class="actions" style="margin-top: 16px">
-              <button id="saveGstBtn" class="btn primary" type="button">
-                <i class="fa-regular fa-floppy-disk"></i>
-                Save Shop Profile
-              </button>
-            </div>
-          </div>
-        </details>
       </section>
 
       <section class="workspace">
@@ -1026,10 +1072,6 @@
                   total, and keep the same calculation flow.
                 </p>
               </div>
-              <button id="addItemBtn" class="btn soft" type="button">
-                <i class="fa-solid fa-plus"></i>
-                Add Item Row
-              </button>
             </div>
 
             <div class="table-wrap">
@@ -1047,6 +1089,13 @@
                 </thead>
                 <tbody id="itemsTbody"></tbody>
               </table>
+            </div>
+
+            <div class="actions" style="margin-top: 16px">
+              <button id="addItemBtn" class="btn soft" type="button">
+                <i class="fa-solid fa-plus"></i>
+                Add Item Row
+              </button>
             </div>
           </section>
         </div>
@@ -1830,7 +1879,7 @@
                 <div><span>Date</span><strong>${escapeHtml(safeDate(invoice.date))}</strong></div>
                 <div><span>Customer</span><strong>${escapeHtml(invoice.customer_name || "-")}</strong></div>
                 <div><span>Contact</span><strong>${escapeHtml(invoice.contact || "-")}</strong></div>
-                <div><span>Address</span><strong>${escapeHtml(invoice.address || "-")}</strong></div>
+                <div class="wide"><span>Address</span><strong>${escapeHtml(invoice.address || "-")}</strong></div>
               </div>
               ${itemsHtml || `<div class="empty"><h3>No items found</h3><p class="sub">This invoice does not have item rows.</p></div>`}
               <div class="result-actions">
