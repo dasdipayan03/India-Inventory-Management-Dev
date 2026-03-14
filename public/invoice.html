@@ -44,6 +44,12 @@
         align-items: center;
         margin-bottom: 12px;
         gap: 8px;
+        position: sticky;
+        top: 0;
+        background: #fff;
+        z-index: 1000;
+        border-bottom: 1px solid #e5e7eb;
+        padding: 10px 6px;
       }
 
       .topbar h2 {
@@ -51,6 +57,17 @@
         font-size: 1.25rem;
         flex: 1 1 100%;
         text-align: center;
+      }
+
+      .header-back {
+        font-size: 18px;
+        color: #374151;
+        text-decoration: none;
+        margin-right: 8px;
+      }
+
+      .header-back:hover {
+        color: #2563eb;
       }
 
       .gst-box {
@@ -597,6 +614,9 @@
   <body>
     <div class="container">
       <header class="topbar">
+        <a href="index.html" class="header-back">
+          <i class="fa-solid fa-arrow-left"></i>
+        </a>
         <h2>Sale Entry & Generate Invoice</h2>
         <div class="right gst-box">
           <details
@@ -711,10 +731,6 @@
           </div>
           <div id="searchResult" class="search-result"></div>
         </section>
-
-        <div class="back-link">
-          <a href="index.html" class="back-btn"> ← Back to Home Page </a>
-        </div>
       </main>
     </div>
 
