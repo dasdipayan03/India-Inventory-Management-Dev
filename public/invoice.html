@@ -35,8 +35,16 @@
         font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
         color: var(--ink);
         background:
-          radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 22%),
-          radial-gradient(circle at top right, rgba(14, 165, 233, 0.2), transparent 24%),
+          radial-gradient(
+            circle at top left,
+            rgba(20, 184, 166, 0.18),
+            transparent 22%
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(14, 165, 233, 0.2),
+            transparent 24%
+          ),
           linear-gradient(180deg, #eef6ff 0%, #f7fbff 42%, #f4f9ff 100%);
       }
 
@@ -81,7 +89,6 @@
       }
 
       .topbar {
-        position: sticky;
         top: 16px;
         z-index: 50;
         display: flex;
@@ -1401,8 +1408,8 @@
 
         const updateCounts = () => {
           const list = rows();
-          const filled = list.filter(
-            (row) => row.querySelector(".item-input")?.value.trim(),
+          const filled = list.filter((row) =>
+            row.querySelector(".item-input")?.value.trim(),
           ).length;
           dom.heroItemCount.textContent = String(filled);
           dom.summaryLineCount.textContent = String(list.length || 0);
@@ -1418,9 +1425,11 @@
 
         const rowData = (row) => ({
           description: row.querySelector(".item-input")?.value.trim() || "",
-          quantity: parseFloat(row.querySelector(".qty-input")?.value || "0") || 0,
+          quantity:
+            parseFloat(row.querySelector(".qty-input")?.value || "0") || 0,
           rate: parseFloat(row.querySelector(".rate-input")?.value || "0") || 0,
-          total: parseFloat(row.querySelector(".total-input")?.value || "0") || 0,
+          total:
+            parseFloat(row.querySelector(".total-input")?.value || "0") || 0,
         });
 
         const buildDraft = () => {
@@ -1458,10 +1467,13 @@
           }
           localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
           setDraftState(
-            `Draft saved at ${new Date(draft.savedAt).toLocaleTimeString("en-IN", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}`,
+            `Draft saved at ${new Date(draft.savedAt).toLocaleTimeString(
+              "en-IN",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+              },
+            )}`,
             "active",
           );
         };
@@ -1474,7 +1486,10 @@
         const recalcTotals = () => {
           const subtotal = rows().reduce(
             (sum, row) =>
-              sum + (parseFloat(row.querySelector(".base-cell")?.textContent || "0") || 0),
+              sum +
+              (parseFloat(
+                row.querySelector(".base-cell")?.textContent || "0",
+              ) || 0),
             0,
           );
           const gst = +((subtotal * userGstRate) / 100).toFixed(2);
@@ -1498,7 +1513,9 @@
             return;
           }
           host.innerHTML = items
-            .map((item) => `<div class="dropdown-item">${escapeHtml(item)}</div>`)
+            .map(
+              (item) => `<div class="dropdown-item">${escapeHtml(item)}</div>`,
+            )
             .join("");
           host.style.display = "block";
           host.querySelectorAll(".dropdown-item").forEach((node) =>
@@ -1538,9 +1555,9 @@
           }
           const hasProfile = Boolean(
             (data.settings.shop_name || "").trim() ||
-              (data.settings.shop_address || "").trim() ||
-              (data.settings.gst_no || "").trim() ||
-              data.settings.gst_rate != null,
+            (data.settings.shop_address || "").trim() ||
+            (data.settings.gst_no || "").trim() ||
+            data.settings.gst_rate != null,
           );
           dom.shopName.value = data.settings.shop_name || "";
           dom.shopAddress.value = data.settings.shop_address || "";
@@ -1557,10 +1574,14 @@
           });
           if (!res || !res.ok) return;
           const data = await res.json();
-          if (data.success) updateInvoiceMeta(data.invoice_no, data.date || new Date());
+          if (data.success)
+            updateInvoiceMeta(data.invoice_no, data.date || new Date());
         }
 
-        function addItemRow(item = { description: "", quantity: 1, rate: 0 }, silent = false) {
+        function addItemRow(
+          item = { description: "", quantity: 1, rate: 0 },
+          silent = false,
+        ) {
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td data-label="Item">
@@ -1607,7 +1628,10 @@
           const validateQty = () => {
             qtyInput.classList.remove("invalid");
             stockInfo.classList.remove("blink");
-            if (hasStock && (parseFloat(qtyInput.value || "0") || 0) > availableQty) {
+            if (
+              hasStock &&
+              (parseFloat(qtyInput.value || "0") || 0) > availableQty
+            ) {
               qtyInput.classList.add("invalid");
               stockInfo.classList.add("blink");
             }
@@ -1682,7 +1706,9 @@
             }
             renderDropdown(
               dropdown,
-              itemNames.filter((name) => name.toLowerCase().includes(q)).slice(0, 15),
+              itemNames
+                .filter((name) => name.toLowerCase().includes(q))
+                .slice(0, 15),
               async (value) => {
                 itemInput.value = value;
                 await loadItemInfo(value);
@@ -1747,15 +1773,16 @@
             dom.custContact.value = draft.contact || "";
             dom.custAddress.value = draft.address || "";
             dom.itemsTbody.innerHTML = "";
-            (
-              Array.isArray(draft.items) && draft.items.length
-                ? draft.items
-                : [{ description: "", quantity: 1, rate: 0 }]
+            (Array.isArray(draft.items) && draft.items.length
+              ? draft.items
+              : [{ description: "", quantity: 1, rate: 0 }]
             ).forEach((item) => addItemRow(item, true));
             suppressDraft = false;
             recalcTotals();
             setDraftState(
-              `Draft restored from ${new Date(draft.savedAt || Date.now()).toLocaleTimeString("en-IN", {
+              `Draft restored from ${new Date(
+                draft.savedAt || Date.now(),
+              ).toLocaleTimeString("en-IN", {
                 hour: "2-digit",
                 minute: "2-digit",
               })}`,
@@ -1815,10 +1842,13 @@
 
           dom.searchModeText.textContent = "Invoice detail";
           dom.searchCountText.textContent = "Detailed view";
-          dom.searchHintText.textContent = "Showing one invoice in detail view.";
+          dom.searchHintText.textContent =
+            "Showing one invoice in detail view.";
           dom.searchResult
             .querySelector(".detail-download")
-            .addEventListener("click", (e) => downloadInvoice(e.currentTarget.dataset.inv));
+            .addEventListener("click", (e) =>
+              downloadInvoice(e.currentTarget.dataset.inv),
+            );
           dom.searchResult
             .querySelector(".detail-back")
             .addEventListener("click", () => performSearch(""));
@@ -1833,7 +1863,9 @@
           dom.searchResult
             .querySelectorAll(".invoice-download")
             .forEach((btn) =>
-              btn.addEventListener("click", () => downloadInvoice(btn.dataset.inv)),
+              btn.addEventListener("click", () =>
+                downloadInvoice(btn.dataset.inv),
+              ),
             );
         };
 
@@ -1841,9 +1873,13 @@
           if (!list.length) {
             renderEmpty(
               "No invoices found",
-              query ? `Nothing matched "${query}".` : "No invoices have been saved yet.",
+              query
+                ? `Nothing matched "${query}".`
+                : "No invoices have been saved yet.",
             );
-            dom.searchModeText.textContent = query ? "Filtered list" : "Latest list";
+            dom.searchModeText.textContent = query
+              ? "Filtered list"
+              : "Latest list";
             dom.searchCountText.textContent = "0 result";
             dom.searchHintText.textContent = query
               ? `No results for "${query}".`
@@ -1874,8 +1910,11 @@
             .join("")}</div>`;
 
           bindHistory();
-          const label = list.length === 1 ? "1 result" : `${list.length} results`;
-          dom.searchModeText.textContent = query ? "Filtered list" : "Latest list";
+          const label =
+            list.length === 1 ? "1 result" : `${list.length} results`;
+          dom.searchModeText.textContent = query
+            ? "Filtered list"
+            : "Latest list";
           dom.searchCountText.textContent = label;
           dom.searchHintText.textContent = query
             ? `Showing ${label} for "${query}".`
@@ -1920,12 +1959,20 @@
             },
           );
           if (!res || !res.ok) {
-            showPopup("error", "Load failed", "Failed to load invoice history.");
+            showPopup(
+              "error",
+              "Load failed",
+              "Failed to load invoice history.",
+            );
             return;
           }
           const data = await res.json();
           if (!data.success) {
-            showPopup("error", "Load failed", "Failed to load invoice history.");
+            showPopup(
+              "error",
+              "Load failed",
+              "Failed to load invoice history.",
+            );
             return;
           }
           renderList(data.invoices, query);
@@ -1949,12 +1996,24 @@
             if (data.success) {
               userGstRate = parseFloat(dom.gstRateInput.value) || 18;
               recalcTotals();
-              showPopup("success", "Saved", "Shop information saved successfully.");
+              showPopup(
+                "success",
+                "Saved",
+                "Shop information saved successfully.",
+              );
             } else {
-              showPopup("error", "Save failed", "Failed to save shop information.");
+              showPopup(
+                "error",
+                "Save failed",
+                "Failed to save shop information.",
+              );
             }
           } catch {
-            showPopup("error", "Save failed", "Failed to save shop information.");
+            showPopup(
+              "error",
+              "Save failed",
+              "Failed to save shop information.",
+            );
           } finally {
             setBusy(dom.saveGstBtn, false);
           }
@@ -1978,11 +2037,15 @@
         });
 
         async function preCheck() {
-          const filled = rows().filter(
-            (row) => row.querySelector(".item-input")?.value.trim(),
+          const filled = rows().filter((row) =>
+            row.querySelector(".item-input")?.value.trim(),
           );
           if (!filled.length) {
-            showPopup("error", "Missing items", "Please add at least one item.");
+            showPopup(
+              "error",
+              "Missing items",
+              "Please add at least one item.",
+            );
             return false;
           }
 
@@ -2010,7 +2073,11 @@
 
             if (rate <= 0) {
               rateInput.classList.add("invalid");
-              showPopup("error", "Invalid rate", "Item rate must be greater than 0.");
+              showPopup(
+                "error",
+                "Invalid rate",
+                "Item rate must be greater than 0.",
+              );
               return false;
             }
 
