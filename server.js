@@ -64,7 +64,7 @@ app.use(compression()); // Compress responses for better performance
 // Max 200 requests per 15 minutes per IP
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 500,
 });
 app.use(limiter);
 
@@ -110,6 +110,13 @@ app.use(
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api", require("./routes/inventory"));
 app.use("/api", require("./routes/invoices"));
+
+// =========================================================
+// ❤️ HEALTH CHECK ROUTE (Railway stability)
+// =========================================================
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
+});
 
 // =========================================================
 // 🛠 DEBUG ROUTES (Only in Development Mode)
