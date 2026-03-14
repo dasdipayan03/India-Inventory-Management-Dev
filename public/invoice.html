@@ -38,25 +38,23 @@
       }
 
       .topbar {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12px;
-        gap: 8px;
         position: sticky;
         top: 0;
-        background: #fff;
         z-index: 1000;
-        border-bottom: 1px solid #e5e7eb;
-        padding: 10px 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #2c3e50;
+        padding: 12px;
+        border-radius: 10px;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+        margin-bottom: 14px;
       }
 
       .topbar h2 {
         margin: 0;
-        font-size: 1.25rem;
-        flex: 1 1 100%;
-        text-align: center;
+        font-size: 1.2rem;
+        color: #ffffff;
       }
 
       .header-back {
@@ -618,20 +616,17 @@
           <i class="fa-solid fa-arrow-left"></i>
         </a>
         <h2>Sale Entry & Generate Invoice</h2>
-        <div class="right gst-box">
-          <details
-            style="
-              background: #fff;
-              padding: 6px 8px;
-              border-radius: 6px;
-              border: 1px solid #ddd;
-            "
-          >
+      </header>
+
+      <main>
+        <section class="card">
+          <details>
             <summary style="cursor: pointer; font-weight: 600">
               Add shop information one time for invoice
             </summary>
+
             <div
-              style="margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px"
+              style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px"
             >
               <input id="shopName" type="text" placeholder="Shop Name" />
               <input id="shopAddress" type="text" placeholder="Shop Address" />
@@ -646,10 +641,8 @@
               <button id="saveGstBtn" class="btn small">Save</button>
             </div>
           </details>
-        </div>
-      </header>
+        </section>
 
-      <main>
         <section class="card invoice-card">
           <div class="card-header">
             <div class="card-left">
