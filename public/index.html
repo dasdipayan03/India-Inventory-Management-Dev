@@ -12,44 +12,104 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     />
-
     <style>
+      :root {
+        --ink-strong: #10213f;
+        --ink-main: #27406b;
+        --ink-soft: #5f7496;
+        --line: rgba(117, 142, 180, 0.18);
+        --surface: rgba(255, 255, 255, 0.86);
+        --navy: #17315d;
+        --cyan: #0ea5e9;
+        --cyan-strong: #0284c7;
+        --teal: #14b8a6;
+        --danger: #dc2626;
+        --success: #16a34a;
+        --shadow-xl: 0 32px 70px rgba(17, 29, 58, 0.16);
+        --shadow-lg: 0 18px 38px rgba(17, 29, 58, 0.1);
+        --shadow-md: 0 12px 24px rgba(17, 29, 58, 0.08);
+        --radius-xl: 28px;
+        --radius-lg: 22px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        color-scheme: light;
+      }
+
       body {
         margin: 0;
-        font-family: "Segoe UI", sans-serif;
-        background: white;
-        display: flex;
-        flex-direction: column;
         min-height: 100vh;
         overflow-x: hidden;
-        overflow-y: auto;
+        font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
+        color: var(--ink-main);
+        background:
+          radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 24%),
+          radial-gradient(circle at top right, rgba(14, 165, 233, 0.22), transparent 26%),
+          linear-gradient(180deg, #eef6ff 0%, #f7fbff 38%, #f4f9ff 100%);
         visibility: hidden;
       }
 
-      .sidebar {
-        width: 180px;
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        background: #2c3e50;
-        transform: translateX(-100%);
-        transition: transform 0.3s;
-        z-index: 1000;
+      a {
+        color: inherit;
       }
 
-      .sidebar.sidebar--open {
-        transform: translateX(0);
+      .dashboard-body::before {
+        content: "";
+        position: fixed;
+        inset: auto -10% -30% 45%;
+        height: 480px;
+        background: radial-gradient(circle, rgba(14, 165, 233, 0.16), transparent 68%);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .dashboard-body::after {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+        background-size: 120px 120px;
+        opacity: 0.25;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      #sidebarToggle {
+        position: fixed;
+        top: 18px;
+        left: 18px;
+        z-index: 1200;
+        display: none;
+        width: 48px;
+        height: 48px;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.92);
+        box-shadow: var(--shadow-md);
+        color: var(--navy);
+        font-size: 18px;
+        cursor: pointer;
       }
 
       .sidebar-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.4);
-        z-index: 900;
+        z-index: 1050;
+        background: rgba(10, 18, 37, 0.42);
         opacity: 0;
         visibility: hidden;
-        transition: opacity 0.3s;
+        transition:
+          opacity 0.25s ease,
+          visibility 0.25s ease;
+        backdrop-filter: blur(4px);
       }
 
       .sidebar-overlay.visible {
@@ -57,666 +117,1603 @@
         visibility: visible;
       }
 
-      #sidebarToggle {
+      .sidebar {
         position: fixed;
-        top: 10px;
-        left: 10px;
+        inset: 18px auto 18px 18px;
+        width: 286px;
         z-index: 1100;
-        background: transparent;
-        color: #2c3e50;
-        border: none;
-        padding: 12px 15px;
-        font-size: 24px;
-        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        padding: 22px 18px;
+        border-radius: 30px;
+        color: #eff6ff;
+        background:
+          linear-gradient(180deg, rgba(31, 58, 108, 0.98), rgba(11, 29, 58, 0.97)),
+          radial-gradient(circle at top right, rgba(45, 212, 191, 0.2), transparent 28%);
+        box-shadow: var(--shadow-xl);
       }
 
-      .sidebar h2 {
-        font-size: 1.3rem;
-        margin-bottom: 30px;
-        text-align: center;
-        color: white;
-        padding-top: 10px;
+      .sidebar__brand {
+        padding: 10px 10px 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        margin-bottom: 18px;
+      }
+
+      .sidebar__brand h2 {
+        margin: 0;
+        font-size: 23px;
+        line-height: 1.05;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .sidebar__brand p {
+        margin: 10px 0 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: rgba(226, 232, 240, 0.76);
+      }
+
+      .sidebar__nav {
+        display: grid;
+        gap: 8px;
       }
 
       .sidebar button {
-        background: none;
-        border: none;
-        color: #fff;
-        text-align: left;
-        padding: 12px 20px;
-        margin-bottom: 10px;
-        border-radius: 8px;
-        transition: 0.3s;
-        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
         width: 100%;
+        border: 0;
+        border-radius: 18px;
+        padding: 14px 16px;
+        background: transparent;
+        color: rgba(239, 246, 255, 0.9);
+        font-size: 15px;
+        font-weight: 600;
+        text-align: left;
+        transition:
+          transform 0.2s ease,
+          background-color 0.2s ease,
+          color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .sidebar button i {
+        width: 18px;
+        text-align: center;
       }
 
       .sidebar button:hover,
       .sidebar button.active {
-        background: #333;
-        color: #00b336;
+        transform: translateX(2px);
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(45, 212, 191, 0.12));
+        color: #ffffff;
+        box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.18);
+      }
+
+      .sidebar__footer {
+        margin-top: auto;
+        padding: 14px 10px 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .sidebar__footer p {
+        margin: 0;
+        font-size: 12px;
+        line-height: 1.6;
+        color: rgba(226, 232, 240, 0.7);
       }
 
       .main {
-        flex: 1;
-        background: white;
+        position: relative;
+        z-index: 1;
+        min-height: 100vh;
+        margin-left: 322px;
+        padding: 28px 28px 48px;
+      }
+
+      .main-shell {
+        max-width: 1320px;
+        margin: 0 auto;
+      }
+
+      .hero-panel {
+        display: grid;
+        grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+        gap: 18px;
+        margin-bottom: 20px;
+      }
+
+      .hero-panel__copy,
+      .hero-panel__user {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.58);
+        border-radius: var(--radius-xl);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 250, 255, 0.8));
+        box-shadow: var(--shadow-lg);
+        backdrop-filter: blur(14px);
+      }
+
+      .hero-panel__copy {
         padding: 30px;
-        margin-top: 2px;
-        padding-bottom: 100px;
-        /* extra space for footer */
-        box-sizing: border-box;
+      }
+
+      .hero-panel__copy::after {
+        content: "";
+        position: absolute;
+        inset: auto -40px -80px auto;
+        width: 220px;
+        height: 220px;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(14, 165, 233, 0.18), transparent 68%);
+      }
+
+      .hero-panel__user {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 26px;
+      }
+
+      .hero-kicker {
+        display: inline-flex;
+        width: fit-content;
+        margin: 0 0 14px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.1);
+        color: var(--cyan-strong);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .hero-panel h1 {
+        margin: 0;
+        color: var(--ink-strong);
+        font-size: clamp(30px, 5vw, 44px);
+        line-height: 0.98;
+        letter-spacing: -0.05em;
+      }
+
+      .hero-description {
+        max-width: 60ch;
+        margin: 16px 0 0;
+        color: var(--ink-soft);
+        font-size: 15px;
+        line-height: 1.8;
+      }
+
+      .hero-chip {
+        display: inline-flex;
+        width: fit-content;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 18px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(20, 184, 166, 0.1);
+        color: #0f766e;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      #welcomeUser {
+        margin: 0;
+        color: var(--ink-strong);
+        font-size: clamp(24px, 4vw, 34px);
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+
+      #heroSubtitle {
+        margin: 14px 0 0;
+        color: var(--ink-soft);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .overview-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+
+      .overview-card {
+        position: relative;
+        overflow: hidden;
+        padding: 20px 20px 18px;
+        border: 1px solid rgba(255, 255, 255, 0.56);
+        border-radius: 24px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 251, 255, 0.86));
+        box-shadow: var(--shadow-md);
+      }
+
+      .overview-card::after {
+        content: "";
+        position: absolute;
+        top: -14px;
+        right: -10px;
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: var(--card-glow, rgba(14, 165, 233, 0.16));
+      }
+
+      .overview-card__label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        color: var(--ink-soft);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .overview-card__value {
+        display: block;
+        color: var(--ink-strong);
+        font-size: clamp(24px, 3vw, 32px);
+        line-height: 1;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+      }
+
+      .overview-card__note {
+        display: block;
+        margin-top: 10px;
+        color: var(--ink-soft);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .section-meta {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+        padding: 20px 22px;
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.58);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(246, 251, 255, 0.78));
+        box-shadow: var(--shadow-md);
+      }
+
+      .section-meta__eyebrow {
+        margin: 0 0 8px;
+        color: var(--cyan-strong);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .section-meta h3 {
+        margin: 0;
+        color: var(--ink-strong);
+        font-size: clamp(22px, 3vw, 32px);
+        line-height: 1.05;
+        letter-spacing: -0.04em;
+      }
+
+      .section-meta p {
+        max-width: 64ch;
+        margin: 10px 0 0;
+        color: var(--ink-soft);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .section-meta__badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 112px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(23, 49, 93, 0.08);
+        color: var(--navy);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
       }
 
       .form-section {
         display: none;
-        background: white;
-        padding: 0;
-        border-radius: 10px;
       }
 
       .form-section.active {
         display: block;
+        animation: section-in 0.25s ease;
+      }
+
+      .section-grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      .section-grid--inventory {
+        grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+      }
+
+      .section-grid--dues {
+        grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.25fr);
+      }
+
+      .chart-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .panel-card {
+        position: relative;
+        overflow: hidden;
+        padding: 24px;
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(255, 255, 255, 0.58);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 251, 255, 0.84));
+        box-shadow: var(--shadow-lg);
+      }
+
+      .panel-card--surface {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 251, 255, 0.86));
+      }
+
+      .panel-card--highlight {
+        color: #e2edf9;
+        background:
+          radial-gradient(circle at top right, rgba(45, 212, 191, 0.16), transparent 30%),
+          linear-gradient(180deg, #193563, #0f2447);
+      }
+
+      .panel-card--alert {
+        margin-top: 16px;
+        border-color: rgba(248, 113, 113, 0.22);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 246, 246, 0.92));
+      }
+
+      .panel-card__header,
+      .panel-heading {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+
+      .panel-kicker {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--cyan-strong);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .panel-card h4,
+      .panel-card h5,
+      .panel-card h6 {
+        margin: 0;
+        color: var(--ink-strong);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .panel-subtitle {
+        margin: 10px 0 0;
+        color: var(--ink-soft);
+        font-size: 14px;
+        line-height: 1.65;
+      }
+
+      .panel-card__icon {
+        width: 50px;
+        height: 50px;
+        display: grid;
+        place-items: center;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(20, 184, 166, 0.12));
+        color: var(--cyan-strong);
+        font-size: 19px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      }
+
+      .panel-card--highlight .panel-kicker,
+      .panel-card--highlight h4,
+      .panel-card--highlight p,
+      .panel-card--highlight li,
+      .panel-card--highlight strong {
+        color: inherit;
+      }
+
+      .panel-card--highlight .panel-card__icon {
+        background: rgba(255, 255, 255, 0.14);
+        color: #ffffff;
+      }
+
+      .form-label.small {
+        margin-bottom: 8px;
+        color: var(--ink-main);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+
+      .form-control,
+      .form-select {
+        min-height: 52px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--ink-strong);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      }
+
+      .form-control::placeholder {
+        color: #8da0bc;
+      }
+
+      .form-control:focus,
+      .form-select:focus {
+        border-color: rgba(14, 165, 233, 0.56);
+        box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+      }
+
+      .btn {
+        min-height: 50px;
+        border: 0;
+        border-radius: 16px;
+        font-weight: 700;
+        box-shadow: 0 14px 26px rgba(17, 29, 58, 0.08);
+        transition:
+          transform 0.2s ease,
+          box-shadow 0.2s ease,
+          opacity 0.2s ease;
+      }
+
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 30px rgba(17, 29, 58, 0.12);
+      }
+
+      .btn:disabled {
+        opacity: 0.72;
+        transform: none;
+        box-shadow: 0 10px 18px rgba(17, 29, 58, 0.08);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--cyan), var(--cyan-strong));
+      }
+
+      .btn-info {
+        background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+        color: #ffffff;
+      }
+
+      .btn-success {
+        background: linear-gradient(135deg, #22c55e, #16a34a);
+      }
+
+      .btn-danger {
+        background: linear-gradient(135deg, #f97316, #ea580c);
+      }
+
+      .btn-secondary {
+        background: linear-gradient(135deg, #475569, #334155);
+      }
+
+      .info-list {
+        display: grid;
+        gap: 12px;
+        margin: 20px 0 0;
+      }
+
+      .info-card {
+        padding: 14px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .info-card span {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: rgba(226, 232, 240, 0.76);
+      }
+
+      .info-card strong {
+        display: block;
+        font-size: 20px;
+        line-height: 1.1;
+      }
+
+      .info-card p {
+        margin: 8px 0 0;
+        font-size: 13px;
+        line-height: 1.6;
+        color: rgba(226, 232, 240, 0.82);
+      }
+
+      #previousBuyingRate {
+        margin-top: 8px;
+        color: #8fe2ff;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .support-list {
+        margin: 18px 0 0;
+        padding-left: 18px;
+        color: rgba(226, 232, 240, 0.82);
+      }
+
+      .support-list li + li {
+        margin-top: 8px;
       }
 
       .dropdown-list {
         position: absolute;
-        background: #fff;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
-        max-height: 220px;
-        overflow-y: auto;
-        width: 100%;
-        z-index: 2000;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        z-index: 2200;
         display: none;
-        font-size: 15px;
+        max-height: 240px;
+        overflow-y: auto;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: var(--shadow-md);
+        backdrop-filter: blur(12px);
       }
 
       .dropdown-item {
-        padding: 8px 10px;
+        padding: 12px 14px;
+        color: var(--ink-main);
         cursor: pointer;
       }
 
       .dropdown-item:hover {
-        background: #f1f5f9;
+        background: rgba(14, 165, 233, 0.08);
       }
 
-      table {
-        border-collapse: collapse;
-        width: 100%;
+      .table-responsive {
+        border-radius: 18px;
+        border: 1px solid rgba(191, 219, 254, 0.42);
+        background: rgba(255, 255, 255, 0.78);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
       }
 
-      th,
-      td {
-        border: 1px solid #ccc;
-        padding: 8px;
-        text-align: center;
+      .table {
+        margin-bottom: 0;
+        color: var(--ink-main);
       }
 
-      tr:nth-child(even) {
-        background: #f2f2f2;
+      .table > :not(caption) > * > * {
+        padding: 0.88rem 0.9rem;
+        border-bottom-color: rgba(191, 219, 254, 0.32);
       }
 
-      tr:hover {
-        background: #d9edf7;
+      .table thead th {
+        position: sticky;
+        top: 0;
+        background: linear-gradient(180deg, #eff7ff, #e6f2ff) !important;
+        color: var(--ink-strong);
+        font-size: 12px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border-bottom: 1px solid rgba(125, 211, 252, 0.42);
+      }
+
+      .table tbody tr {
+        transition: background-color 0.2s ease;
+      }
+
+      .table tbody tr:nth-child(even) {
+        background: rgba(248, 251, 255, 0.76);
+      }
+
+      .table tbody tr:hover {
+        background: rgba(224, 242, 254, 0.6);
+      }
+
+      #lowStockBody tr.critical-stock-row td {
+        background-color: rgba(254, 226, 226, 0.88) !important;
+        color: #991b1b !important;
+        font-weight: 700;
+      }
+
+      #lowStockBody tr.warning-stock-row td {
+        background-color: rgba(254, 249, 195, 0.96) !important;
+        color: #92400e !important;
+        font-weight: 700;
+      }
+
+      .summary-strip {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+
+      .summary-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.08);
+        color: var(--cyan-strong);
+        font-size: 13px;
+        font-weight: 700;
       }
 
       .analytics-card {
-        background: #ffffff;
-        border-radius: 16px;
-        padding: 25px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-        transition: transform 0.2s ease;
-      }
-
-      .analytics-card:hover {
-        transform: translateY(-3px);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 251, 255, 0.86));
+        border: 1px solid rgba(255, 255, 255, 0.58);
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: var(--shadow-md);
       }
 
       .analytics-title {
-        font-weight: 600;
-        font-size: 18px;
-        margin-bottom: 20px;
-        color: #1f2937;
+        color: var(--ink-strong);
+        font-weight: 800;
+        letter-spacing: -0.03em;
       }
 
       .chart-box {
         position: relative;
-        height: 350px;
-        /* 👈 Laptop height */
         width: 100%;
+        height: 350px;
+      }
+
+      #growthBadge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 24px;
+        margin-top: 12px;
+        font-size: 13px;
+      }
+
+      #ledgerTable td:last-child {
+        max-width: 220px;
+        white-space: normal;
+        word-break: break-word;
+      }
+
+      .empty-ledger {
+        padding: 24px;
+        text-align: center;
+        color: var(--ink-soft);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .popup-shell {
+        position: fixed;
+        inset: 0;
+        z-index: 5000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 22px;
+      }
+
+      .popup-shell.active {
+        display: flex;
+      }
+
+      .popup-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(10, 18, 37, 0.45);
+        backdrop-filter: blur(6px);
+      }
+
+      .popup-box {
+        position: relative;
+        width: min(100%, 420px);
+        border-radius: 24px;
+        padding: 28px 24px;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: var(--shadow-xl);
+        text-align: center;
+        animation: popup-in 0.22s ease;
+      }
+
+      .popup-close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 36px;
+        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.12);
+        color: var(--ink-soft);
+        cursor: pointer;
+        transition:
+          background-color 0.2s ease,
+          color 0.2s ease,
+          transform 0.2s ease;
+      }
+
+      .popup-close:hover {
+        background: rgba(14, 165, 233, 0.12);
+        color: var(--cyan-strong);
+        transform: translateY(-1px);
+      }
+
+      .popup-box.success {
+        border: 1px solid rgba(34, 197, 94, 0.18);
+      }
+
+      .popup-box.error {
+        border: 1px solid rgba(239, 68, 68, 0.18);
+      }
+
+      .popup-icon {
+        width: 58px;
+        height: 58px;
+        display: grid;
+        place-items: center;
+        margin: 0 auto 16px;
+        border-radius: 18px;
+        background: rgba(14, 165, 233, 0.1);
+        color: var(--cyan-strong);
+        font-size: 24px;
+      }
+
+      .popup-box.success .popup-icon {
+        background: rgba(34, 197, 94, 0.1);
+        color: var(--success);
+      }
+
+      .popup-box.error .popup-icon {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--danger);
+      }
+
+      #popupTitle {
+        margin: 0 0 10px;
+        color: var(--ink-strong);
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      #popupMessage {
+        margin: 0;
+        color: var(--ink-soft);
+        font-size: 14px;
+        line-height: 1.7;
+      }
+
+      .sidebar button:focus-visible,
+      #sidebarToggle:focus-visible,
+      .popup-close:focus-visible,
+      .btn:focus-visible,
+      .form-control:focus-visible,
+      .form-select:focus-visible {
+        outline: 3px solid rgba(14, 165, 233, 0.22);
+        outline-offset: 3px;
+      }
+
+      @keyframes popup-in {
+        from {
+          opacity: 0;
+          transform: translateY(18px) scale(0.96);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes section-in {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (max-width: 1199px) {
+        .overview-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .section-grid--inventory,
+        .section-grid--dues,
+        .chart-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 991px) {
+        #sidebarToggle {
+          display: inline-flex;
+        }
+
+        .sidebar {
+          inset: 0 auto 0 0;
+          width: min(88vw, 320px);
+          border-radius: 0 28px 28px 0;
+          transform: translateX(-100%);
+          transition: transform 0.25s ease;
+        }
+
+        .sidebar.sidebar--open {
+          transform: translateX(0);
+        }
+
+        .main {
+          margin-left: 0;
+          padding: 84px 16px 36px;
+        }
+
+        .hero-panel {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 768px) {
         .chart-box {
-          height: 250px;
-          /* 👈 Mobile height */
+          height: 260px;
         }
-      }
 
-      /* 🔴 Critical */
-      #lowStockBody tr.critical-stock-row td {
-        background-color: #fee2e2 !important;
-        color: #991b1b !important;
-        font-weight: 600;
-      }
+        .hero-panel__copy,
+        .hero-panel__user,
+        .panel-card {
+          padding: 20px;
+        }
 
-      /* 🟡 Warning */
-      #lowStockBody tr.warning-stock-row td {
-        background-color: #fef9c3 !important;
-        color: #92400e !important;
-        font-weight: 600;
+        .section-meta {
+          align-items: flex-start;
+          flex-direction: column;
+        }
       }
 
       @media (max-width: 576px) {
         .main {
-          padding-left: 10px !important;
-          padding-right: 10px !important;
+          padding: 78px 10px 28px;
         }
-      }
 
-      /* ================= MOBILE SALES TABLE FIX ================= */
-      @media (max-width: 576px) {
-        /* Table text & spacing smaller */
-        table {
+        .overview-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .table {
           font-size: 12px;
         }
 
-        th,
-        td {
-          padding: 4px 6px;
-          vertical-align: middle;
+        .table > :not(caption) > * > * {
+          padding: 0.68rem 0.6rem;
         }
 
-        /* Item name wrap properly */
         td:nth-child(2),
         th:nth-child(2) {
-          max-width: 130px;
+          max-width: 140px;
           white-space: normal;
           word-break: break-word;
-          line-height: 1.2;
+          line-height: 1.25;
         }
 
-        /* Smooth horizontal scroll */
-        .table-responsive {
-          overflow-x: auto;
-          -webkit-overflow-scrolling: touch;
-        }
-      }
-
-      /* ================= SALES REPORT CARD WIDTH FIX ================= */
-      @media (max-width: 576px) {
-        /* Reduce side padding of Sales Report card only */
-        #salesReportSection .card {
-          padding-left: 8px !important;
-          padding-right: 8px !important;
-        }
-
-        /* Stretch table to card edges */
-        #salesReportSection .table-responsive {
-          margin-left: -8px;
-          margin-right: -8px;
-        }
-      }
-
-      /* ================= ITEM / STOCK REPORT CARD WIDTH FIX ================= */
-      @media (max-width: 576px) {
-        #itemReportSection .card {
-          padding-left: 8px !important;
-          padding-right: 8px !important;
-        }
-
-        #itemReportSection .table-responsive {
-          margin-left: -8px;
-          margin-right: -8px;
-        }
-      }
-
-      @keyframes popupFadeIn {
-        from {
-          transform: translateY(-8px);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-
-      /* ================= LEDGER TABLE MOBILE WIDTH FIX ================= */
-
-      /* Only ledger remarks column wrap */
-      #ledgerTable td:last-child {
-        max-width: 200px;
-        word-break: break-word;
-      }
-
-      /* prevent number columns from breaking */
-      #ledgerTable td:nth-child(1),
-      #ledgerTable td:nth-child(2),
-      #ledgerTable td:nth-child(3),
-      #ledgerTable td:nth-child(4),
-      #ledgerTable th:nth-child(1),
-      #ledgerTable th:nth-child(2),
-      #ledgerTable th:nth-child(3),
-      #ledgerTable th:nth-child(4) {
-        white-space: nowrap;
-      }
-
-      /* balance text alignment */
-      #ledgerTable .text-end {
-        padding-right: 6px;
-      }
-
-      @media (max-width: 576px) {
-        #customerDebtSection .card {
-          padding-left: 8px !important;
-          padding-right: 8px !important;
-        }
-
+        #salesReportSection .table-responsive,
+        #itemReportSection .table-responsive,
         #ledgerTable {
-          margin-left: -8px;
-          margin-right: -8px;
+          margin-left: -4px;
+          margin-right: -4px;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+          scroll-behavior: auto !important;
         }
       }
     </style>
   </head>
-
-  <body>
-    <button id="sidebarToggle">☰</button>
-
-    <div class="sidebar" id="sidebar">
-      <h2>Dashboard</h2>
-      <button data-section="addStockSection" class="active">
-        <i class="fas fa-plus-circle"></i> Add New Stock
-      </button>
-      <button id="invoiceBtn" class="btn primary">
-        <i class="fa-solid fa-file-invoice"></i> Sale & Invoice
-      </button>
-      <button data-section="itemReportSection">
-        <i class="fas fa-boxes"></i> Stock Report
-      </button>
-      <button data-section="salesReportSection">
-        <i class="fas fa-chart-line"></i> Sales Report
-      </button>
-      <button data-section="customerDebtSection">
-        <i class="fas fa-user-clock"></i> Customer's Due
-      </button>
-      <button id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
-    </div>
+  <body class="dashboard-body">
+    <button
+      id="sidebarToggle"
+      type="button"
+      aria-label="Open dashboard menu"
+      aria-controls="sidebar"
+      aria-expanded="false"
+    >
+      <i class="fa-solid fa-bars"></i>
+    </button>
 
     <div id="sidebarOverlay" class="sidebar-overlay"></div>
 
-    <div class="main">
-      <h5 style="text-align: center">India Inventory Management</h5>
-      <h3
-        id="welcomeUser"
-        style="font-weight: 600; color: #2563eb; text-align: center"
-      ></h3>
-
-      <!-- Add Stock Section -->
-      <div id="addStockSection" class="form-section active">
-        <div class="card shadow-sm p-3">
-          <h4 class="text-center mb-3">
-            <i class="fas fa-plus-circle text-primary"></i> Add New Stock
-          </h4>
-          <div class="mb-3">
-            <label class="form-label small">Search Existing Item For Add</label>
-            <div class="position-relative">
-              <input
-                type="text"
-                id="newItemSearch"
-                class="form-control"
-                placeholder="Search or Select Item"
-                autocomplete="off"
-              />
-              <div id="newItemDropdownList" class="dropdown-list"></div>
-            </div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label small">Quantity</label
-            ><input
-              type="number"
-              id="newQuantity"
-              class="form-control"
-              placeholder="Enter Quantity"
-              min="0"
-              step="0.01"
-            />
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label small">Buying Rate</label>
-            <input
-              type="number"
-              id="buyingRate"
-              class="form-control"
-              placeholder="Enter buying rate"
-              min="0"
-              step="0.01"
-            />
-            <div
-              id="previousBuyingRate"
-              style="
-                font-size: 12px;
-                color: #4281ff;
-                margin-top: 4px;
-                display: none;
-              "
-            ></div>
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label small">Profit %</label>
-            <input
-              type="number"
-              id="profitPercent"
-              class="form-control"
-              value="30"
-              step="0.1"
-            />
-          </div>
-
-          <div class="mb-3">
-            <label class="form-label small">Selling Rate</label>
-            <input
-              type="number"
-              id="sellingRate"
-              class="form-control"
-              placeholder=" Default: (Buying + Profit%) / Editable"
-              min="0"
-              step="0.01"
-            />
-          </div>
-
-          <button class="btn btn-primary w-100 py-2" id="addStockBtn">
-            <i class="fas fa-plus-circle"></i> Add Stock
-          </button>
-        </div>
+    <aside class="sidebar" id="sidebar" aria-label="Dashboard Navigation">
+      <div class="sidebar__brand">
+        <h2>India Inventory</h2>
+        <p>
+          A cleaner control center for stock intake, billing, reports, and
+          customer due tracking.
+        </p>
       </div>
 
-      <!-- Item Wise Report -->
-      <div id="itemReportSection" class="form-section">
-        <div class="card shadow-sm p-3">
-          <h4 class="text-center mb-3">
-            <i class="fas fa-boxes text-success"></i>
-            Stock Report
-          </h4>
-          <!-- Item Search -->
-          <div class="mb-3 position-relative">
-            <label class="form-label small">Item Search / Direct Search</label>
-            <input
-              type="text"
-              id="itemReportSearch"
-              class="form-control"
-              placeholder="Search or select item"
-              autocomplete="off"
-            />
-            <div id="itemReportDropdown" class="dropdown-list"></div>
-          </div>
-          <!-- Buttons -->
-          <div class="d-flex gap-2 mb-3">
-            <button class="btn btn-primary flex-fill" id="loadItemReportBtn">
-              <i class="fas fa-search"></i> Search
-            </button>
-            <button class="btn btn-info flex-fill" id="itemReportPdfBtn">
-              <i class="fas fa-file-pdf"></i> Download PDF
-            </button>
-          </div>
-          <hr />
-          <!-- Table -->
-          <div class="table-responsive">
-            <table class="table table-bordered table-sm text-center">
-              <thead class="table-light">
-                <tr>
-                  <th>Item Name</th>
-                  <th>Available Qty</th>
-                  <th>Buying Rate</th>
-                  <th>Selling Rate</th>
-                  <th>Sold Qty</th>
-                </tr>
-              </thead>
-              <tbody id="itemReportBody">
-                <tr>
-                  <td colspan="5" class="text-muted">No data loaded</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- 🔴 LOW STOCK CARD -->
-        <div
-          id="lowStockCard"
-          class="card shadow-sm p-3 mb-4 mt-4"
-          style="display: none"
+      <div class="sidebar__nav">
+        <button
+          data-section="addStockSection"
+          data-eyebrow="Inventory Intake"
+          data-title="Add New Stock"
+          data-description="Keep quantity, buying rate, and selling rate aligned when fresh stock arrives."
+          data-badge="Stock"
+          class="active"
+          type="button"
         >
-          <h5 class="text-danger mb-3">
-            <i class="fas fa-exclamation-triangle"></i>
-            Stock Alert (<span id="lowStockCount">0</span>)
-          </h5>
-
-          <div class="table-responsive">
-            <table class="table table-bordered table-sm text-center">
-              <thead class="table-light">
-                <tr>
-                  <th>Item Name</th>
-                  <th>Available Qty</th>
-                  <th>Sold (30d)</th>
-                  <th>Days Left</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="lowStockBody"></tbody>
-            </table>
-          </div>
-        </div>
+          <i class="fas fa-plus-circle"></i>
+          <span>Add New Stock</span>
+        </button>
+        <button id="invoiceBtn" type="button">
+          <i class="fa-solid fa-file-invoice"></i>
+          <span>Sale and Invoice</span>
+        </button>
+        <button
+          data-section="itemReportSection"
+          data-eyebrow="Inventory Insights"
+          data-title="Stock Report"
+          data-description="Search any item, review availability, and spot low stock before it becomes urgent."
+          data-badge="Reports"
+          type="button"
+        >
+          <i class="fas fa-boxes"></i>
+          <span>Stock Report</span>
+        </button>
+        <button
+          data-section="salesReportSection"
+          data-eyebrow="Revenue Tracking"
+          data-title="Sales Report"
+          data-description="Explore date-wise sales, export PDF or Excel files, and monitor trend charts month after month."
+          data-badge="Sales"
+          type="button"
+        >
+          <i class="fas fa-chart-line"></i>
+          <span>Sales Report</span>
+        </button>
+        <button
+          data-section="customerDebtSection"
+          data-eyebrow="Collections"
+          data-title="Customer Due"
+          data-description="Capture customer balances, search dues quickly, and keep ledger follow-up organized."
+          data-badge="Ledger"
+          type="button"
+        >
+          <i class="fas fa-user-clock"></i>
+          <span>Customer Due</span>
+        </button>
+        <button id="logoutBtn" type="button">
+          <i class="fas fa-sign-out-alt"></i>
+          <span>Logout</span>
+        </button>
       </div>
 
-      <!-- Sales Report -->
-      <div id="salesReportSection" class="form-section">
-        <div class="card shadow-sm p-3">
-          <h4 class="text-center mb-3">
-            <i class="fas fa-chart-line text-info"></i> Sales Report
-          </h4>
-          <div class="row g-2 mb-3">
-            <div class="col-6 col-md-6">
-              <label class="form-label small">From Date</label>
-              <input type="date" id="fromDate" class="form-control" />
+      <div class="sidebar__footer">
+        <p>All current features stay available. This dashboard shell only improves usability and polish.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-shell">
+        <header class="hero-panel">
+          <div class="hero-panel__copy">
+            <p class="hero-kicker" id="currentDateLabel">Today</p>
+            <h1>India Inventory Management</h1>
+            <p class="hero-description">
+              Run daily stock, sales, reports, and dues from one premium
+              workspace built to stay practical for real shop operations.
+            </p>
+          </div>
+
+          <div class="hero-panel__user">
+            <div>
+              <span class="hero-chip">
+                <i class="fa-solid fa-wave-square"></i>
+                Live Workspace
+              </span>
+              <h2 id="welcomeUser"></h2>
+            </div>
+            <p id="heroSubtitle">
+              Your dashboard is syncing the latest inventory and sales view.
+            </p>
+          </div>
+        </header>
+
+        <section class="overview-grid" aria-label="Dashboard Overview">
+          <article class="overview-card" style="--card-glow: rgba(14, 165, 233, 0.18)">
+            <span class="overview-card__label">
+              <i class="fa-solid fa-boxes-stacked"></i>
+              Catalog Items
+            </span>
+            <strong class="overview-card__value" id="statCatalogCount">0</strong>
+            <small class="overview-card__note" id="statCatalogNote">
+              Total tracked items in your stock catalog
+            </small>
+          </article>
+
+          <article class="overview-card" style="--card-glow: rgba(20, 184, 166, 0.16)">
+            <span class="overview-card__label">
+              <i class="fa-solid fa-wallet"></i>
+              Catalog Value
+            </span>
+            <strong class="overview-card__value" id="statCatalogValue">Rs. 0.00</strong>
+            <small class="overview-card__note" id="statCatalogValueNote">
+              Estimated stock value based on buying rates
+            </small>
+          </article>
+
+          <article class="overview-card" style="--card-glow: rgba(245, 158, 11, 0.16)">
+            <span class="overview-card__label">
+              <i class="fa-solid fa-triangle-exclamation"></i>
+              Low Stock
+            </span>
+            <strong class="overview-card__value" id="statLowStock">0</strong>
+            <small class="overview-card__note" id="statLowStockNote">
+              Items that need attention soon
+            </small>
+          </article>
+
+          <article class="overview-card" style="--card-glow: rgba(59, 130, 246, 0.16)">
+            <span class="overview-card__label">
+              <i class="fa-solid fa-hand-holding-dollar"></i>
+              Due Balance
+            </span>
+            <strong class="overview-card__value" id="statDueBalance">Rs. 0.00</strong>
+            <small class="overview-card__note" id="statDueNote">
+              Total outstanding customer balance
+            </small>
+          </article>
+        </section>
+
+        <section class="section-meta" aria-live="polite">
+          <div>
+            <p class="section-meta__eyebrow" id="sectionEyebrow">Inventory Intake</p>
+            <h3 id="sectionHeading">Add New Stock</h3>
+            <p id="sectionLead">
+              Keep quantity, buying rate, and selling rate aligned when fresh
+              stock arrives.
+            </p>
+          </div>
+          <span class="section-meta__badge" id="sectionBadge">Stock</span>
+        </section>
+
+        <div id="addStockSection" class="form-section active">
+          <div class="section-grid section-grid--inventory">
+            <section class="panel-card panel-card--surface">
+              <div class="panel-card__header">
+                <div>
+                  <span class="panel-kicker">Inventory Flow</span>
+                  <h4>Add or replenish stock</h4>
+                  <p class="panel-subtitle">
+                    Search an existing item or type a new one, then update your
+                    quantity and pricing in one clean step.
+                  </p>
+                </div>
+                <div class="panel-card__icon">
+                  <i class="fas fa-plus-circle"></i>
+                </div>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label small">Search Existing Item For Add</label>
+                  <div class="position-relative">
+                    <input
+                      type="text"
+                      id="newItemSearch"
+                      class="form-control"
+                      placeholder="Search or Select Item"
+                      autocomplete="off"
+                    />
+                    <div id="newItemDropdownList" class="dropdown-list"></div>
+                  </div>
+                </div>
+
+                <div class="col-sm-6">
+                  <label class="form-label small">Quantity</label>
+                  <input
+                    type="number"
+                    id="newQuantity"
+                    class="form-control"
+                    placeholder="Enter Quantity"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div class="col-sm-6">
+                  <label class="form-label small">Profit %</label>
+                  <input
+                    type="number"
+                    id="profitPercent"
+                    class="form-control"
+                    value="30"
+                    step="0.1"
+                  />
+                </div>
+
+                <div class="col-sm-6">
+                  <label class="form-label small">Buying Rate</label>
+                  <input
+                    type="number"
+                    id="buyingRate"
+                    class="form-control"
+                    placeholder="Enter buying rate"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div class="col-sm-6">
+                  <label class="form-label small">Selling Rate</label>
+                  <input
+                    type="number"
+                    id="sellingRate"
+                    class="form-control"
+                    placeholder="Editable auto-calculated selling rate"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <div class="col-12">
+                  <button class="btn btn-primary w-100" id="addStockBtn" type="button">
+                    <i class="fas fa-plus-circle"></i>
+                    Add Stock
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <aside class="panel-card panel-card--highlight">
+              <div class="panel-card__header">
+                <div>
+                  <span class="panel-kicker">Pricing Helper</span>
+                  <h4>Margin-aware stock entry</h4>
+                  <p class="panel-subtitle">
+                    Saved profit percentage and past buying rates make new stock
+                    updates quicker and more consistent.
+                  </p>
+                </div>
+                <div class="panel-card__icon">
+                  <i class="fa-solid fa-arrow-trend-up"></i>
+                </div>
+              </div>
+
+              <div class="info-list">
+                <div class="info-card">
+                  <span>Default Profit Margin</span>
+                  <strong id="profitPreviewValue">30%</strong>
+                  <p id="profitPreviewNote">
+                    Stored on this device to help auto-calculate selling rate.
+                  </p>
+                </div>
+
+                <div class="info-card">
+                  <span>Previous Buying Rate</span>
+                  <strong>Recent reference</strong>
+                  <div id="previousBuyingRate"></div>
+                </div>
+              </div>
+
+              <ul class="support-list">
+                <li>Pick an old item to compare the latest rate before saving.</li>
+                <li>Buying rate changes automatically refresh the suggested selling rate.</li>
+                <li>You can still edit the selling rate manually any time.</li>
+              </ul>
+            </aside>
+          </div>
+        </div>
+
+        <div id="itemReportSection" class="form-section">
+          <section class="panel-card panel-card--surface">
+            <div class="panel-heading">
+              <div>
+                <span class="panel-kicker">Inventory Insights</span>
+                <h4>Stock report</h4>
+                <p class="panel-subtitle">
+                  Search a single item or review the full catalog with quantity,
+                  pricing, sold units, and export support.
+                </p>
+              </div>
+              <div class="panel-card__icon">
+                <i class="fas fa-boxes"></i>
+              </div>
             </div>
 
-            <div class="col-6 col-md-6">
-              <label class="form-label small">To Date</label>
-              <input type="date" id="toDate" class="form-control" />
+            <div class="row g-3 align-items-end">
+              <div class="col-lg-8">
+                <label class="form-label small">Item Search / Direct Search</label>
+                <div class="position-relative">
+                  <input
+                    type="text"
+                    id="itemReportSearch"
+                    class="form-control"
+                    placeholder="Search or select item"
+                    autocomplete="off"
+                  />
+                  <div id="itemReportDropdown" class="dropdown-list"></div>
+                </div>
+              </div>
+              <div class="col-sm-6 col-lg-2">
+                <button class="btn btn-primary w-100" id="loadItemReportBtn" type="button">
+                  <i class="fas fa-search"></i>
+                  Search
+                </button>
+              </div>
+              <div class="col-sm-6 col-lg-2">
+                <button class="btn btn-info w-100" id="itemReportPdfBtn" type="button">
+                  <i class="fas fa-file-pdf"></i>
+                  Download PDF
+                </button>
+              </div>
             </div>
-          </div>
-          <button class="btn btn-primary w-100 mb-3" id="loadSalesBtn">
-            <i class="fas fa-search"></i> Load Sales Report
-          </button>
 
-          <div class="d-flex flex-column flex-md-row gap-2">
-            <button class="btn btn-info flex-fill" id="pdfBtn">
-              <i class="fas fa-file-pdf"></i> Download PDF
-            </button>
+            <hr class="my-4" />
 
-            <button class="btn btn-success flex-fill" id="excelBtn">
-              <i class="fas fa-file-excel"></i> Download Excel
-            </button>
-          </div>
-          <hr />
+            <div class="table-responsive">
+              <table class="table table-sm text-center align-middle">
+                <thead>
+                  <tr>
+                    <th>Item Name</th>
+                    <th>Available Qty</th>
+                    <th>Buying Rate</th>
+                    <th>Selling Rate</th>
+                    <th>Sold Qty</th>
+                  </tr>
+                </thead>
+                <tbody id="itemReportBody">
+                  <tr>
+                    <td colspan="5" class="text-muted">No data loaded</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-          <div class="table-responsive mt-3">
-            <table class="table table-bordered table-sm text-center">
-              <thead class="table-light">
-                <tr>
-                  <th>Date</th>
-                  <th>Item</th>
-                  <th>Qty</th>
-                  <th>Unit Price</th>
-                  <th>Total</th>
-                </tr>
-              </thead>
-              <tbody id="salesReportBody">
-                <tr>
-                  <td colspan="5" class="text-muted">No data loaded</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <section id="lowStockCard" class="panel-card panel-card--alert" hidden>
+            <div class="panel-heading">
+              <div>
+                <span class="panel-kicker">Stock Alert</span>
+                <h5>
+                  Items needing attention (<span id="lowStockCount">0</span>)
+                </h5>
+                <p class="panel-subtitle">
+                  Low-stock alerts are based on recent 30-day movement and the
+                  estimated number of days left.
+                </p>
+              </div>
+              <div class="panel-card__icon">
+                <i class="fas fa-triangle-exclamation"></i>
+              </div>
+            </div>
 
-          <div class="text-end fw-bold mt-2">
-            Total Sale: ₹ <span id="salesGrandTotal">0.00</span>
+            <div class="table-responsive">
+              <table class="table table-sm text-center align-middle">
+                <thead>
+                  <tr>
+                    <th>Item Name</th>
+                    <th>Available Qty</th>
+                    <th>Sold (30d)</th>
+                    <th>Days Left</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="lowStockBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+        <div id="salesReportSection" class="form-section">
+          <section class="panel-card panel-card--surface">
+            <div class="panel-heading">
+              <div>
+                <span class="panel-kicker">Sales Reporting</span>
+                <h4>Sales report and exports</h4>
+                <p class="panel-subtitle">
+                  Filter by date range, review line-by-line sales, and export
+                  the same report as PDF or Excel.
+                </p>
+              </div>
+              <div class="panel-card__icon">
+                <i class="fas fa-chart-line"></i>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-sm-6 col-lg-4">
+                <label class="form-label small">From Date</label>
+                <input type="date" id="fromDate" class="form-control" />
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <label class="form-label small">To Date</label>
+                <input type="date" id="toDate" class="form-control" />
+              </div>
+              <div class="col-lg-4">
+                <label class="form-label small">Load Report</label>
+                <button class="btn btn-primary w-100" id="loadSalesBtn" type="button">
+                  <i class="fas fa-search"></i>
+                  Load Sales Report
+                </button>
+              </div>
+            </div>
+
+            <div class="row g-2 mt-1">
+              <div class="col-sm-6">
+                <button class="btn btn-info w-100" id="pdfBtn" type="button">
+                  <i class="fas fa-file-pdf"></i>
+                  Download PDF
+                </button>
+              </div>
+              <div class="col-sm-6">
+                <button class="btn btn-success w-100" id="excelBtn" type="button">
+                  <i class="fas fa-file-excel"></i>
+                  Download Excel
+                </button>
+              </div>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="table-responsive">
+              <table class="table table-sm text-center align-middle">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Qty</th>
+                    <th>Unit Price</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody id="salesReportBody">
+                  <tr>
+                    <td colspan="5" class="text-muted">No data loaded</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="summary-strip">
+              <span class="summary-pill">
+                <i class="fa-solid fa-sack-dollar"></i>
+                Total Sale: Rs. <span id="salesGrandTotal">0.00</span>
+              </span>
+            </div>
+          </section>
+
+          <div class="chart-grid">
+            <section class="analytics-card">
+              <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+                <div>
+                  <h5 class="analytics-title mb-1">Growth Overview</h5>
+                  <p class="panel-subtitle mb-0">
+                    Compare monthly sales and profit from the same chart.
+                  </p>
+                </div>
+                <select id="yearFilter" class="form-select form-select-sm" style="width: 130px">
+                  <option value="all">All</option>
+                </select>
+              </div>
+
+              <div class="chart-box">
+                <canvas id="businessTrendChart"></canvas>
+              </div>
+              <div id="growthBadge" class="fw-semibold"></div>
+            </section>
+
+            <section class="analytics-card">
+              <div class="mb-3">
+                <h5 class="analytics-title mb-1">Last 13 Months Sales</h5>
+                <p class="panel-subtitle mb-0">
+                  Quick bar view of recent month-by-month revenue performance.
+                </p>
+              </div>
+              <div class="chart-box">
+                <canvas id="last12MonthsChart"></canvas>
+              </div>
+            </section>
           </div>
         </div>
 
-        <div class="card shadow-sm p-3 mb-4 mt-4">
-          <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">
-              <i class="fas fa-chart-line text-primary"></i>
-              Growth Overview
-            </h5>
+        <div id="customerDebtSection" class="form-section">
+          <div class="section-grid section-grid--dues">
+            <section class="panel-card panel-card--surface">
+              <div class="panel-heading">
+                <div>
+                  <span class="panel-kicker">Due Entry</span>
+                  <h4>Add customer due</h4>
+                  <p class="panel-subtitle">
+                    Record customer balance, credit amount, and notes in one
+                    clear form.
+                  </p>
+                </div>
+                <div class="panel-card__icon">
+                  <i class="fas fa-user-clock"></i>
+                </div>
+              </div>
 
-            <select
-              id="yearFilter"
-              class="form-select form-select-sm"
-              style="width: 120px"
-            >
-              <option value="all">All</option>
-            </select>
-          </div>
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label small">Customer Name</label>
+                  <input
+                    id="cdName"
+                    type="text"
+                    class="form-control"
+                    placeholder="Customer Name"
+                  />
+                </div>
 
-          <div class="chart-box">
-            <canvas id="businessTrendChart"></canvas>
-          </div>
+                <div class="col-12 position-relative">
+                  <label class="form-label small">Mobile Number</label>
+                  <input
+                    id="cdNumber"
+                    type="text"
+                    maxlength="10"
+                    class="form-control"
+                    placeholder="10-digit Mobile Number"
+                    autocomplete="off"
+                    inputmode="numeric"
+                  />
+                  <div id="cdNumberDropdown" class="dropdown-list"></div>
+                </div>
 
-          <div id="growthBadge" class="mt-2 fw-semibold"></div>
-        </div>
+                <div class="col-sm-6">
+                  <label class="form-label small">Amount</label>
+                  <input
+                    id="cdTotal"
+                    type="number"
+                    class="form-control"
+                    placeholder="Amount"
+                  />
+                </div>
 
-        <div class="card p-3 mt-4">
-          <h5 class="mb-3">Last 13 Months Sales</h5>
-          <div class="chart-box">
-            <canvas id="last12MonthsChart"></canvas>
+                <div class="col-sm-6">
+                  <label class="form-label small">Credit Amount</label>
+                  <input
+                    id="cdCredit"
+                    type="number"
+                    class="form-control"
+                    placeholder="Credit Amount"
+                  />
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label small">Remarks</label>
+                  <input
+                    id="cdRemark"
+                    type="text"
+                    class="form-control"
+                    placeholder="Remarks (optional)"
+                  />
+                </div>
+
+                <div class="col-12">
+                  <button class="btn btn-danger w-100" id="submitDebtBtn" type="button">
+                    <i class="fas fa-check-circle"></i>
+                    Submit
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel-card panel-card--surface">
+              <div class="panel-heading">
+                <div>
+                  <span class="panel-kicker">Ledger Search</span>
+                  <h4>Search customer dues</h4>
+                  <p class="panel-subtitle">
+                    Find a single customer ledger or open the summary of all
+                    outstanding balances.
+                  </p>
+                </div>
+                <div class="panel-card__icon">
+                  <i class="fas fa-search"></i>
+                </div>
+              </div>
+
+              <div class="position-relative mb-3">
+                <label class="form-label small">Search by name or number</label>
+                <input
+                  id="cdSearchInput"
+                  type="text"
+                  class="form-control"
+                  placeholder="Search customer by name or number"
+                  autocomplete="off"
+                />
+                <div id="cdSearchDropdown" class="dropdown-list"></div>
+              </div>
+
+              <div class="row g-2 mb-3">
+                <div class="col-sm-6">
+                  <button class="btn btn-success w-100" id="searchLedgerBtn" type="button">
+                    <i class="fas fa-search"></i>
+                    Search
+                  </button>
+                </div>
+                <div class="col-sm-6">
+                  <button class="btn btn-secondary w-100" id="showAllDuesBtn" type="button">
+                    <i class="fas fa-list"></i>
+                    All Customers
+                  </button>
+                </div>
+              </div>
+
+              <div id="ledgerTable" class="table-responsive">
+                <div class="empty-ledger">
+                  Search a customer or load all due balances to view the ledger.
+                </div>
+              </div>
+            </section>
           </div>
         </div>
       </div>
+    </main>
 
-      <!-- Customer Dues -->
-      <div id="customerDebtSection" class="form-section">
-        <div class="card shadow-sm p-3 mb-4">
-          <h4 class="text-center mb-3">
-            <i class="fas fa-user-clock text-danger"></i> Add Customer's Due
-          </h4>
-          <input
-            id="cdName"
-            type="text"
-            class="form-control mb-2"
-            placeholder="Customer Name"
-          />
-          <div class="position-relative mb-2">
-            <input
-              id="cdNumber"
-              type="text"
-              maxlength="10"
-              class="form-control"
-              placeholder="10-digit Mobile Number"
-              autocomplete="off"
-            />
-            <div id="cdNumberDropdown" class="dropdown-list"></div>
-          </div>
-          <input
-            id="cdTotal"
-            type="number"
-            class="form-control mb-2"
-            placeholder="Amount"
-          />
-          <input
-            id="cdCredit"
-            type="number"
-            class="form-control mb-2"
-            placeholder="Credit Amount"
-          />
-          <input
-            id="cdRemark"
-            type="text"
-            class="form-control mb-2"
-            placeholder="Remarks (optional)"
-          />
-          <button class="btn btn-danger w-100" id="submitDebtBtn">
-            <i class="fas fa-check-circle"></i> Submit
-          </button>
-        </div>
-        <div class="card shadow-sm p-3">
-          <h4 class="text-center mb-3">
-            <i class="fas fa-search text-success"></i> Search Customer's Due
-          </h4>
-          <div class="position-relative mb-3">
-            <input
-              id="cdSearchInput"
-              type="text"
-              class="form-control"
-              placeholder="Search customer by name or number"
-              autocomplete="off"
-            />
-            <div id="cdSearchDropdown" class="dropdown-list"></div>
-          </div>
-          <div class="d-flex gap-2 mb-3">
-            <button class="btn btn-success flex-fill" id="searchLedgerBtn">
-              <i class="fas fa-search"></i> Search
-            </button>
-            <button class="btn btn-secondary flex-fill" id="showAllDuesBtn">
-              <i class="fas fa-list"></i> All Customers
-            </button>
-          </div>
-          <div id="ledgerTable" class="table-responsive"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== COMMON POPUP MODAL ===== -->
     <div
       id="commonPopup"
-      style="
-        display: none;
-        position: fixed;
-        inset: 0;
-        z-index: 5000;
-        align-items: flex-start;
-        justify-content: center;
-        padding-top: 12vh;
-      "
+      class="popup-shell"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="popupTitle"
     >
-      <!-- Overlay -->
-      <div
-        id="popupOverlay"
-        style="
-          position: absolute;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.4);
-          backdrop-filter: blur(2px);
-        "
-      ></div>
-
-      <!-- Popup Box -->
-      <div
-        id="popupBox"
-        style="
-          position: relative;
-          max-width: 380px;
-          background: #fff;
-          border-radius: 12px;
-          padding: 25px 20px;
-          text-align: center;
-          box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
-          animation: popupFadeIn 0.2s ease;
-        "
-      >
-        <h4 id="popupTitle" style="margin-bottom: 10px; font-weight: 600"></h4>
-        <p id="popupMessage" style="font-size: 14px; margin: 0"></p>
+      <div id="popupOverlay" class="popup-overlay"></div>
+      <div id="popupBox" class="popup-box">
+        <button
+          id="popupClose"
+          class="popup-close"
+          type="button"
+          aria-label="Close popup"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="popup-icon" id="popupIcon">
+          <i class="fa-solid fa-circle-info"></i>
+        </div>
+        <h4 id="popupTitle"></h4>
+        <p id="popupMessage"></p>
       </div>
     </div>
 
-    <!-- ✅ External JS -->
     <script src="js/chart.min.js"></script>
     <script src="js/dashboard.js"></script>
   </body>

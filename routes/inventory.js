@@ -12,6 +12,97 @@ const STOCK_CONFIG = {
   WARNING_DAYS: 15,
 };
 
+const PDF_THEME = {
+  navy: "#17315d",
+  cyan: "#0ea5e9",
+  cyanSoft: "#eef6ff",
+  line: "#d7e3f4",
+  ink: "#0f172a",
+  muted: "#64748b",
+  success: "#15803d",
+  danger: "#b91c1c",
+  rowAlt: "#f8fbff",
+};
+
+const currencyFormatter = new Intl.NumberFormat("en-IN", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const dateFormatter = new Intl.DateTimeFormat("en-IN", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Kolkata",
+});
+
+function formatCurrency(value) {
+  return currencyFormatter.format(Number(value) || 0);
+}
+
+function formatIstDate(value) {
+  return dateFormatter.format(new Date(value));
+}
+
+function safeFilePart(value) {
+  return String(value || "report")
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .toLowerCase();
+}
+
+function drawPdfBanner(doc, title, subtitle, rightText) {
+  const x = 40;
+  const y = 34;
+  const width = 515;
+  const height = 62;
+
+  doc.save();
+  doc.roundedRect(x, y, width, height, 14).fill(PDF_THEME.navy);
+  doc.fillColor("white").font("Helvetica-Bold").fontSize(18);
+  doc.text(title, x + 18, y + 14, { width: 260 });
+  doc.fillColor("#dbeafe").font("Helvetica").fontSize(10);
+  doc.text(subtitle, x + 18, y + 38, { width: 300 });
+  doc.fillColor("#eff6ff").font("Helvetica").fontSize(10);
+  doc.text(rightText, x + 330, y + 18, { width: 165, align: "right" });
+  doc.restore();
+
+  doc.fillColor(PDF_THEME.ink).font("Helvetica").fontSize(10);
+  doc.y = y + height + 16;
+}
+
+function drawPdfTableHeader(doc, columns) {
+  const x = 40;
+  const y = doc.y;
+  const width = 515;
+  const rowHeight = 22;
+
+  doc.save();
+  doc.roundedRect(x, y, width, rowHeight, 8).fill(PDF_THEME.cyanSoft);
+  doc.restore();
+
+  doc.font("Helvetica-Bold").fontSize(9).fillColor(PDF_THEME.navy);
+  columns.forEach((column) => {
+    doc.text(column.label, column.x, y + 6, {
+      width: column.width,
+      align: column.align || "left",
+    });
+  });
+
+  doc.fillColor(PDF_THEME.ink).font("Helvetica").fontSize(10);
+  doc.y = y + rowHeight + 6;
+}
+
+function ensurePdfSpace(doc, heightNeeded, onNewPage) {
+  if (doc.y + heightNeeded <= doc.page.height - doc.page.margins.bottom) {
+    return;
+  }
+
+  doc.addPage();
+  onNewPage();
+}
+
 // ✅ Protect all routes
 router.use(authMiddleware);
 
@@ -259,45 +350,37 @@ router.get("/items/report/pdf", async (req, res) => {
     );
 
     const doc = new PDFDocument({ size: "A4", margin: 40 });
+    const filename = name && name.trim()
+      ? `stock_report_${safeFilePart(name)}.pdf`
+      : "stock_report.pdf";
+    const reportScope =
+      name && name.trim() ? `Filtered for: ${name.trim()}` : "Full stock catalog";
+    const stockColumns = [
+      { label: "Sl", x: 46, width: 28 },
+      { label: "Item Name", x: 78, width: 180 },
+      { label: "Available", x: 262, width: 72, align: "right" },
+      { label: "Buying", x: 338, width: 72, align: "right" },
+      { label: "Selling", x: 414, width: 72, align: "right" },
+      { label: "Sold", x: 490, width: 54, align: "right" },
+    ];
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=item_report.pdf`,
+      `attachment; filename=${filename}`,
     );
 
     doc.pipe(res);
 
-    // ---- Header ----
-    doc
-      .font("Helvetica-Bold")
-      .fontSize(20)
-      .text("STOCK REPORT", 0, 40, { align: "center" });
-
-    doc.moveDown(0.5);
-    doc.moveTo(40, 75).lineTo(555, 75).stroke();
-    doc.moveDown(1);
-
-    // ---- Table Header ----
-    function drawStockTableHeader(doc) {
-      const startX = 40;
-      const y = doc.y;
-
-      doc.fontSize(10).font("Helvetica-Bold");
-      doc.text("SI", startX, y, { width: 30 });
-      doc.text("Item Name", startX + 30, y, { width: 190 });
-      doc.text("Available Qty", startX + 220, y, { width: 70, align: "right" });
-      doc.text("Buying Price", startX + 290, y, { width: 80, align: "right" });
-      doc.text("Selling Price", startX + 370, y, { width: 80, align: "right" });
-      doc.text("Sold Qty", startX + 450, y, { width: 65, align: "right" });
-      doc.moveDown(0.5);
-      doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-      doc.moveDown(0.5);
-      doc.font("Helvetica");
-    }
+    drawPdfBanner(
+      doc,
+      "Stock Report",
+      reportScope,
+      `Generated: ${formatIstDate(new Date())}`,
+    );
 
     // ✅ draw table header for first page
-    drawStockTableHeader(doc);
+    drawPdfTableHeader(doc, stockColumns);
 
     // ---- Rows ----
     const startX = 40;
@@ -308,7 +391,7 @@ router.get("/items/report/pdf", async (req, res) => {
       // 🔒 Page overflow handling (same as Sales PDF)
       if (doc.y > 720) {
         doc.addPage();
-        drawStockTableHeader(doc);
+        drawPdfTableHeader(doc, stockColumns);
       }
       const qty = Number(r.available_qty);
       const buy = Number(r.buying_rate);
@@ -325,56 +408,76 @@ router.get("/items/report/pdf", async (req, res) => {
         align: "left",
       });
 
+      if (i % 2 === 0) {
+        doc.save();
+        doc.rect(40, y - 2, 515, Math.max(itemHeight, 18) + 6).fill(PDF_THEME.rowAlt);
+        doc.restore();
+      }
+
+      doc.fillColor(PDF_THEME.ink).font("Helvetica").fontSize(10);
       doc.text(i + 1, startX, y, { width: 30 });
       doc.text(r.item_name || "", startX + 30, y, { width: 190 });
-      doc.text(qty.toFixed(2), startX + 220, y, { width: 70, align: "center" });
-      doc.text(buy.toFixed(2), startX + 290, y, { width: 80, align: "center" });
-      doc.text(sell.toFixed(2), startX + 370, y, {
+      doc.text(qty.toFixed(2), startX + 220, y, { width: 70, align: "right" });
+      doc.text(formatCurrency(buy), startX + 290, y, { width: 80, align: "right" });
+      doc.text(formatCurrency(sell), startX + 370, y, {
         width: 80,
-        align: "center",
+        align: "right",
       });
       doc.text(Number(r.sold_qty).toFixed(2), startX + 450, y, {
         width: 65,
-        align: "center",
+        align: "right",
       });
+      doc
+        .moveTo(40, y + Math.max(itemHeight, 18) + 2)
+        .lineTo(555, y + Math.max(itemHeight, 18) + 2)
+        .strokeColor(PDF_THEME.line)
+        .stroke();
       // 👉 Move Y exactly like Sales PDF
       doc.y = y + Math.max(itemHeight, 18) + 6;
     });
 
     const profit = totalSellingValue - totalCostValue;
+    const summaryHeight = 88;
 
-    doc.moveDown(2);
+    ensurePdfSpace(doc, summaryHeight + 16, () => {
+      drawPdfBanner(
+        doc,
+        "Stock Summary",
+        reportScope,
+        `Generated: ${formatIstDate(new Date())}`,
+      );
+    });
 
-    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-    doc.moveDown(1);
+    const summaryY = doc.y + 8;
 
-    // block start position
-    const summaryX = 350;
+    doc.save();
+    doc.roundedRect(310, summaryY, 245, summaryHeight, 12)
+      .fillAndStroke("#f8fbff", PDF_THEME.line);
+    doc.restore();
 
-    doc.font("Helvetica").fontSize(11);
-
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(PDF_THEME.navy);
+    doc.text("Report Summary", 326, summaryY + 12, { width: 190 });
+    doc.font("Helvetica").fontSize(10).fillColor(PDF_THEME.ink);
     doc.text(
-      `Total Items Value (Cost) : Rs. ${totalCostValue.toFixed(2)}`,
-      summaryX,
+      `Total Cost Value: Rs. ${formatCurrency(totalCostValue)}`,
+      326,
+      summaryY + 34,
     );
-    doc.moveDown(0.4);
-
     doc.text(
-      `Total Selling Value      : Rs. ${totalSellingValue.toFixed(2)}`,
-      summaryX,
+      `Total Selling Value: Rs. ${formatCurrency(totalSellingValue)}`,
+      326,
+      summaryY + 50,
     );
-    doc.moveDown(0.4);
-
     doc
       .font("Helvetica-Bold")
-      .fillColor(profit >= 0 ? "green" : "red")
-      .text(`Estimated Profit         : Rs. ${profit.toFixed(2)}`, summaryX);
+      .fillColor(profit >= 0 ? PDF_THEME.success : PDF_THEME.danger)
+      .text(
+        `Estimated Profit: Rs. ${formatCurrency(profit)}`,
+        326,
+        summaryY + 66,
+      );
 
-    doc.fillColor("black");
-
-    doc.moveDown(1);
-    doc.moveTo(40, doc.y).lineTo(555, doc.y).stroke();
-
+    doc.fillColor(PDF_THEME.ink);
     doc.end();
   } catch (err) {
     console.error("Item report PDF error:", err.message);
@@ -442,6 +545,14 @@ router.get("/sales/report/pdf", async (req, res) => {
     );
 
     const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const salesColumns = [
+      { label: "Sl", x: 46, width: 28 },
+      { label: "Date", x: 78, width: 78 },
+      { label: "Item", x: 160, width: 190 },
+      { label: "Qty", x: 354, width: 44, align: "right" },
+      { label: "Rate", x: 402, width: 68, align: "right" },
+      { label: "Total", x: 474, width: 70, align: "right" },
+    ];
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -451,28 +562,15 @@ router.get("/sales/report/pdf", async (req, res) => {
 
     doc.pipe(res);
 
-    // ---- Header ----
-    doc.fontSize(16).text("Sales Report", { align: "center" });
-    doc.moveDown(0.5);
+    drawPdfBanner(
+      doc,
+      "Sales Report",
+      `Date range: ${from} to ${to}`,
+      `Generated: ${formatIstDate(new Date())}`,
+    );
 
-    doc.fontSize(10).text(`From: ${from}    To: ${to}`, { align: "center" });
-
-    doc.moveDown(1);
-
-    // ---- Table Header ----
     const startX = 40;
-    let y = doc.y;
-
-    doc.fontSize(10).font("Helvetica-Bold");
-    doc.text("Sl", startX, y, { width: 30 });
-    doc.text("Date", startX + 30, y, { width: 80 });
-    doc.text("Item", startX + 110, y, { width: 170 });
-    doc.text("Qty", startX + 280, y, { width: 50, align: "right" });
-    doc.text("Rate", startX + 330, y, { width: 80, align: "right" });
-    doc.text("Total", startX + 410, y, { width: 100, align: "right" });
-
-    doc.moveDown(0.5);
-    doc.font("Helvetica");
+    drawPdfTableHeader(doc, salesColumns);
 
     // ---- Rows ----
     // ---- Rows ----
@@ -482,22 +580,7 @@ router.get("/sales/report/pdf", async (req, res) => {
       // 🔒 Page overflow protection
       if (doc.y > 720) {
         doc.addPage();
-        doc.fontSize(10).font("Helvetica-Bold");
-
-        const yHeader = doc.y;
-
-        doc.text("Sl", startX, yHeader, { width: 30 });
-        doc.text("Date", startX + 30, yHeader, { width: 80 });
-        doc.text("Item", startX + 110, yHeader, { width: 170 });
-        doc.text("Qty", startX + 280, yHeader, { width: 50, align: "right" });
-        doc.text("Rate", startX + 330, yHeader, { width: 80, align: "right" });
-        doc.text("Total", startX + 410, yHeader, {
-          width: 100,
-          align: "right",
-        });
-
-        doc.moveDown(0.5);
-        doc.font("Helvetica");
+        drawPdfTableHeader(doc, salesColumns);
       }
 
       const y = doc.y;
@@ -508,19 +591,31 @@ router.get("/sales/report/pdf", async (req, res) => {
         align: "left",
       });
 
-      const saleDate = new Date(r.created_at).toLocaleDateString("en-IN");
+      if (i % 2 === 0) {
+        doc.save();
+        doc.rect(40, y - 2, 515, Math.max(itemHeight, 18) + 6).fill(PDF_THEME.rowAlt);
+        doc.restore();
+      }
+
+      const saleDate = formatIstDate(r.created_at);
+      doc.fillColor(PDF_THEME.ink).font("Helvetica").fontSize(10);
       doc.text(i + 1, startX, y, { width: 30 });
       doc.text(saleDate, startX + 30, y, { width: 80 });
       doc.text(r.item_name || "", startX + 110, y, { width: 170 });
       doc.text(r.quantity, startX + 280, y, { width: 50, align: "right" });
-      doc.text(Number(r.selling_price).toFixed(2), startX + 330, y, {
+      doc.text(formatCurrency(r.selling_price), startX + 330, y, {
         width: 80,
         align: "right",
       });
-      doc.text(Number(r.total_price).toFixed(2), startX + 410, y, {
+      doc.text(formatCurrency(r.total_price), startX + 410, y, {
         width: 100,
         align: "right",
       });
+      doc
+        .moveTo(40, y + Math.max(itemHeight, 18) + 2)
+        .lineTo(555, y + Math.max(itemHeight, 18) + 2)
+        .strokeColor(PDF_THEME.line)
+        .stroke();
 
       // 👉 move y based on tallest content
       doc.y = y + Math.max(itemHeight, 18) + 6;
@@ -528,12 +623,25 @@ router.get("/sales/report/pdf", async (req, res) => {
       grandTotal += Number(r.total_price);
     });
 
-    // ---- Footer Total ----
-    doc.moveDown(1);
-    doc.font("Helvetica-Bold");
-    doc.text(`Grand Total: Rs. ${grandTotal.toFixed(2)}`, {
+    const totalBoxHeight = 46;
+    ensurePdfSpace(doc, totalBoxHeight + 12, () =>
+      drawPdfTableHeader(doc, salesColumns),
+    );
+
+    const totalY = doc.y + 6;
+    doc.save();
+    doc.roundedRect(360, totalY, 195, totalBoxHeight, 12)
+      .fillAndStroke("#f8fbff", PDF_THEME.line);
+    doc.restore();
+
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(PDF_THEME.navy);
+    doc.text("Grand Total", 376, totalY + 12, { width: 90 });
+    doc.text(`Rs. ${formatCurrency(grandTotal)}`, 446, totalY + 12, {
+      width: 92,
       align: "right",
     });
+
+    doc.fillColor(PDF_THEME.ink);
 
     doc.end();
   } catch (err) {
@@ -570,6 +678,22 @@ router.get("/sales/report/excel", async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Sales Report");
+    workbook.creator = "India Inventory Management";
+    workbook.created = new Date();
+    sheet.views = [{ state: "frozen", ySplit: 3 }];
+    sheet.pageSetup = {
+      orientation: "landscape",
+      fitToPage: true,
+      fitToWidth: 1,
+      margins: {
+        left: 0.3,
+        right: 0.3,
+        top: 0.5,
+        bottom: 0.5,
+        header: 0.2,
+        footer: 0.2,
+      },
+    };
 
     // 1️⃣ Column headers FIRST
     sheet.columns = [
@@ -585,6 +709,11 @@ router.get("/sales/report/excel", async (req, res) => {
     const headerRow = sheet.getRow(1);
     headerRow.font = { bold: true };
     headerRow.alignment = { horizontal: "center" };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFEFF6FF" },
+    };
     headerRow.eachCell((cell) => {
       cell.border = {
         top: { style: "thin" },
@@ -595,21 +724,31 @@ router.get("/sales/report/excel", async (req, res) => {
     });
 
     // 2️⃣ Insert title rows ABOVE data (not splice)
-    sheet.insertRow(1, []);
     sheet.insertRow(1, [`Sales Report`]);
     sheet.mergeCells("A1:F1");
     sheet.getCell("A1").font = { size: 16, bold: true };
     sheet.getCell("A1").alignment = { horizontal: "center" };
+    sheet.getCell("A1").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF17315D" },
+    };
+    sheet.getCell("A1").font = { size: 16, bold: true, color: { argb: "FFFFFFFF" } };
 
-    sheet.insertRow(2, [`From: ${from}   To: ${to}`]);
+    sheet.insertRow(
+      2,
+      [`From: ${from}   To: ${to}   |   Generated: ${formatIstDate(new Date())}`],
+    );
     sheet.mergeCells("A2:F2");
     sheet.getCell("A2").alignment = { horizontal: "center" };
+    sheet.getCell("A2").font = { italic: true, color: { argb: "FF475569" } };
+    sheet.autoFilter = "A3:F3";
 
     // 3️⃣ Data rows
     let grandTotal = 0;
 
     result.rows.forEach((r, i) => {
-      const saleDate = new Date(r.created_at).toLocaleDateString("en-IN");
+      const saleDate = formatIstDate(r.created_at);
       const row = sheet.addRow({
         sl: i + 1,
         date: saleDate,
@@ -627,6 +766,23 @@ router.get("/sales/report/excel", async (req, res) => {
           right: { style: "thin" },
         };
       });
+      row.alignment = { vertical: "middle" };
+      row.getCell("A").alignment = { horizontal: "center" };
+      row.getCell("B").alignment = { horizontal: "center" };
+      row.getCell("C").alignment = { wrapText: true };
+      row.getCell("D").alignment = { horizontal: "right" };
+      row.getCell("E").alignment = { horizontal: "right" };
+      row.getCell("F").alignment = { horizontal: "right" };
+
+      if (i % 2 === 1) {
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF8FBFF" },
+          };
+        });
+      }
 
       row.getCell(4).numFmt = "#,##0.00";
       row.getCell(5).numFmt = "#,##0.00";
@@ -644,8 +800,20 @@ router.get("/sales/report/excel", async (req, res) => {
     });
 
     totalRow.font = { bold: true };
+    totalRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFE0F2FE" },
+    };
+    totalRow.eachCell((cell) => {
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+      };
+    });
     totalRow.getCell("F").numFmt = "#,##0.00";
-    totalRow.alignment = { horizontal: "right" };
+    totalRow.getCell("C").alignment = { horizontal: "right" };
+    totalRow.getCell("F").alignment = { horizontal: "right" };
 
     // ----------------- Response -----------------
     res.setHeader(
@@ -780,6 +948,90 @@ router.get("/debts", async (req, res) => {
   } catch (err) {
     if (process.env.NODE_ENV !== "production")
       console.error("Error in GET /debts:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.get("/dashboard/overview", async (req, res) => {
+  try {
+    const user_id = getUserId(req);
+
+    const [catalogResult, lowStockResult, dueResult] = await Promise.all([
+      pool.query(
+        `
+        SELECT
+          COUNT(*) AS item_count,
+          COALESCE(SUM(quantity), 0) AS total_units,
+          COALESCE(SUM(quantity * buying_rate), 0) AS total_cost_value,
+          COALESCE(SUM(quantity * selling_rate), 0) AS total_selling_value
+        FROM items
+        WHERE user_id = $1
+        `,
+        [user_id],
+      ),
+      pool.query(
+        `
+        WITH sales_30 AS (
+          SELECT
+            item_id,
+            SUM(quantity) AS sold_30_days
+          FROM sales
+          WHERE user_id = $1
+            AND created_at >= NOW() - INTERVAL '30 days'
+          GROUP BY item_id
+        ),
+        low_stock AS (
+          SELECT
+            i.name AS item_name,
+            ROUND(
+              CASE
+                WHEN COALESCE(s.sold_30_days, 0) = 0 THEN NULL
+                ELSE (i.quantity / NULLIF((s.sold_30_days / 30.0), 0))
+              END,
+              2
+            ) AS days_left
+          FROM items i
+          LEFT JOIN sales_30 s
+            ON s.item_id = i.id
+          WHERE i.user_id = $1
+            AND COALESCE(s.sold_30_days, 0) > 0
+            AND (
+              i.quantity / NULLIF((s.sold_30_days / 30.0), 0)
+            ) <= $2
+        )
+        SELECT
+          COUNT(*) AS low_stock_count,
+          MIN(days_left) AS shortest_days_left,
+          (ARRAY_AGG(item_name ORDER BY days_left ASC NULLS LAST))[1] AS most_urgent_item
+        FROM low_stock
+        `,
+        [user_id, STOCK_CONFIG.WARNING_DAYS],
+      ),
+      pool.query(
+        `
+        SELECT
+          COUNT(*) AS due_customer_count,
+          COALESCE(SUM(balance), 0) AS due_balance
+        FROM (
+          SELECT
+            SUM(total - credit) AS balance
+          FROM debts
+          WHERE user_id = $1
+          GROUP BY customer_number
+          HAVING SUM(total - credit) > 0
+        ) AS due_summary
+        `,
+        [user_id],
+      ),
+    ]);
+
+    res.json({
+      catalog: catalogResult.rows[0],
+      alerts: lowStockResult.rows[0],
+      dues: dueResult.rows[0],
+    });
+  } catch (err) {
+    console.error("Dashboard overview error:", err);
     res.status(500).json({ error: "Server error" });
   }
 });

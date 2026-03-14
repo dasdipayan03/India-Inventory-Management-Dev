@@ -1,1185 +1,1938 @@
-// public/js/dashboard.js
-/* ---------------------- Config --------------------- */
 const apiBase = window.location.origin.includes("localhost")
   ? "http://localhost:4000/api"
   : "/api";
 
-let itemNames = [];
-let currentItemReportRows = [];
+const state = {
+  itemNames: [],
+  currentItemReportRows: [],
+  currentSalesRows: [],
+  lowStockRows: [],
+  ledgerMode: "empty",
+  currentLedgerNumber: "",
+  charts: {
+    businessTrend: null,
+    last13Months: null,
+  },
+  popupTimer: null,
+};
 
-/* ---------------------- AUTH ----------------------- */
-async function checkAuth() {
-  const token = localStorage.getItem("token");
-  if (!token) return (location.href = "login.html");
+const formatters = {
+  whole: new Intl.NumberFormat("en-IN", {
+    maximumFractionDigits: 0,
+  }),
+  decimal: new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }),
+  money: new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }),
+};
 
-  try {
-    const res = await fetch(`${apiBase}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) throw new Error("unauthorized");
+const dom = {};
 
-    const user = await res.json();
-    localStorage.setItem("user", JSON.stringify(user));
-    // document.getElementById("welcomeUser").innerText = `Welcome, ${user.name}`;
-    document.getElementById("welcomeUser").innerText = user.name
-      ? user.name.trim()
-      : "";
-    document.body.style.visibility = "visible";
-  } catch (err) {
-    console.error("Auth fail:", err);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    showPopup("error", "Session Expired", "Please log in again.");
-    setTimeout(() => {
-      location.href = "login.html";
-    }, 1500);
-  }
+function getToken() {
+  return localStorage.getItem("token") || "";
 }
 
-/* ---------------------- UI / Sidebar --------------------- */
-function setupSidebar() {
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-  const toggle = document.getElementById("sidebarToggle");
+function authHeaders(headers = {}) {
+  const token = getToken();
+  return token ? { ...headers, Authorization: `Bearer ${token}` } : headers;
+}
 
-  toggle.addEventListener("click", () => {
-    const open = sidebar.classList.toggle("sidebar--open");
-    overlay.classList.toggle("visible", open);
-  });
+function formatCount(value) {
+  return formatters.whole.format(Number(value) || 0);
+}
 
-  overlay.addEventListener("click", () => {
-    sidebar.classList.remove("sidebar--open");
-    overlay.classList.remove("visible");
-  });
+function formatNumber(value) {
+  return formatters.decimal.format(Number(value) || 0);
+}
 
-  document.querySelectorAll(".sidebar button[data-section]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      document
-        .querySelectorAll(".form-section")
-        .forEach((s) => s.classList.remove("active"));
-      document.getElementById(btn.dataset.section).classList.add("active");
-      // 🔴 LOW STOCK LOAD WHEN STOCK REPORT OPEN
-      if (btn.dataset.section === "itemReportSection") {
-        loadLowStock();
-      }
-      document
-        .querySelectorAll(".sidebar button")
-        .forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-      localStorage.setItem("activeSection", btn.dataset.section);
-      sidebar.classList.remove("sidebar--open");
-      overlay.classList.remove("visible");
-    });
-  });
+function formatCurrency(value) {
+  return `Rs. ${formatters.money.format(Number(value) || 0)}`;
+}
 
-  document.getElementById("logoutBtn").addEventListener("click", () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    location.href = "login.html";
+function formatDate(value) {
+  return new Date(value).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
   });
 }
 
-/* ---------------------- Dropdown helpers --------------------- */
-function renderDropdown(listEl, items, onSelect) {
-  if (!items || items.length === 0) {
-    listEl.style.display = "none";
-    listEl.innerHTML = "";
-    return;
-  }
-  listEl.innerHTML = items
-    .map(
-      (i) =>
-        `<div class="dropdown-item" data-value="${escapeHtml(i)}">${escapeHtml(
-          i,
-        )}</div>`,
-    )
-    .join("");
-  listEl.style.display = "block";
-  listEl.querySelectorAll(".dropdown-item").forEach((el) =>
-    el.addEventListener("click", () => {
-      onSelect(el.dataset.value);
-      listEl.style.display = "none";
-    }),
-  );
+function toInputDate(date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return localDate.toISOString().slice(0, 10);
 }
 
-function escapeHtml(s) {
-  return (s + "")
+function isMobileLayout() {
+  return window.matchMedia("(max-width: 991px)").matches;
+}
+
+function sanitizeFileName(value) {
+  return String(value || "download")
+    .trim()
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
 
-function setupFilterInput(inputId, listId, onSelectCallback) {
-  const input = document.getElementById(inputId);
-  const listEl = document.getElementById(listId);
+function parseFormattedNumber(value) {
+  return Number(String(value || "").replace(/[^0-9.]/g, "")) || 0;
+}
 
-  input.addEventListener("input", () => {
-    const q = input.value.trim().toLowerCase();
-    if (!q) {
-      renderDropdown(listEl, itemNames.slice(0, 50), (val) => {
-        input.value = val;
-        if (onSelectCallback) onSelectCallback(val);
-      });
-      return;
-    }
-    const filtered = itemNames
-      .filter((i) => i.toLowerCase().includes(q))
-      .slice(0, 50);
-    renderDropdown(listEl, filtered, (val) => {
-      input.value = val;
-      if (onSelectCallback) onSelectCallback(val);
-    });
-  });
-
-  document.addEventListener("click", (e) => {
-    if (!input.contains(e.target) && !listEl.contains(e.target))
-      listEl.style.display = "none";
-  });
-
-  input.addEventListener("focus", () => {
-    renderDropdown(listEl, itemNames.slice(0, 50), (val) => {
-      input.value = val;
-      if (onSelectCallback) onSelectCallback(val);
-    });
+function cacheElements() {
+  Object.assign(dom, {
+    sidebar: document.getElementById("sidebar"),
+    sidebarOverlay: document.getElementById("sidebarOverlay"),
+    sidebarToggle: document.getElementById("sidebarToggle"),
+    sectionButtons: Array.from(
+      document.querySelectorAll(".sidebar button[data-section]"),
+    ),
+    formSections: Array.from(document.querySelectorAll(".form-section")),
+    logoutBtn: document.getElementById("logoutBtn"),
+    invoiceBtn: document.getElementById("invoiceBtn"),
+    currentDateLabel: document.getElementById("currentDateLabel"),
+    welcomeUser: document.getElementById("welcomeUser"),
+    heroSubtitle: document.getElementById("heroSubtitle"),
+    sectionEyebrow: document.getElementById("sectionEyebrow"),
+    sectionHeading: document.getElementById("sectionHeading"),
+    sectionLead: document.getElementById("sectionLead"),
+    sectionBadge: document.getElementById("sectionBadge"),
+    statCatalogCount: document.getElementById("statCatalogCount"),
+    statCatalogNote: document.getElementById("statCatalogNote"),
+    statCatalogValue: document.getElementById("statCatalogValue"),
+    statCatalogValueNote: document.getElementById("statCatalogValueNote"),
+    statLowStock: document.getElementById("statLowStock"),
+    statLowStockNote: document.getElementById("statLowStockNote"),
+    statDueBalance: document.getElementById("statDueBalance"),
+    statDueNote: document.getElementById("statDueNote"),
+    newItemSearch: document.getElementById("newItemSearch"),
+    newItemDropdownList: document.getElementById("newItemDropdownList"),
+    newQuantity: document.getElementById("newQuantity"),
+    profitPercent: document.getElementById("profitPercent"),
+    buyingRate: document.getElementById("buyingRate"),
+    sellingRate: document.getElementById("sellingRate"),
+    addStockBtn: document.getElementById("addStockBtn"),
+    previousBuyingRate: document.getElementById("previousBuyingRate"),
+    profitPreviewValue: document.getElementById("profitPreviewValue"),
+    profitPreviewNote: document.getElementById("profitPreviewNote"),
+    itemReportSearch: document.getElementById("itemReportSearch"),
+    itemReportDropdown: document.getElementById("itemReportDropdown"),
+    loadItemReportBtn: document.getElementById("loadItemReportBtn"),
+    itemReportPdfBtn: document.getElementById("itemReportPdfBtn"),
+    itemReportBody: document.getElementById("itemReportBody"),
+    lowStockCard: document.getElementById("lowStockCard"),
+    lowStockCount: document.getElementById("lowStockCount"),
+    lowStockBody: document.getElementById("lowStockBody"),
+    fromDate: document.getElementById("fromDate"),
+    toDate: document.getElementById("toDate"),
+    loadSalesBtn: document.getElementById("loadSalesBtn"),
+    pdfBtn: document.getElementById("pdfBtn"),
+    excelBtn: document.getElementById("excelBtn"),
+    salesReportBody: document.getElementById("salesReportBody"),
+    salesGrandTotal: document.getElementById("salesGrandTotal"),
+    yearFilter: document.getElementById("yearFilter"),
+    businessTrendChart: document.getElementById("businessTrendChart"),
+    growthBadge: document.getElementById("growthBadge"),
+    last12MonthsChart: document.getElementById("last12MonthsChart"),
+    cdName: document.getElementById("cdName"),
+    cdNumber: document.getElementById("cdNumber"),
+    cdNumberDropdown: document.getElementById("cdNumberDropdown"),
+    cdTotal: document.getElementById("cdTotal"),
+    cdCredit: document.getElementById("cdCredit"),
+    cdRemark: document.getElementById("cdRemark"),
+    submitDebtBtn: document.getElementById("submitDebtBtn"),
+    cdSearchInput: document.getElementById("cdSearchInput"),
+    cdSearchDropdown: document.getElementById("cdSearchDropdown"),
+    searchLedgerBtn: document.getElementById("searchLedgerBtn"),
+    showAllDuesBtn: document.getElementById("showAllDuesBtn"),
+    ledgerTable: document.getElementById("ledgerTable"),
+    commonPopup: document.getElementById("commonPopup"),
+    popupOverlay: document.getElementById("popupOverlay"),
+    popupBox: document.getElementById("popupBox"),
+    popupIcon: document.getElementById("popupIcon"),
+    popupTitle: document.getElementById("popupTitle"),
+    popupMessage: document.getElementById("popupMessage"),
+    popupClose: document.getElementById("popupClose"),
   });
 }
 
-/* ---------------------- Load Items --------------------- */
-async function loadItemNames() {
+async function fetchJSON(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (options.body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const response = await fetch(`${apiBase}${path}`, {
+    ...options,
+    headers: authHeaders(headers),
+  });
+
+  let payload = {};
   try {
-    const res = await fetch(`${apiBase}/items/names`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
-    if (!res.ok) throw new Error("Failed to fetch items");
-    itemNames = await res.json();
-  } catch (err) {
-    showPopup("error", "Error", "Failed to load item names");
-    itemNames = [];
+    payload = await response.json();
+  } catch (error) {
+    payload = {};
   }
+
+  if (!response.ok) {
+    throw new Error(payload.error || payload.message || "Request failed");
+  }
+
+  return payload;
 }
 
-/* ---------------------- Add Stock --------------------- */
-async function addStock() {
-  const item = document.getElementById("newItemSearch").value.trim();
-  const quantity = parseFloat(document.getElementById("newQuantity").value);
-  const buying_rate = parseFloat(document.getElementById("buyingRate").value);
-  const selling_rate = parseFloat(document.getElementById("sellingRate").value);
-
-  if (!item || isNaN(quantity) || isNaN(buying_rate) || isNaN(selling_rate)) {
-    return showPopup("error", "Invalid Input", "Fill all fields correctly");
-  }
-  if (quantity < 0 || buying_rate < 0 || selling_rate < 0) {
-    return showPopup(
-      "error",
-      "Invalid Input",
-      "Negative Quantity are not allowed",
-    );
-  }
-
-  try {
-    const res = await fetch(`${apiBase}/items`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify({
-        name: item,
-        quantity,
-        buying_rate,
-        selling_rate,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Add failed");
-    showPopup("success", "Success", data.message || "Stock added successfully");
-    await loadItemNames();
-    ["newItemSearch", "newQuantity", "buyingRate", "sellingRate"].forEach(
-      (id) => (document.getElementById(id).value = ""),
-    );
-    // 🔹 hide previous buying rate
-    const rateBox = document.getElementById("previousBuyingRate");
-    if (rateBox) {
-      rateBox.style.display = "none";
-      rateBox.innerText = "";
-    }
-  } catch (err) {
-    console.error("Add stock error:", err);
-    showPopup("error", "Error", err.message || "Server error");
-  }
-}
-
-//--------- PREVIOUS BUYNG RATE SHOW FUNCTION ----------------
-async function showPreviousBuyingRate(itemName) {
-  if (!itemName) return;
-
-  try {
-    const res = await fetch(
-      `/api/items/info?name=${encodeURIComponent(itemName)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      },
-    );
-
-    if (!res.ok) return;
-
-    const data = await res.json();
-
-    const rateBox = document.getElementById("previousBuyingRate");
-
-    if (data.buying_rate !== undefined) {
-      const rate = Number(data.buying_rate).toFixed(2);
-
-      rateBox.innerText = "Previous buying rate: ₹" + rate;
-      rateBox.style.display = "block";
-
-      // auto fill buying rate input
-      const buyingRateInput = document.getElementById("buyingRate");
-
-      if (buyingRateInput) {
-        buyingRateInput.value = rate;
-        updateSellingRate();
-      }
-    } else {
-      // new item → hide previous rate
-      rateBox.style.display = "none";
-    }
-  } catch (err) {
-    console.error("Rate fetch error", err);
-  }
-}
-
-// --- Add Stock rate inputs ---
-const buyingRateInput = document.getElementById("buyingRate");
-const sellingRateInput = document.getElementById("sellingRate");
-const profitPercentInput = document.getElementById("profitPercent");
-// 🔹 Save profit percent when user changes it
-if (profitPercentInput) {
-  profitPercentInput.addEventListener("change", () => {
-    localStorage.setItem("defaultProfitPercent", profitPercentInput.value);
+async function downloadAuthenticatedFile(path, fallbackName) {
+  const response = await fetch(`${apiBase}${path}`, {
+    headers: authHeaders(),
   });
+
+  if (!response.ok) {
+    let payload = {};
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = {};
+    }
+
+    throw new Error(payload.error || payload.message || "Download failed");
+  }
+
+  const blob = await response.blob();
+  const disposition = response.headers.get("content-disposition") || "";
+  const match = disposition.match(/filename="?([^"]+)"?/i);
+  const filename = match?.[1] || fallbackName;
+  const blobUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = blobUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  window.setTimeout(() => {
+    window.URL.revokeObjectURL(blobUrl);
+  }, 1500);
+}
+
+async function withButtonState(button, loadingHtml, task) {
+  if (!button) {
+    await task();
+    return;
+  }
+
+  const originalHtml = button.innerHTML;
+  button.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  button.innerHTML = loadingHtml;
+
+  try {
+    await task();
+  } finally {
+    button.disabled = false;
+    button.setAttribute("aria-busy", "false");
+    button.innerHTML = originalHtml;
+  }
+}
+
+function showPopup(type, title, message, options = {}) {
+  if (!dom.commonPopup) {
+    return;
+  }
+
+  const iconMap = {
+    success: '<i class="fa-solid fa-circle-check"></i>',
+    error: '<i class="fa-solid fa-circle-xmark"></i>',
+    info: '<i class="fa-solid fa-circle-info"></i>',
+  };
+
+  window.clearTimeout(state.popupTimer);
+  state.popupTimer = null;
+
+  dom.popupBox.classList.remove("success", "error");
+  if (type === "success" || type === "error") {
+    dom.popupBox.classList.add(type);
+  }
+
+  dom.popupIcon.innerHTML = iconMap[type] || iconMap.info;
+  dom.popupTitle.textContent = title;
+  dom.popupMessage.textContent = message;
+  dom.commonPopup.classList.add("active");
+  dom.commonPopup.setAttribute("aria-hidden", "false");
+
+  if (options.autoClose !== false && type === "success") {
+    state.popupTimer = window.setTimeout(() => {
+      hidePopup();
+    }, options.delay || 2200);
+  }
+}
+
+function hidePopup() {
+  if (!dom.commonPopup) {
+    return;
+  }
+
+  window.clearTimeout(state.popupTimer);
+  state.popupTimer = null;
+  dom.commonPopup.classList.remove("active");
+  dom.commonPopup.setAttribute("aria-hidden", "true");
+}
+
+function updateCurrentDateLabel() {
+  dom.currentDateLabel.textContent = new Date().toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  });
+}
+
+function setCustomerNameLocked(locked) {
+  dom.cdName.disabled = locked;
+  dom.cdName.classList.toggle("bg-light", locked);
+}
+
+function hidePreviousBuyingRate() {
+  dom.previousBuyingRate.style.display = "none";
+  dom.previousBuyingRate.textContent = "";
+}
+
+function updateProfitPreview() {
+  const percent = Number(dom.profitPercent.value);
+  const buyingRate = Number(dom.buyingRate.value);
+  const sellingRate = Number(dom.sellingRate.value);
+
+  dom.profitPreviewValue.textContent = `${formatNumber(percent || 0)}%`;
+
+  if (buyingRate > 0 && sellingRate > 0) {
+    dom.profitPreviewNote.textContent =
+      `Buying ${formatCurrency(buyingRate)} suggests selling ${formatCurrency(sellingRate)}.`;
+    return;
+  }
+
+  dom.profitPreviewNote.textContent =
+    "Stored on this device to keep future stock entries faster and more consistent.";
 }
 
 function updateSellingRate() {
-  const buyingRate = parseFloat(buyingRateInput.value);
-  const percent = parseFloat(profitPercentInput.value);
+  const buyingRate = Number(dom.buyingRate.value);
+  const percent = Number(dom.profitPercent.value);
 
-  if (!isNaN(buyingRate) && !isNaN(percent)) {
-    const selling = buyingRate * (1 + percent / 100);
-    sellingRateInput.value = selling.toFixed(2);
+  if (Number.isFinite(buyingRate) && Number.isFinite(percent)) {
+    const sellingRate = buyingRate * (1 + percent / 100);
+    dom.sellingRate.value = sellingRate.toFixed(2);
   }
+
+  updateProfitPreview();
 }
 
 function updateProfitPercent() {
-  const buyingRate = parseFloat(buyingRateInput.value);
-  const sellingRate = parseFloat(sellingRateInput.value);
+  const buyingRate = Number(dom.buyingRate.value);
+  const sellingRate = Number(dom.sellingRate.value);
 
-  if (!isNaN(buyingRate) && !isNaN(sellingRate) && buyingRate > 0) {
+  if (buyingRate > 0 && Number.isFinite(sellingRate)) {
     const percent = ((sellingRate - buyingRate) / buyingRate) * 100;
-    const formatted = percent.toFixed(2);
-
-    profitPercentInput.value = formatted;
-
-    // 🔥 SAVE automatically
-    localStorage.setItem("defaultProfitPercent", formatted);
+    const rounded = percent.toFixed(2);
+    dom.profitPercent.value = rounded;
+    localStorage.setItem("defaultProfitPercent", rounded);
   }
+
+  updateProfitPreview();
 }
 
-if (buyingRateInput && sellingRateInput && profitPercentInput) {
-  buyingRateInput.addEventListener("input", updateSellingRate);
-  profitPercentInput.addEventListener("input", updateSellingRate);
-  sellingRateInput.addEventListener("input", updateProfitPercent);
-}
+function updateHeroSummary(metrics = {}) {
+  const bits = [];
+  const itemCount = Number(metrics.itemCount) || 0;
+  const lowStockCount = Number(metrics.lowStockCount) || 0;
+  const dueCustomerCount = Number(metrics.dueCustomerCount) || 0;
 
-//---------- STOCK VIEW AND DOWNLOAD ----------------//
-async function loadItemReport() {
-  const item = document.getElementById("itemReportSearch").value.trim();
-
-  try {
-    const url = item
-      ? `${apiBase}/items/report?name=${encodeURIComponent(item)}`
-      : `${apiBase}/items/report`;
-
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    if (!res.ok) throw new Error("Failed to load item report");
-
-    const rows = await res.json();
-    currentItemReportRows = rows; // 🔒 for PDF
-    renderItemReport(rows);
-  } catch (err) {
-    console.error("Item report error:", err);
-    showPopup("error", "Load Failed", "Could not load item report");
+  if (itemCount > 0) {
+    bits.push(`${formatCount(itemCount)} catalog items tracked`);
   }
-}
-function renderItemReport(rows) {
-  const tbody = document.getElementById("itemReportBody");
-  tbody.innerHTML = "";
 
-  if (!rows || rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-muted">No records found</td></tr>`;
+  if (lowStockCount > 0) {
+    bits.push(`${formatCount(lowStockCount)} item${lowStockCount === 1 ? "" : "s"} need stock attention`);
+  }
+
+  if (dueCustomerCount > 0) {
+    bits.push(`${formatCount(dueCustomerCount)} customer${dueCustomerCount === 1 ? "" : "s"} have pending dues`);
+  }
+
+  dom.heroSubtitle.textContent = bits.length
+    ? `Today: ${bits.join(" | ")}.`
+    : "Your dashboard is ready to track stock, reports, invoices, and dues from one polished workspace.";
+}
+
+function updateSectionMeta(button) {
+  if (!button) {
     return;
   }
-  let totalCostValue = 0;
-  let totalSellingValue = 0;
 
-  rows.forEach((r, i) => {
-    const qty = Number(r.available_qty);
-    const buy = Number(r.buying_rate);
-    const sell = Number(r.selling_rate);
-    totalCostValue += qty * buy;
-    totalSellingValue += qty * sell;
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${escapeHtml(r.item_name)}</td>
-      <td>${Number(r.available_qty).toFixed(2)}</td>
-      <td>${Number(r.buying_rate).toFixed(2)}</td>
-      <td>${Number(r.selling_rate).toFixed(2)}</td>
-      <td>${Number(r.sold_qty).toFixed(2)}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  const profit = totalSellingValue - totalCostValue;
-
-  const summaryHTML = `
-  <tr>
-    <td colspan="5" class="fw-bold bg-light text-end">
-      <div>Total Items Value (Cost) : Rs. ${totalCostValue.toFixed(2)}</div>
-      <div>Total Selling Value : Rs. ${totalSellingValue.toFixed(2)}</div>
-      <div class="${profit >= 0 ? "text-success" : "text-danger"}">
-        Estimated Profit : Rs. ${profit.toFixed(2)}
-      </div>
-    </td>
-  </tr>
-`;
-
-  tbody.insertAdjacentHTML("beforeend", summaryHTML);
+  dom.sectionEyebrow.textContent = button.dataset.eyebrow || "Workspace";
+  dom.sectionHeading.textContent = button.dataset.title || "Dashboard";
+  dom.sectionLead.textContent =
+    button.dataset.description || "Manage inventory, reporting, and dues from one dashboard.";
+  dom.sectionBadge.textContent = button.dataset.badge || "Live";
 }
 
-// ----------------- LOW STOCK LOAD & RENDER -----------------
-async function loadLowStock() {
-  try {
-    const res = await fetch(`${apiBase}/items/low-stock`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+function closeSidebar() {
+  dom.sidebar.classList.remove("sidebar--open");
+  dom.sidebarOverlay.classList.remove("visible");
+  dom.sidebarToggle.setAttribute("aria-expanded", "false");
+}
 
-    if (!res.ok) throw new Error("Failed to load low stock");
+function openSidebar() {
+  dom.sidebar.classList.add("sidebar--open");
+  dom.sidebarOverlay.classList.add("visible");
+  dom.sidebarToggle.setAttribute("aria-expanded", "true");
+}
 
-    const rows = await res.json();
-    renderLowStock(rows);
-  } catch (err) {
-    showPopup("error", "Error", "Failed to load stock alerts");
+function setActiveSection(sectionId) {
+  const target = document.getElementById(sectionId);
+  if (!target) {
+    return;
   }
+
+  dom.formSections.forEach((section) => {
+    section.classList.toggle("active", section.id === sectionId);
+  });
+
+  dom.sectionButtons.forEach((button) => {
+    const isActive = button.dataset.section === sectionId;
+    button.classList.toggle("active", isActive);
+    if (isActive) {
+      updateSectionMeta(button);
+    }
+  });
+
+  localStorage.setItem("activeSection", sectionId);
+
+  if (sectionId === "itemReportSection") {
+    loadLowStock({ silent: true });
+  }
+
+  if (isMobileLayout()) {
+    closeSidebar();
+  }
+}
+
+function renderDropdown(listEl, items, onSelect) {
+  if (!items.length) {
+    listEl.style.display = "none";
+    listEl.innerHTML = "";
+    return;
+  }
+
+  listEl.innerHTML = items
+    .map((item) => {
+      return `
+        <div
+          class="dropdown-item"
+          data-value="${encodeURIComponent(item)}"
+        >
+          ${escapeHtml(item)}
+        </div>
+      `;
+    })
+    .join("");
+
+  listEl.style.display = "block";
+  listEl.querySelectorAll(".dropdown-item").forEach((entry) => {
+    entry.addEventListener("click", () => {
+      onSelect(decodeURIComponent(entry.dataset.value));
+      listEl.style.display = "none";
+    });
+  });
+}
+
+function setupFilterInput(input, listEl, onSelect) {
+  input.addEventListener("input", () => {
+    const query = input.value.trim().toLowerCase();
+
+    if (!query) {
+      renderDropdown(listEl, state.itemNames.slice(0, 50), onSelect);
+      return;
+    }
+
+    const matches = state.itemNames
+      .filter((itemName) => itemName.toLowerCase().includes(query))
+      .slice(0, 50);
+
+    renderDropdown(listEl, matches, onSelect);
+  });
+
+  input.addEventListener("focus", () => {
+    renderDropdown(listEl, state.itemNames.slice(0, 50), onSelect);
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!input.contains(event.target) && !listEl.contains(event.target)) {
+      listEl.style.display = "none";
+    }
+  });
+}
+
+async function checkAuth() {
+  const token = getToken();
+  if (!token) {
+    window.location.replace("login.html");
+    return null;
+  }
+
+  try {
+    const user = await fetchJSON("/auth/me");
+    const userName = (user.name || "").trim() || "Shop Owner";
+
+    localStorage.setItem("user", JSON.stringify(user));
+    dom.welcomeUser.textContent = `Welcome, ${userName}`;
+    document.body.style.visibility = "visible";
+    return user;
+  } catch (error) {
+    console.error("Auth check failed:", error);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    document.body.style.visibility = "visible";
+    showPopup("error", "Session expired", "Please log in again to continue.", {
+      autoClose: false,
+    });
+    window.setTimeout(() => {
+      window.location.replace("login.html");
+    }, 1500);
+    return null;
+  }
+}
+
+async function loadItemNames(options = {}) {
+  try {
+    const rows = await fetchJSON("/items/names");
+    state.itemNames = Array.isArray(rows) ? rows : [];
+    return state.itemNames;
+  } catch (error) {
+    console.error("Item names load failed:", error);
+    state.itemNames = [];
+    if (!options.silent) {
+      showPopup("error", "Load failed", "Could not load item names.", {
+        autoClose: false,
+      });
+    }
+    return [];
+  }
+}
+
+async function showPreviousBuyingRate(itemName) {
+  const trimmedName = itemName.trim();
+  if (!trimmedName) {
+    hidePreviousBuyingRate();
+    return;
+  }
+
+  try {
+    const item = await fetchJSON(
+      `/items/info?name=${encodeURIComponent(trimmedName)}`,
+    );
+    const previousRate = Number(item.buying_rate);
+
+    if (!Number.isFinite(previousRate)) {
+      hidePreviousBuyingRate();
+      return;
+    }
+
+    dom.previousBuyingRate.textContent =
+      `Previous buying rate: ${formatCurrency(previousRate)}`;
+    dom.previousBuyingRate.style.display = "block";
+    dom.buyingRate.value = previousRate.toFixed(2);
+    updateSellingRate();
+  } catch (error) {
+    hidePreviousBuyingRate();
+  }
+}
+
+async function loadDashboardOverview(options = {}) {
+  try {
+    const overview = await fetchJSON("/dashboard/overview");
+    const itemCount = Number(overview.catalog?.item_count) || 0;
+    const totalUnits = Number(overview.catalog?.total_units) || 0;
+    const totalCostValue = Number(overview.catalog?.total_cost_value) || 0;
+    const totalSellingValue =
+      Number(overview.catalog?.total_selling_value) || 0;
+    const lowStockCount = Number(overview.alerts?.low_stock_count) || 0;
+    const shortestDaysLeft = Number(overview.alerts?.shortest_days_left);
+    const mostUrgentItem = overview.alerts?.most_urgent_item || "";
+    const dueCustomerCount = Number(overview.dues?.due_customer_count) || 0;
+    const dueBalance = Number(overview.dues?.due_balance) || 0;
+
+    dom.statCatalogCount.textContent = formatCount(itemCount);
+    dom.statCatalogNote.textContent = itemCount
+      ? `${formatNumber(totalUnits)} total units currently available in catalog.`
+      : "Add your first item to start tracking inventory.";
+
+    dom.statCatalogValue.textContent = formatCurrency(totalCostValue);
+    dom.statCatalogValueNote.textContent = itemCount
+      ? `Estimated selling value can reach ${formatCurrency(totalSellingValue)}.`
+      : "Catalog value updates as soon as stock is saved.";
+
+    dom.statLowStock.textContent = formatCount(lowStockCount);
+    dom.statLowStockNote.textContent = lowStockCount
+      ? `${mostUrgentItem || "One active item"} needs attention${Number.isFinite(shortestDaysLeft) ? ` in about ${formatNumber(shortestDaysLeft)} day(s)` : ""}.`
+      : "No active low-stock alert right now.";
+
+    dom.statDueBalance.textContent = formatCurrency(dueBalance);
+    dom.statDueNote.textContent = dueCustomerCount
+      ? `${formatCount(dueCustomerCount)} customer${dueCustomerCount === 1 ? "" : "s"} currently have pending balances.`
+      : "No outstanding due balance at the moment.";
+
+    updateHeroSummary({ itemCount, lowStockCount, dueCustomerCount });
+    return overview;
+  } catch (error) {
+    console.error("Overview load failed:", error);
+    if (!options.silent) {
+      showPopup(
+        "error",
+        "Overview unavailable",
+        "Could not load the dashboard overview cards.",
+        { autoClose: false },
+      );
+    }
+    return null;
+  }
+}
+
+async function addStock() {
+  const item = dom.newItemSearch.value.trim();
+  const quantity = Number(dom.newQuantity.value);
+  const buyingRate = Number(dom.buyingRate.value);
+  const sellingRate = Number(dom.sellingRate.value);
+
+  if (!item) {
+    showPopup("error", "Missing item", "Enter or select an item name.", {
+      autoClose: false,
+    });
+    return;
+  }
+
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    showPopup("error", "Invalid quantity", "Quantity must be greater than zero.", {
+      autoClose: false,
+    });
+    return;
+  }
+
+  if (!Number.isFinite(buyingRate) || buyingRate < 0) {
+    showPopup(
+      "error",
+      "Invalid buying rate",
+      "Buying rate must be zero or greater.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  if (!Number.isFinite(sellingRate) || sellingRate < 0) {
+    showPopup(
+      "error",
+      "Invalid selling rate",
+      "Selling rate must be zero or greater.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  await withButtonState(
+    dom.addStockBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Saving stock...',
+    async () => {
+      const data = await fetchJSON("/items", {
+        method: "POST",
+        body: JSON.stringify({
+          name: item,
+          quantity,
+          buying_rate: buyingRate,
+          selling_rate: sellingRate,
+        }),
+      });
+
+      showPopup(
+        "success",
+        "Stock saved",
+        data.message || "Inventory entry has been updated successfully.",
+      );
+
+      ["newItemSearch", "newQuantity", "buyingRate", "sellingRate"].forEach((id) => {
+        document.getElementById(id).value = "";
+      });
+
+      hidePreviousBuyingRate();
+      updateProfitPreview();
+
+      await Promise.allSettled([
+        loadItemNames({ silent: true }),
+        loadDashboardOverview({ silent: true }),
+      ]);
+
+      if (document.getElementById("itemReportSection").classList.contains("active")) {
+        await Promise.allSettled([
+          loadItemReport({ silent: true }),
+          loadLowStock({ silent: true }),
+        ]);
+      }
+    },
+  );
+}
+
+function renderItemReport(rows) {
+  dom.itemReportBody.innerHTML = "";
+
+  if (!rows.length) {
+    dom.itemReportBody.innerHTML =
+      '<tr><td colspan="5" class="text-muted">No stock records found for this selection.</td></tr>';
+    return;
+  }
+
+  let totalCostValue = 0;
+  let totalSellingValue = 0;
+  let totalUnits = 0;
+
+  rows.forEach((row) => {
+    const availableQty = Number(row.available_qty) || 0;
+    const buyingRate = Number(row.buying_rate) || 0;
+    const sellingRate = Number(row.selling_rate) || 0;
+    const soldQty = Number(row.sold_qty) || 0;
+
+    totalUnits += availableQty;
+    totalCostValue += availableQty * buyingRate;
+    totalSellingValue += availableQty * sellingRate;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${escapeHtml(row.item_name)}</td>
+      <td>${formatNumber(availableQty)}</td>
+      <td>${formatCurrency(buyingRate)}</td>
+      <td>${formatCurrency(sellingRate)}</td>
+      <td>${formatNumber(soldQty)}</td>
+    `;
+    dom.itemReportBody.appendChild(tr);
+  });
+
+  const estimatedProfit = totalSellingValue - totalCostValue;
+  const summaryRow = document.createElement("tr");
+  summaryRow.innerHTML = `
+    <td colspan="5" class="text-end fw-bold bg-light-subtle">
+      <div>Total Units: ${formatNumber(totalUnits)}</div>
+      <div>Total Cost Value: ${formatCurrency(totalCostValue)}</div>
+      <div>Total Selling Value: ${formatCurrency(totalSellingValue)}</div>
+      <div class="${estimatedProfit >= 0 ? "text-success" : "text-danger"}">
+        Estimated Profit: ${formatCurrency(estimatedProfit)}
+      </div>
+    </td>
+  `;
+  dom.itemReportBody.appendChild(summaryRow);
+}
+
+async function loadItemReport(options = {}) {
+  const item = dom.itemReportSearch.value.trim();
+  const query = item ? `?name=${encodeURIComponent(item)}` : "";
+
+  const task = async () => {
+    const rows = await fetchJSON(`/items/report${query}`);
+    state.currentItemReportRows = Array.isArray(rows) ? rows : [];
+    renderItemReport(state.currentItemReportRows);
+
+    if (!item) {
+      await loadDashboardOverview({ silent: true });
+    }
+  };
+
+  if (options.silent) {
+    try {
+      await task();
+    } catch (error) {
+      console.error("Item report load failed:", error);
+    }
+    return;
+  }
+
+  await withButtonState(
+    dom.loadItemReportBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Loading report...',
+    async () => {
+      try {
+        await task();
+      } catch (error) {
+        console.error("Item report load failed:", error);
+        showPopup(
+          "error",
+          "Report unavailable",
+          "Could not load the stock report right now.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+function updateLowStockOverview(rows) {
+  const count = rows.length;
+  dom.statLowStock.textContent = formatCount(count);
+
+  if (!count) {
+    dom.statLowStockNote.textContent = "No active low-stock alert right now.";
+    return;
+  }
+
+  const urgentRow = rows[0];
+  const daysLeft = Number(urgentRow.days_left);
+  dom.statLowStockNote.textContent =
+    `${urgentRow.item_name} is most urgent${Number.isFinite(daysLeft) ? ` with about ${formatNumber(daysLeft)} day(s) left` : ""}.`;
+
+  updateHeroSummary({
+    itemCount: parseFormattedNumber(dom.statCatalogCount.textContent),
+    lowStockCount: count,
+    dueCustomerCount: parseFormattedNumber(dom.statDueNote.textContent),
+  });
 }
 
 function renderLowStock(rows) {
-  const card = document.getElementById("lowStockCard");
-  const tbody = document.getElementById("lowStockBody");
-  const countEl = document.getElementById("lowStockCount");
+  dom.lowStockBody.innerHTML = "";
+  dom.lowStockCard.hidden = rows.length === 0;
+  dom.lowStockCount.textContent = formatCount(rows.length);
 
-  tbody.innerHTML = "";
-
-  if (!rows || rows.length === 0) {
-    card.style.display = "none";
+  if (!rows.length) {
     return;
   }
 
-  card.style.display = "block";
-  countEl.textContent = rows.length;
-
-  rows.forEach((r) => {
+  rows.forEach((row) => {
     const tr = document.createElement("tr");
+    const availableQty = Number(row.available_qty) || 0;
+    const soldLast30Days = Number(row.sold_30_days) || 0;
+    const daysLeft = Number(row.days_left);
+    const status = row.status || "MEDIUM";
+    const badgeClass =
+      status === "LOW" ? "badge bg-danger" : "badge bg-warning text-dark";
 
-    const qty = Number(r.available_qty);
-    const daysLeft = Number(r.days_left);
-
-    let statusText = "";
-
-    let rowClass = "";
-    if (r.status === "LOW") {
-      rowClass = "critical-stock-row";
-    } else if (r.status === "MEDIUM") {
-      rowClass = "warning-stock-row";
+    if (status === "LOW") {
+      tr.classList.add("critical-stock-row");
     }
-    tr.classList.add(rowClass);
+
+    if (status === "MEDIUM") {
+      tr.classList.add("warning-stock-row");
+    }
 
     tr.innerHTML = `
-      <td>${escapeHtml(r.item_name)}</td>
-      <td>${qty.toFixed(2)}</td>
-      <td>${r.sold_30_days}</td>
-      <td>${daysLeft.toFixed(2)} days</td>
-      <td>
-      <span class="${r.status === "LOW" ? "badge bg-danger" : "badge bg-warning text-dark"}">
-        ${r.status}
-      </span>
-      </td>
+      <td>${escapeHtml(row.item_name)}</td>
+      <td>${formatNumber(availableQty)}</td>
+      <td>${formatNumber(soldLast30Days)}</td>
+      <td>${Number.isFinite(daysLeft) ? `${formatNumber(daysLeft)} days` : "--"}</td>
+      <td><span class="${badgeClass}">${status}</span></td>
     `;
-
-    tbody.appendChild(tr);
+    dom.lowStockBody.appendChild(tr);
   });
 }
 
-/* ---------------------- SALE REPORT'S TABLE --------------------- */
-async function loadSalesReport() {
-  const from = document.getElementById("fromDate").value;
-  const to = document.getElementById("toDate").value;
-
-  if (!from || !to) {
-    return showPopup("error", "Missing Date", "Select both From and To date");
-  }
-
+async function loadLowStock(options = {}) {
   try {
-    const res = await fetch(`${apiBase}/sales/report?from=${from}&to=${to}`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
+    const rows = await fetchJSON("/items/low-stock");
+    state.lowStockRows = Array.isArray(rows) ? rows : [];
+    renderLowStock(state.lowStockRows);
+    updateLowStockOverview(state.lowStockRows);
+  } catch (error) {
+    console.error("Low stock load failed:", error);
+    state.lowStockRows = [];
+    renderLowStock([]);
+    updateLowStockOverview([]);
 
-    if (!res.ok) throw new Error("Failed to load report");
-
-    const rows = await res.json();
-    renderSalesReport(rows);
-  } catch (err) {
-    console.error("Load sales report error:", err);
-    showPopup("error", "Load Failed", "Could not load sales report");
+    if (!options.silent) {
+      showPopup(
+        "error",
+        "Alerts unavailable",
+        "Could not load the low-stock panel right now.",
+        { autoClose: false },
+      );
+    }
   }
 }
-//------------------------ SALE REPORT TABLE ROW ------------------------------
-function renderSalesReport(rows) {
-  const tbody = document.getElementById("salesReportBody");
-  const totalEl = document.getElementById("salesGrandTotal");
 
-  tbody.innerHTML = "";
+function validateSalesDates() {
+  const fromDate = dom.fromDate.value;
+  const toDate = dom.toDate.value;
+
+  if (!fromDate || !toDate) {
+    showPopup(
+      "error",
+      "Missing date range",
+      "Select both From and To dates before loading sales data.",
+      { autoClose: false },
+    );
+    return false;
+  }
+
+  if (fromDate > toDate) {
+    showPopup(
+      "error",
+      "Invalid date range",
+      "From date cannot be later than To date.",
+      { autoClose: false },
+    );
+    return false;
+  }
+
+  return true;
+}
+
+function renderSalesReport(rows) {
+  dom.salesReportBody.innerHTML = "";
   let grandTotal = 0;
 
-  if (!rows || rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" class="text-muted">No records found</td></tr>`;
-    totalEl.textContent = "0.00";
+  if (!rows.length) {
+    dom.salesReportBody.innerHTML =
+      '<tr><td colspan="5" class="text-muted">No sales records found for this range.</td></tr>';
+    dom.salesGrandTotal.textContent = "0.00";
     return;
   }
 
-  rows.forEach((r) => {
-    const date = new Date(r.created_at).toLocaleDateString("en-IN", {
-      timeZone: "Asia/Kolkata",
-    });
+  rows.forEach((row) => {
+    const totalPrice = Number(row.total_price) || 0;
+    const sellingPrice = Number(row.selling_price) || 0;
+    const quantity = Number(row.quantity) || 0;
+
+    grandTotal += totalPrice;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${date}</td>
-      <td class="item-name">${escapeHtml(r.item_name)}</td>
-      <td>${r.quantity}</td>
-      <td>${Number(r.selling_price).toFixed(2)}</td>
-      <td>${Number(r.total_price).toFixed(2)}</td>
+      <td>${formatDate(row.created_at)}</td>
+      <td>${escapeHtml(row.item_name)}</td>
+      <td>${formatNumber(quantity)}</td>
+      <td>${formatCurrency(sellingPrice)}</td>
+      <td>${formatCurrency(totalPrice)}</td>
     `;
-
-    grandTotal += Number(r.total_price) || 0;
-    tbody.appendChild(tr);
+    dom.salesReportBody.appendChild(tr);
   });
 
-  totalEl.textContent = grandTotal.toFixed(2);
+  dom.salesGrandTotal.textContent = formatters.money.format(grandTotal);
 }
 
-function downloadItemReportPDF() {
-  const item = document.getElementById("itemReportSearch").value.trim();
-
-  const url = item
-    ? `/api/items/report/pdf?name=${encodeURIComponent(item)}`
-    : `/api/items/report/pdf`;
-  showPopup(
-    "success",
-    "Download Started",
-    "Stock report PDF is downloading...",
-  );
-  window.location.href = url;
-}
-
-// --------------------------- SALE REPORT PDF DOWNLOAD ------------------------------------
-function downloadSalesPDF() {
-  const from = document.getElementById("fromDate").value;
-  const to = document.getElementById("toDate").value;
-
-  if (!from || !to) {
-    showPopup("error", "Missing Date", "Please select date range");
+async function loadSalesReport(options = {}) {
+  if (!validateSalesDates()) {
     return;
   }
-  showPopup("success", "Download Started", "Sales PDF is downloading...");
-  window.location.href = `/api/sales/report/pdf?from=${from}&to=${to}`;
-}
 
-// --------------------------- SALE REPORT EXCELL DOWNLOAD --------------------------------------
-function downloadSalesExcel() {
-  const from = document.getElementById("fromDate").value;
-  const to = document.getElementById("toDate").value;
+  const fromDate = dom.fromDate.value;
+  const toDate = dom.toDate.value;
+  const query = `/sales/report?from=${fromDate}&to=${toDate}`;
 
-  if (!from || !to) {
-    showPopup("error", "Missing Date", "Please select date range");
-    return;
-  }
-  showPopup("success", "Download Started", "Sales Excel is downloading...");
-  window.location.href = `/api/sales/report/excel?from=${from}&to=${to}`;
-}
-
-// ------------------------- CUSTOMER DEBS -----------------------------
-async function submitDebt() {
-  const entry = {
-    customer_name: document.getElementById("cdName").value.trim(),
-    customer_number: document.getElementById("cdNumber").value.trim(),
-    total: parseFloat(document.getElementById("cdTotal").value) || 0,
-    credit: parseFloat(document.getElementById("cdCredit").value) || 0,
-    remark: document.getElementById("cdRemark").value.trim(),
+  const task = async () => {
+    const rows = await fetchJSON(query);
+    state.currentSalesRows = Array.isArray(rows) ? rows : [];
+    renderSalesReport(state.currentSalesRows);
   };
-  if (!entry.customer_name) {
-    return showPopup("error", "Missing Name", "Customer name is required");
+
+  if (options.silent) {
+    try {
+      await task();
+    } catch (error) {
+      console.error("Sales report load failed:", error);
+    }
+    return;
   }
 
-  if (!/^\d{10}$/.test(entry.customer_number)) {
-    return showPopup(
-      "error",
-      "Invalid Number",
-      "Enter valid 10 digit mobile number",
-    );
-  }
-  try {
-    const res = await fetch(`${apiBase}/debts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify(entry),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Debt save failed");
-    showPopup("success", "Success", data.message || "Debt entry added");
-    ["cdName", "cdNumber", "cdTotal", "cdCredit", "cdRemark"].forEach(
-      (id) => (document.getElementById(id).value = ""),
-    );
-    // 🔓 Re-enable name field after submit
-    const cdNameInput = document.getElementById("cdName");
-    cdNameInput.disabled = false;
-    cdNameInput.classList.remove("bg-light");
-  } catch (err) {
-    console.error("Submit debt error:", err);
-    showPopup("error", "Error", err.message || "Server error");
-  }
+  await withButtonState(
+    dom.loadSalesBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Loading sales...',
+    async () => {
+      try {
+        await task();
+      } catch (error) {
+        console.error("Sales report load failed:", error);
+        showPopup(
+          "error",
+          "Sales report unavailable",
+          "Could not load sales data for the selected range.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
 }
-/* ---------------------- Debts End --------------------- */
 
-// ----------------- SALES + PROFIT GRAPH DUAL LINE -----------------
+async function downloadItemReportPDF() {
+  const item = dom.itemReportSearch.value.trim();
+  const query = item ? `?name=${encodeURIComponent(item)}` : "";
+  const fallbackName = item
+    ? `${sanitizeFileName(item)}-stock-report.pdf`
+    : "stock-report.pdf";
 
-async function loadBusinessTrend(year = "all") {
+  await withButtonState(
+    dom.itemReportPdfBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Preparing PDF...',
+    async () => {
+      try {
+        await downloadAuthenticatedFile(`/items/report/pdf${query}`, fallbackName);
+        showPopup(
+          "success",
+          "Download complete",
+          "The stock report PDF has been downloaded.",
+        );
+      } catch (error) {
+        console.error("Stock PDF download failed:", error);
+        showPopup(
+          "error",
+          "Download failed",
+          error.message || "Could not download the stock report PDF.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+async function downloadSalesPDF() {
+  if (!validateSalesDates()) {
+    return;
+  }
+
+  const fromDate = dom.fromDate.value;
+  const toDate = dom.toDate.value;
+
+  await withButtonState(
+    dom.pdfBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Preparing PDF...',
+    async () => {
+      try {
+        await downloadAuthenticatedFile(
+          `/sales/report/pdf?from=${fromDate}&to=${toDate}`,
+          `sales-report-${fromDate}-to-${toDate}.pdf`,
+        );
+        showPopup(
+          "success",
+          "Download complete",
+          "The sales report PDF has been downloaded.",
+        );
+      } catch (error) {
+        console.error("Sales PDF download failed:", error);
+        showPopup(
+          "error",
+          "Download failed",
+          error.message || "Could not download the sales PDF.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+async function downloadSalesExcel() {
+  if (!validateSalesDates()) {
+    return;
+  }
+
+  const fromDate = dom.fromDate.value;
+  const toDate = dom.toDate.value;
+
+  await withButtonState(
+    dom.excelBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Preparing Excel...',
+    async () => {
+      try {
+        await downloadAuthenticatedFile(
+          `/sales/report/excel?from=${fromDate}&to=${toDate}`,
+          `sales-report-${fromDate}-to-${toDate}.xlsx`,
+        );
+        showPopup(
+          "success",
+          "Download complete",
+          "The sales report Excel file has been downloaded.",
+        );
+      } catch (error) {
+        console.error("Sales Excel download failed:", error);
+        showPopup(
+          "error",
+          "Download failed",
+          error.message || "Could not download the sales Excel file.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+async function submitDebt() {
+  const customerName = dom.cdName.value.trim();
+  const customerNumber = dom.cdNumber.value.trim();
+  const total = Number(dom.cdTotal.value) || 0;
+  const credit = Number(dom.cdCredit.value) || 0;
+  const remark = dom.cdRemark.value.trim();
+
+  if (!customerName) {
+    showPopup(
+      "error",
+      "Missing customer name",
+      "Customer name is required before saving a due entry.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  if (!/^\d{10}$/.test(customerNumber)) {
+    showPopup(
+      "error",
+      "Invalid mobile number",
+      "Enter a valid 10-digit mobile number.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  if (total < 0 || credit < 0) {
+    showPopup(
+      "error",
+      "Invalid amount",
+      "Amount and credit cannot be negative.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  if (total === 0 && credit === 0) {
+    showPopup(
+      "error",
+      "Missing amount",
+      "Enter an amount or a credit value before submitting.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  await withButtonState(
+    dom.submitDebtBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Saving due...',
+    async () => {
+      try {
+        const data = await fetchJSON("/debts", {
+          method: "POST",
+          body: JSON.stringify({
+            customer_name: customerName,
+            customer_number: customerNumber,
+            total,
+            credit,
+            remark,
+          }),
+        });
+
+        showPopup(
+          "success",
+          "Due saved",
+          data.message || "Customer due entry added successfully.",
+        );
+
+        ["cdName", "cdNumber", "cdTotal", "cdCredit", "cdRemark"].forEach((id) => {
+          document.getElementById(id).value = "";
+        });
+
+        setCustomerNameLocked(false);
+        await loadDashboardOverview({ silent: true });
+
+        if (state.ledgerMode === "summary") {
+          await showAllDues({ silent: true });
+        }
+
+        if (state.ledgerMode === "ledger" && state.currentLedgerNumber === customerNumber) {
+          await searchLedger({ value: customerNumber, silent: true });
+        }
+      } catch (error) {
+        console.error("Due submit failed:", error);
+        showPopup(
+          "error",
+          "Save failed",
+          error.message || "Could not save the due entry.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+async function loadBusinessTrend(year = "all", options = {}) {
+  if (typeof Chart === "undefined" || !dom.businessTrendChart) {
+    return;
+  }
+
   try {
-    const res = await fetch(`${apiBase}/sales/monthly-trend?year=${year}`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    if (!res.ok) throw new Error("Failed to load trend");
-
-    const data = await res.json();
-
-    const labels = data.map((d) => d.month);
-    const sales = data.map((d) => Number(d.total_sales));
-    const profit = data.map((d) => Number(d.total_profit));
+    const rows = await fetchJSON(`/sales/monthly-trend?year=${year}`);
+    const labels = rows.map((row) => row.month);
+    const sales = rows.map((row) => Number(row.total_sales) || 0);
+    const profit = rows.map((row) => Number(row.total_profit) || 0);
 
     renderBusinessTrend(labels, sales, profit);
     updateGrowthBadge(sales);
-  } catch (err) {
-    console.error(err);
+  } catch (error) {
+    console.error("Business trend load failed:", error);
+    if (!options.silent) {
+      showPopup(
+        "error",
+        "Chart unavailable",
+        "Could not load the monthly business trend chart.",
+        { autoClose: false },
+      );
+    }
   }
 }
 
 function renderBusinessTrend(labels, sales, profit) {
-  const ctx = document.getElementById("businessTrendChart").getContext("2d");
+  const ctx = dom.businessTrendChart.getContext("2d");
 
-  if (window.businessTrendInstance) {
-    window.businessTrendInstance.destroy();
+  if (state.charts.businessTrend) {
+    state.charts.businessTrend.destroy();
   }
 
-  window.businessTrendInstance = new Chart(ctx, {
+  const salesGradient = ctx.createLinearGradient(0, 0, 0, 260);
+  salesGradient.addColorStop(0, "rgba(14, 165, 233, 0.26)");
+  salesGradient.addColorStop(1, "rgba(14, 165, 233, 0.02)");
+
+  const profitGradient = ctx.createLinearGradient(0, 0, 0, 260);
+  profitGradient.addColorStop(0, "rgba(20, 184, 166, 0.24)");
+  profitGradient.addColorStop(1, "rgba(20, 184, 166, 0.02)");
+
+  state.charts.businessTrend = new Chart(ctx, {
     type: "line",
     data: {
-      labels: labels,
+      labels,
       datasets: [
         {
           label: "Sales",
           data: sales,
-          tension: 0.3,
+          borderColor: "#0ea5e9",
+          backgroundColor: salesGradient,
+          fill: true,
           borderWidth: 3,
+          tension: 0.32,
+          pointRadius: 3,
+          pointHoverRadius: 5,
         },
         {
           label: "Profit",
           data: profit,
-          tension: 0.3,
+          borderColor: "#14b8a6",
+          backgroundColor: profitGradient,
+          fill: true,
           borderWidth: 3,
+          tension: 0.32,
+          pointRadius: 3,
+          pointHoverRadius: 5,
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: {
-        duration: 1000,
-      },
       plugins: {
         legend: {
-          display: true,
           position: "top",
+          labels: {
+            usePointStyle: true,
+            boxWidth: 10,
+          },
         },
         tooltip: {
           callbacks: {
-            label: function (context) {
-              return (
-                context.dataset.label +
-                ": ₹" +
-                context.parsed.y.toLocaleString()
-              );
+            label(context) {
+              return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
             },
           },
         },
       },
       scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+        },
         y: {
           beginAtZero: true,
           ticks: {
-            callback: (value) => "₹" + value.toLocaleString(),
+            callback(value) {
+              return formatCurrency(value);
+            },
           },
         },
       },
     },
   });
 }
-// ------------- HOW MUCH GROTH PERCENTAGE OF SALE -----------------
-function updateGrowthBadge(values) {
-  const badge = document.getElementById("growthBadge");
 
-  if (!values || values.length < 2) {
-    badge.innerHTML = "";
+function updateGrowthBadge(values) {
+  if (!values.length || values.length < 2) {
+    dom.growthBadge.innerHTML =
+      '<span class="text-muted">Need at least two months of sales data to calculate growth.</span>';
     return;
   }
 
-  const last = values[values.length - 1];
-  const prev = values[values.length - 2];
+  const last = Number(values[values.length - 1]) || 0;
+  const previous = Number(values[values.length - 2]) || 0;
 
-  if (prev === 0) return;
-
-  const growth = ((last - prev) / prev) * 100;
-  const formatted = Math.abs(growth).toFixed(1);
-
-  if (growth >= 0) {
-    badge.innerHTML = `<span class="text-success">▲ ${formatted}% Growth (Sales)</span>`;
-  } else {
-    badge.innerHTML = `<span class="text-danger">▼ ${formatted}% Drop (Sales)</span>`;
+  if (previous <= 0) {
+    dom.growthBadge.innerHTML =
+      '<span class="text-muted">Growth will appear once two comparable sales months are available.</span>';
+    return;
   }
+
+  const growth = ((last - previous) / previous) * 100;
+  const directionIcon =
+    growth >= 0
+      ? '<i class="fa-solid fa-arrow-trend-up text-success"></i>'
+      : '<i class="fa-solid fa-arrow-trend-down text-danger"></i>';
+  const directionText = growth >= 0 ? "growth" : "drop";
+  const directionClass = growth >= 0 ? "text-success" : "text-danger";
+
+  dom.growthBadge.innerHTML = `
+    ${directionIcon}
+    <span class="${directionClass}">
+      ${Math.abs(growth).toFixed(1)}% ${directionText} vs previous month
+    </span>
+  `;
 }
-// ----------------- YEAR FILTER FOR GRAPH -----------------
+
 function initYearFilter() {
-  const select = document.getElementById("yearFilter");
   const currentYear = new Date().getFullYear();
 
-  for (let y = currentYear; y >= currentYear - 5; y--) {
+  for (let year = currentYear; year >= currentYear - 5; year -= 1) {
     const option = document.createElement("option");
-    option.value = y;
-    option.textContent = y;
-    select.appendChild(option);
+    option.value = String(year);
+    option.textContent = String(year);
+    dom.yearFilter.appendChild(option);
   }
 
-  select.addEventListener("change", () => {
-    loadBusinessTrend(select.value);
+  dom.yearFilter.addEventListener("change", () => {
+    loadBusinessTrend(dom.yearFilter.value, { silent: true });
   });
 }
 
-//-------------------- LAST 13 MONTS SALE CHART BAR ------------------
-let last12Chart;
-async function loadLast12MonthsChart() {
+async function loadLast13MonthsChart(options = {}) {
+  if (typeof Chart === "undefined" || !dom.last12MonthsChart) {
+    return;
+  }
+
   try {
-    const res = await fetch(`${apiBase}/sales/last-13-months`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    if (!res.ok) throw new Error("Chart load failed");
-
-    const rows = await res.json();
-
-    const labels = rows.map((r) => r.month);
-    const data = rows.map((r) => parseFloat(r.total_sales));
-
-    const ctx = document.getElementById("last12MonthsChart");
-
-    if (!ctx) return;
-
-    if (last12Chart) {
-      last12Chart.destroy();
+    const rows = await fetchJSON("/sales/last-13-months");
+    const labels = rows.map((row) => row.month);
+    const data = rows.map((row) => Number(row.total_sales) || 0);
+    renderLast13MonthsChart(labels, data);
+  } catch (error) {
+    console.error("Last 13 months chart failed:", error);
+    if (!options.silent) {
+      showPopup(
+        "error",
+        "Chart unavailable",
+        "Could not load the recent sales chart.",
+        { autoClose: false },
+      );
     }
-
-    last12Chart = new Chart(ctx, {
-      type: "bar",
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: "Monthly Sales",
-            data: data,
-            backgroundColor: "rgba(245, 158, 11, 0.85)",
-            borderColor: "rgba(245, 158, 11, 0.85)",
-            borderWidth: 1,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        plugins: {
-          legend: { display: false },
-        },
-        scales: {
-          y: { beginAtZero: true },
-        },
-      },
-    });
-  } catch (err) {
-    console.error("Chart error:", err);
   }
 }
 
-//------------------ CUSTOMER DROPDOEN IN DEBS CONTACT NUMBER ---------------------
-async function loadCustomerSuggestions(query) {
-  try {
-    const res = await fetch(
-      `${apiBase}/debts/customers?q=${encodeURIComponent(query)}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+function renderLast13MonthsChart(labels, values) {
+  const ctx = dom.last12MonthsChart.getContext("2d");
+
+  if (state.charts.last13Months) {
+    state.charts.last13Months.destroy();
+  }
+
+  const barGradient = ctx.createLinearGradient(0, 0, 0, 260);
+  barGradient.addColorStop(0, "rgba(37, 99, 235, 0.95)");
+  barGradient.addColorStop(1, "rgba(14, 165, 233, 0.52)");
+
+  state.charts.last13Months = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          data: values,
+          backgroundColor: barGradient,
+          borderRadius: 10,
+          maxBarThickness: 28,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false,
+        },
+        tooltip: {
+          callbacks: {
+            label(context) {
+              return `Sales: ${formatCurrency(context.parsed.y)}`;
+            },
+          },
         },
       },
-    );
+      scales: {
+        x: {
+          grid: {
+            display: false,
+          },
+        },
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback(value) {
+              return formatCurrency(value);
+            },
+          },
+        },
+      },
+    },
+  });
+}
 
-    if (!res.ok) return [];
-    return await res.json();
-  } catch (err) {
-    console.error("Customer suggestion error:", err);
+async function loadCustomerSuggestions(query) {
+  try {
+    const rows = await fetchJSON(`/debts/customers?q=${encodeURIComponent(query)}`);
+    return Array.isArray(rows) ? rows : [];
+  } catch (error) {
+    console.error("Customer suggestions failed:", error);
     return [];
   }
 }
 
-async function searchLedger() {
-  const value = document.getElementById("cdSearchInput").value.trim();
-
-  if (!value)
-    return showPopup("error", "Missing Input", "Enter name or number");
-
-  // If exactly 10 digit number → search ledger
-  if (/^\d{10}$/.test(value)) {
-    try {
-      const res = await fetch(`${apiBase}/debts/${value}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      const data = await res.json();
-      renderLedgerTable(data, "ledger");
-    } catch (err) {
-      console.error("Search ledger error:", err);
-    }
-  } else {
-    showPopup(
-      "error",
-      "Invalid Selection",
-      "Please select a customer from dropdown",
-    );
-  }
-}
-
-async function showAllDues() {
-  try {
-    const res = await fetch(`${apiBase}/debts`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
-    const data = await res.json();
-    renderLedgerTable(data, "summary");
-  } catch (err) {
-    console.error("Show dues error:", err);
-  }
-}
-
-function renderLedgerTable(rows, mode = "summary") {
-  const ledgerDiv = document.getElementById("ledgerTable");
-  if (!rows || !rows.length) {
-    ledgerDiv.innerHTML = "<p>No records.</p>";
+function renderCustomerDropdown(listEl, customers, onSelect) {
+  if (!customers.length) {
+    listEl.style.display = "none";
+    listEl.innerHTML = "";
     return;
   }
 
-  let html = '<table class="table table-bordered table-sm text-center">';
-  let totalOutstanding = 0;
+  listEl.innerHTML = customers
+    .map((customer) => {
+      const customerName = escapeHtml(customer.customer_name);
+      const customerNumber = escapeHtml(customer.customer_number);
 
-  if (mode === "summary") {
-    html +=
-      "<tr><th>Name</th><th>Number</th><th>Total</th><th>Credit</th><th>Balance</th></tr>";
-    rows.forEach((r) => {
-      const balance = parseFloat(r.balance) || 0;
-      totalOutstanding += balance;
-      html += `<tr>
-        <td>${escapeHtml(r.customer_name)}</td>
-        <td>${r.customer_number}</td>
-        <td>${r.total}</td>
-        <td>${r.credit}</td>
-        <td>${balance.toFixed(2)}</td>
-      </tr>`;
+      return `
+        <div
+          class="dropdown-item"
+          data-name="${encodeURIComponent(customer.customer_name)}"
+          data-number="${encodeURIComponent(customer.customer_number)}"
+        >
+          ${customerName} - ${customerNumber}
+        </div>
+      `;
+    })
+    .join("");
+
+  listEl.style.display = "block";
+
+  listEl.querySelectorAll(".dropdown-item").forEach((item) => {
+    item.addEventListener("click", () => {
+      onSelect({
+        name: decodeURIComponent(item.dataset.name),
+        number: decodeURIComponent(item.dataset.number),
+      });
+      listEl.style.display = "none";
     });
-  } else {
-    html +=
-      "<tr><th>Date</th><th>Total</th><th>Credit</th><th>Balance</th><th>Remarks</th></tr>";
-    let balance = 0;
-    rows.forEach((r) => {
-      balance += r.total - r.credit;
-      html += `<tr>
-        <td>${new Date(r.created_at).toLocaleDateString()}</td>
-        <td>${r.total}</td>
-        <td>${r.credit}</td>
-        <td>${balance.toFixed(2)}</td>
-        <td>${escapeHtml(r.remark || "")}</td>
-      </tr>`;
-    });
-    totalOutstanding = balance;
-  }
-
-  html += `</table>
-    <div class="text-end mt-2 fw-bold text-primary">
-      Total Outstanding Balance: ₹${totalOutstanding.toFixed(2)}
-    </div>`;
-
-  ledgerDiv.innerHTML = html;
+  });
 }
 
-/* =========================================================
-   🚀 APPLICATION INITIALIZATION BLOCK
-   =========================================================
-   This block runs once the HTML DOM is fully loaded.
-   It is responsible for:
+function renderEmptyLedger(message) {
+  dom.ledgerTable.innerHTML = `<div class="empty-ledger">${escapeHtml(message)}</div>`;
+  state.ledgerMode = "empty";
+  state.currentLedgerNumber = "";
+}
 
-   1️⃣ Checking authentication
-   2️⃣ Restoring saved UI state (profit %, active section)
-   3️⃣ Binding all button click events
-   4️⃣ Initializing dropdown auto-suggestions
-   5️⃣ Loading initial reports & charts
-   6️⃣ Ensuring page state persists after refresh
+function updateDueOverviewFromRows(rows) {
+  const totalBalance = rows.reduce((sum, row) => {
+    return sum + (Number(row.balance) || 0);
+  }, 0);
 
-   ========================================================= */
-window.addEventListener("DOMContentLoaded", async () => {
-  /* -------------------------------------------------------
-     🔐 STEP 1: AUTHENTICATION CHECK
-     -------------------------------------------------------
-     Ensure user is logged in before loading anything.
-     If not authenticated → redirect handled inside checkAuth()
-  ------------------------------------------------------- */
-  await checkAuth();
+  dom.statDueBalance.textContent = formatCurrency(totalBalance);
+  dom.statDueNote.textContent = rows.length
+    ? `${formatCount(rows.length)} customer${rows.length === 1 ? "" : "s"} currently have pending balances.`
+    : "No outstanding due balance at the moment.";
 
-  /* -------------------------------------------------------
-     💾 STEP 2: RESTORE SAVED PROFIT PERCENTAGE
-     -------------------------------------------------------
-     Load previously saved default profit percentage
-     from localStorage and set it into the input field.
-  ------------------------------------------------------- */
-  const savedPercent = parseFloat(localStorage.getItem("defaultProfitPercent"));
-  if (!isNaN(savedPercent)) {
-    document.getElementById("profitPercent").value = savedPercent;
+  updateHeroSummary({
+    itemCount: parseFormattedNumber(dom.statCatalogCount.textContent),
+    lowStockCount: parseFormattedNumber(dom.statLowStock.textContent),
+    dueCustomerCount: rows.length,
+  });
+}
+
+function renderLedgerTable(rows, mode = "summary") {
+  if (!rows.length) {
+    renderEmptyLedger("No records found for this customer selection.");
+    return;
   }
 
-  /* -------------------------------------------------------
-     📌 STEP 3: SIDEBAR INITIALIZATION
-     -------------------------------------------------------
-     Setup sidebar navigation (section switching logic).
-  ------------------------------------------------------- */
-  setupSidebar();
+  let totalOutstanding = 0;
+  let tableHead = "";
+  let tableBody = "";
+  let summaryLabel = "";
 
-  /* -------------------------------------------------------
-     🔘 STEP 4: BUTTON EVENT BINDINGS
-     -------------------------------------------------------
-     Connect UI buttons to their respective functions.
-     This prevents inline JS in HTML (clean architecture).
-  ------------------------------------------------------- */
-  document.getElementById("addStockBtn").addEventListener("click", addStock);
-  document
-    .getElementById("loadItemReportBtn")
-    .addEventListener("click", loadItemReport);
-  document
-    .getElementById("itemReportPdfBtn")
-    .addEventListener("click", downloadItemReportPDF);
-  document
-    .getElementById("loadSalesBtn")
-    .addEventListener("click", loadSalesReport);
-  document.getElementById("pdfBtn").addEventListener("click", downloadSalesPDF);
-  document
-    .getElementById("excelBtn")
-    .addEventListener("click", downloadSalesExcel);
+  if (mode === "summary") {
+    state.ledgerMode = "summary";
+    state.currentLedgerNumber = "";
 
-  document
-    .getElementById("submitDebtBtn")
-    .addEventListener("click", submitDebt);
+    tableHead = `
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Number</th>
+          <th>Total</th>
+          <th>Credit</th>
+          <th>Balance</th>
+        </tr>
+      </thead>
+    `;
 
-  /* =======================================================
-     👤 STEP 5: CUSTOMER NUMBER AUTO-SUGGEST DROPDOWN
-     ======================================================= */
-  const cdNumberInput = document.getElementById("cdNumber");
-  const cdNameInput = document.getElementById("cdName");
-  const cdNumberDropdown = document.getElementById("cdNumberDropdown");
-  // Trigger suggestions when user types customer number
-  cdNumberInput.addEventListener("input", async () => {
-    const q = cdNumberInput.value.trim();
-    // Hide dropdown if input empty
-    if (!q) {
-      cdNumberDropdown.style.display = "none";
-      return;
+    rows.forEach((row) => {
+      const total = Number(row.total) || 0;
+      const credit = Number(row.credit) || 0;
+      const balance = Number(row.balance) || 0;
+
+      totalOutstanding += balance;
+      tableBody += `
+        <tr>
+          <td>${escapeHtml(row.customer_name)}</td>
+          <td>${escapeHtml(row.customer_number)}</td>
+          <td>${formatCurrency(total)}</td>
+          <td>${formatCurrency(credit)}</td>
+          <td>${formatCurrency(balance)}</td>
+        </tr>
+      `;
+    });
+
+    updateDueOverviewFromRows(rows);
+    summaryLabel = `${formatCount(rows.length)} customer${rows.length === 1 ? "" : "s"} with outstanding balance`;
+  } else {
+    const ledgerNumber = rows[0]?.customer_number || "";
+    const customerName = rows[0]?.customer_name || "Selected customer";
+
+    state.ledgerMode = "ledger";
+    state.currentLedgerNumber = ledgerNumber;
+
+    tableHead = `
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Total</th>
+          <th>Credit</th>
+          <th>Balance</th>
+          <th>Remarks</th>
+        </tr>
+      </thead>
+    `;
+
+    rows.forEach((row) => {
+      totalOutstanding += (Number(row.total) || 0) - (Number(row.credit) || 0);
+
+      tableBody += `
+        <tr>
+          <td>${formatDate(row.created_at)}</td>
+          <td>${formatCurrency(row.total)}</td>
+          <td>${formatCurrency(row.credit)}</td>
+          <td>${formatCurrency(totalOutstanding)}</td>
+          <td>${escapeHtml(row.remark || "-")}</td>
+        </tr>
+      `;
+    });
+
+    summaryLabel = `${escapeHtml(customerName)} - ${escapeHtml(ledgerNumber)}`;
+  }
+
+  dom.ledgerTable.innerHTML = `
+    <div class="summary-strip mb-3">
+      <span class="summary-pill">
+        <i class="fa-solid fa-address-card"></i>
+        ${summaryLabel}
+      </span>
+      <span class="summary-pill">
+        <i class="fa-solid fa-hand-holding-dollar"></i>
+        Outstanding: ${formatCurrency(totalOutstanding)}
+      </span>
+    </div>
+    <table class="table table-sm text-center align-middle">
+      ${tableHead}
+      <tbody>${tableBody}</tbody>
+    </table>
+  `;
+}
+
+async function searchLedger(options = {}) {
+  const value = (options.value || dom.cdSearchInput.value).trim();
+
+  if (!value) {
+    if (!options.silent) {
+      showPopup(
+        "error",
+        "Missing search input",
+        "Enter a customer name or 10-digit number to search ledger entries.",
+        { autoClose: false },
+      );
     }
-    // Fetch matching customers from backend
-    const customers = await loadCustomerSuggestions(q);
-    // Hide dropdown if no match
-    if (!customers.length) {
-      cdNumberDropdown.style.display = "none";
-      return;
+    return;
+  }
+
+  if (!/^\d{10}$/.test(value)) {
+    if (!options.silent) {
+      showPopup(
+        "error",
+        "Select a customer",
+        "Choose a customer from the dropdown to open the exact ledger.",
+        { autoClose: false },
+      );
     }
-    // Populate dropdown list dynamically
-    cdNumberDropdown.innerHTML = customers
-      .map(
-        (c) => `
-      <div class="dropdown-item"
-           data-number="${c.customer_number}"
-           data-name="${escapeHtml(c.customer_name)}">
-        ${escapeHtml(c.customer_name)} - ${c.customer_number}
-      </div>
-    `,
-      )
-      .join("");
+    return;
+  }
 
-    cdNumberDropdown.style.display = "block";
-    // When user selects a suggestion
-    cdNumberDropdown.querySelectorAll(".dropdown-item").forEach((item) => {
-      item.addEventListener("click", () => {
-        // Fill input fields
-        cdNumberInput.value = item.dataset.number;
-        cdNameInput.value = item.dataset.name;
-        // Disable name editing (existing customer)
-        cdNameInput.disabled = true;
-        cdNameInput.classList.add("bg-light");
+  const task = async () => {
+    const rows = await fetchJSON(`/debts/${value}`);
+    renderLedgerTable(Array.isArray(rows) ? rows : [], "ledger");
+  };
 
-        cdNumberDropdown.style.display = "none";
-      });
+  if (options.silent) {
+    try {
+      await task();
+    } catch (error) {
+      console.error("Ledger search failed:", error);
+      renderEmptyLedger("Could not load the selected customer ledger.");
+    }
+    return;
+  }
+
+  await withButtonState(
+    dom.searchLedgerBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Searching...',
+    async () => {
+      try {
+        await task();
+      } catch (error) {
+        console.error("Ledger search failed:", error);
+        showPopup(
+          "error",
+          "Search failed",
+          error.message || "Could not load the customer ledger.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+async function showAllDues(options = {}) {
+  const task = async () => {
+    const rows = await fetchJSON("/debts");
+    renderLedgerTable(Array.isArray(rows) ? rows : [], "summary");
+  };
+
+  if (options.silent) {
+    try {
+      await task();
+    } catch (error) {
+      console.error("All dues load failed:", error);
+      renderEmptyLedger("Could not load customer due balances right now.");
+    }
+    return;
+  }
+
+  await withButtonState(
+    dom.showAllDuesBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Loading...',
+    async () => {
+      try {
+        await task();
+      } catch (error) {
+        console.error("All dues load failed:", error);
+        showPopup(
+          "error",
+          "Load failed",
+          error.message || "Could not load customer due balances.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+function restrictToDigits(input) {
+  input.addEventListener("input", () => {
+    input.value = input.value.replace(/\D/g, "").slice(0, 10);
+  });
+}
+
+function setDefaultSalesDates() {
+  const today = new Date();
+  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  dom.fromDate.value = toInputDate(firstDay);
+  dom.toDate.value = toInputDate(today);
+}
+
+function bindSidebarEvents() {
+  dom.sidebarToggle.addEventListener("click", () => {
+    const isOpen = dom.sidebar.classList.contains("sidebar--open");
+    if (isOpen) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  });
+
+  dom.sidebarOverlay.addEventListener("click", closeSidebar);
+
+  dom.sectionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setActiveSection(button.dataset.section);
     });
   });
 
-  // Hide dropdown when clicking outside
-  document.addEventListener("click", (e) => {
-    if (
-      !cdNumberInput.contains(e.target) &&
-      !cdNumberDropdown.contains(e.target)
-    ) {
-      cdNumberDropdown.style.display = "none";
-    }
-  });
-
-  /* =======================================================
-     🔎 STEP 6: LEDGER SEARCH & DUES BUTTONS
-     ======================================================= */
-  document
-    .getElementById("searchLedgerBtn")
-    .addEventListener("click", searchLedger);
-  document
-    .getElementById("showAllDuesBtn")
-    .addEventListener("click", showAllDues);
-
-  /* =======================================================
-     🔍 STEP 7: CUSTOMER SEARCH DROPDOWN (LEDGER SECTION)
-     ======================================================= */
-  const cdInput = document.getElementById("cdSearchInput");
-  const cdDropdown = document.getElementById("cdSearchDropdown");
-
-  cdInput.addEventListener("input", async () => {
-    const q = cdInput.value.trim();
-
-    if (!q) {
-      cdDropdown.style.display = "none";
-      return;
-    }
-
-    const customers = await loadCustomerSuggestions(q);
-
-    if (!customers.length) {
-      cdDropdown.style.display = "none";
-      return;
-    }
-
-    cdDropdown.innerHTML = customers
-      .map(
-        (c) => `
-      <div class="dropdown-item" data-number="${c.customer_number}">
-        ${escapeHtml(c.customer_name)} - ${c.customer_number}
-      </div>
-    `,
-      )
-      .join("");
-
-    cdDropdown.style.display = "block";
-
-    cdDropdown.querySelectorAll(".dropdown-item").forEach((item) => {
-      item.addEventListener("click", () => {
-        cdInput.value = item.dataset.number;
-        cdDropdown.style.display = "none";
-        searchLedger();
-      });
-    });
-  });
-
-  // Hide dropdown when clicking outside
-  document.addEventListener("click", (e) => {
-    if (!cdInput.contains(e.target) && !cdDropdown.contains(e.target)) {
-      cdDropdown.style.display = "none";
-    }
-  });
-
-  /* =======================================================
-     🧾 STEP 8: INVOICE PAGE NAVIGATION
-     ======================================================= */
-  document.getElementById("invoiceBtn").addEventListener("click", () => {
+  dom.invoiceBtn.addEventListener("click", () => {
     window.location.href = "invoice.html";
   });
 
-  /* =======================================================
-     🔎 STEP 9: ITEM SEARCH FILTER SETUP
-     ======================================================= */
-  setupFilterInput("newItemSearch", "newItemDropdownList", (itemName) => {
-    showPreviousBuyingRate(itemName);
+  dom.logoutBtn.addEventListener("click", () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.replace("login.html");
   });
-  setupFilterInput("itemReportSearch", "itemReportDropdown", () => {});
 
-  /* =======================================================
-     🔄 STEP 10: RESTORE LAST ACTIVE SECTION (AFTER REFRESH)
-     ======================================================= */
-  const lastSection = localStorage.getItem("activeSection");
-
-  if (lastSection && document.getElementById(lastSection)) {
-    // Hide all sections
-    document
-      .querySelectorAll(".form-section")
-      .forEach((s) => s.classList.remove("active"));
-    // Remove active class from sidebar buttons
-    document
-      .querySelectorAll(".sidebar button")
-      .forEach((b) => b.classList.remove("active"));
-    // Activate previous section
-    document.getElementById(lastSection).classList.add("active");
-    // Activate matching sidebar button
-    const btn = document.querySelector(
-      `.sidebar button[data-section="${lastSection}"]`,
-    );
-    if (btn) btn.classList.add("active");
-
-    // If returning to item report → auto load low stock
-    if (lastSection === "itemReportSection") {
-      loadLowStock();
+  window.addEventListener("resize", () => {
+    if (!isMobileLayout()) {
+      closeSidebar();
     }
-  }
-
-  /* =======================================================
-     📊 STEP 11: INITIAL DATA LOAD (ON PAGE START)
-     ======================================================= */
-  await loadItemNames(); // Load item names into dropdowns
-  initYearFilter(); // Setup year filter dropdown
-  await loadBusinessTrend(); // Monthly sales + profit chart
-  await loadLast12MonthsChart(); // Last 12 months sales chart
-});
-
-function restrictToDigits(id) {
-  const input = document.getElementById(id);
-  if (!input) return;
-
-  input.addEventListener("keypress", (e) => {
-    if (!/[0-9]/.test(e.key)) e.preventDefault();
-  });
-
-  input.addEventListener("input", () => {
-    input.value = input.value.replace(/[^0-9]/g, "").slice(0, 10);
   });
 }
 
-// Apply to both fields
-restrictToDigits("cdNumber");
+function bindPopupEvents() {
+  dom.popupOverlay.addEventListener("click", hidePopup);
+  dom.popupClose.addEventListener("click", hidePopup);
+  dom.popupBox.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
 
-setTimeout(() => {
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      hidePopup();
+      closeSidebar();
+    }
+  });
+}
+
+function bindInventoryEvents() {
+  dom.profitPercent.addEventListener("input", () => {
+    updateSellingRate();
+    localStorage.setItem("defaultProfitPercent", dom.profitPercent.value);
+  });
+
+  dom.buyingRate.addEventListener("input", updateSellingRate);
+  dom.sellingRate.addEventListener("input", updateProfitPercent);
+
+  dom.newItemSearch.addEventListener("input", () => {
+    if (!dom.newItemSearch.value.trim()) {
+      hidePreviousBuyingRate();
+      return;
+    }
+
+    if (!state.itemNames.includes(dom.newItemSearch.value.trim())) {
+      hidePreviousBuyingRate();
+    }
+  });
+
+  dom.newItemSearch.addEventListener("blur", () => {
+    const itemName = dom.newItemSearch.value.trim();
+    if (state.itemNames.includes(itemName)) {
+      showPreviousBuyingRate(itemName);
+    }
+  });
+
+  [
+    dom.newItemSearch,
+    dom.newQuantity,
+    dom.profitPercent,
+    dom.buyingRate,
+    dom.sellingRate,
+  ].forEach((input) => {
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        addStock();
+      }
+    });
+  });
+
+  dom.addStockBtn.addEventListener("click", addStock);
+
+  setupFilterInput(dom.newItemSearch, dom.newItemDropdownList, (value) => {
+    dom.newItemSearch.value = value;
+    showPreviousBuyingRate(value);
+  });
+}
+
+function bindReportEvents() {
+  setupFilterInput(dom.itemReportSearch, dom.itemReportDropdown, (value) => {
+    dom.itemReportSearch.value = value;
+  });
+
+  dom.itemReportSearch.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      loadItemReport();
+    }
+  });
+
+  dom.loadItemReportBtn.addEventListener("click", () => loadItemReport());
+  dom.itemReportPdfBtn.addEventListener("click", downloadItemReportPDF);
+
+  dom.fromDate.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      loadSalesReport();
+    }
+  });
+
+  dom.toDate.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      loadSalesReport();
+    }
+  });
+
+  dom.loadSalesBtn.addEventListener("click", () => loadSalesReport());
+  dom.pdfBtn.addEventListener("click", downloadSalesPDF);
+  dom.excelBtn.addEventListener("click", downloadSalesExcel);
+}
+
+function bindCustomerDueEvents() {
+  restrictToDigits(dom.cdNumber);
+
+  dom.cdNumber.addEventListener("input", async () => {
+    const query = dom.cdNumber.value.trim();
+    setCustomerNameLocked(false);
+
+    if (!query) {
+      dom.cdNumberDropdown.style.display = "none";
+      return;
+    }
+
+    const customers = await loadCustomerSuggestions(query);
+    renderCustomerDropdown(dom.cdNumberDropdown, customers, ({ name, number }) => {
+      dom.cdName.value = name;
+      dom.cdNumber.value = number;
+      setCustomerNameLocked(true);
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (
+      !dom.cdNumber.contains(event.target) &&
+      !dom.cdNumberDropdown.contains(event.target)
+    ) {
+      dom.cdNumberDropdown.style.display = "none";
+    }
+  });
+
+  dom.submitDebtBtn.addEventListener("click", submitDebt);
+
+  dom.cdSearchInput.addEventListener("input", async () => {
+    const query = dom.cdSearchInput.value.trim();
+
+    if (!query) {
+      dom.cdSearchDropdown.style.display = "none";
+      return;
+    }
+
+    const customers = await loadCustomerSuggestions(query);
+    renderCustomerDropdown(dom.cdSearchDropdown, customers, ({ number }) => {
+      dom.cdSearchInput.value = number;
+      searchLedger({ value: number });
+    });
+  });
+
+  dom.cdSearchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      searchLedger();
+    }
+  });
+
+  document.addEventListener("click", (event) => {
+    if (
+      !dom.cdSearchInput.contains(event.target) &&
+      !dom.cdSearchDropdown.contains(event.target)
+    ) {
+      dom.cdSearchDropdown.style.display = "none";
+    }
+  });
+
+  dom.searchLedgerBtn.addEventListener("click", () => searchLedger());
+  dom.showAllDuesBtn.addEventListener("click", () => showAllDues());
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  cacheElements();
+  bindSidebarEvents();
+  bindPopupEvents();
+  bindInventoryEvents();
+  bindReportEvents();
+  bindCustomerDueEvents();
+  updateCurrentDateLabel();
+  hidePreviousBuyingRate();
+  renderEmptyLedger(
+    "Search a customer or load all due balances to view the ledger.",
+  );
+  setDefaultSalesDates();
+
+  const savedPercent = Number(localStorage.getItem("defaultProfitPercent"));
+  if (Number.isFinite(savedPercent) && savedPercent > 0) {
+    dom.profitPercent.value = savedPercent.toFixed(2);
+  }
+  updateProfitPreview();
+
+  const user = await checkAuth();
+  if (!user) {
+    return;
+  }
+
+  const savedSection = localStorage.getItem("activeSection");
+  const validSection = dom.sectionButtons.some(
+    (button) => button.dataset.section === savedSection,
+  )
+    ? savedSection
+    : dom.sectionButtons[0]?.dataset.section;
+
+  if (validSection) {
+    setActiveSection(validSection);
+  }
+
+  await loadItemNames({ silent: true });
+  initYearFilter();
+
+  await Promise.allSettled([
+    loadDashboardOverview({ silent: true }),
+    loadBusinessTrend("all", { silent: true }),
+    loadLast13MonthsChart({ silent: true }),
+  ]);
+
+  if (validSection === "itemReportSection") {
+    await loadLowStock({ silent: true });
+  }
+});
+
+window.setTimeout(() => {
   if (document.body.style.visibility === "hidden") {
     document.body.style.visibility = "visible";
   }
 }, 5000);
-
-/* =========================
-   🔔 COMMON POPUP SYSTEM
-   ========================= */
-
-const commonPopup = document.getElementById("commonPopup");
-const popupOverlay = document.getElementById("popupOverlay");
-const popupBox = document.getElementById("popupBox");
-const popupTitle = document.getElementById("popupTitle");
-const popupMessage = document.getElementById("popupMessage");
-
-let popupAutoTimer = null;
-
-function showPopup(type, title, message) {
-  if (!commonPopup) return;
-
-  // Clear previous timer if exists
-  if (popupAutoTimer) {
-    clearTimeout(popupAutoTimer);
-    popupAutoTimer = null;
-  }
-
-  popupTitle.textContent = title;
-  popupMessage.textContent = message;
-
-  // Reset colors
-  popupTitle.style.color = "";
-
-  if (type === "success") {
-    popupTitle.style.color = "#16a34a"; // green
-  } else if (type === "error") {
-    popupTitle.style.color = "#dc2626"; // red
-  }
-
-  commonPopup.style.display = "flex";
-
-  // ✅ Success → Auto Close
-  if (type === "success") {
-    popupAutoTimer = setTimeout(() => {
-      hidePopup();
-    }, 2000);
-  }
-}
-
-function hidePopup() {
-  commonPopup.style.display = "none";
-}
-
-// ❌ Error → Close when clicking outside
-if (popupOverlay) {
-  popupOverlay.addEventListener("click", () => {
-    hidePopup();
-  });
-}
-
-// Prevent close when clicking inside box
-if (popupBox) {
-  popupBox.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-}
