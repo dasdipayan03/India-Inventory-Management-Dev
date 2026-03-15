@@ -75,6 +75,15 @@
         color: var(--navy);
         font-size: 18px;
         cursor: pointer;
+        transition:
+          opacity 0.2s ease,
+          transform 0.2s ease;
+      }
+
+      body.body-scroll-lock #sidebarToggle {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-8px);
       }
 
       .sidebar-overlay {
