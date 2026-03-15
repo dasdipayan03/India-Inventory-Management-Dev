@@ -1524,6 +1524,60 @@
         margin-bottom: 18px;
       }
 
+      .mobile-quick-panel {
+        display: none;
+      }
+
+      .mobile-quick-panel h3 {
+        margin: 0;
+        color: var(--ink);
+        font-family: "Sora Variable", "Manrope", sans-serif;
+        font-size: 22px;
+        line-height: 1.1;
+        letter-spacing: -0.04em;
+      }
+
+      .mobile-quick-panel p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.65;
+      }
+
+      .mobile-quick-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .mobile-quick-item {
+        padding: 12px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgba(191, 219, 254, 0.56);
+      }
+
+      .mobile-quick-item i {
+        color: var(--accent-dark);
+        font-size: 14px;
+      }
+
+      .mobile-quick-item strong {
+        display: block;
+        margin-top: 8px;
+        color: var(--ink);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .mobile-quick-item span {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.5;
+      }
+
       .role-preview-card {
         padding: 15px 16px;
         border-radius: 20px;
@@ -1773,6 +1827,25 @@
           grid-template-columns: 1fr;
         }
 
+        .promo {
+          display: none;
+        }
+
+        .mobile-quick-panel {
+          display: grid;
+          gap: 12px;
+          margin-bottom: 18px;
+          padding: 16px;
+          border-radius: 22px;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.86),
+            rgba(241, 248, 253, 0.88)
+          );
+          border: 1px solid rgba(191, 219, 254, 0.56);
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+        }
+
         .promo-copy h3 {
           max-width: none;
           font-size: clamp(30px, 10vw, 42px);
@@ -1794,6 +1867,10 @@
         .auth-card {
           padding: 20px;
           border-radius: 24px;
+        }
+
+        .auth-support-strip {
+          display: none;
         }
 
         .site-footer {
@@ -1824,6 +1901,10 @@
         .brand {
           gap: 12px;
           margin-bottom: 18px;
+        }
+
+        .mobile-quick-grid {
+          grid-template-columns: 1fr;
         }
 
         .logo {
@@ -2029,6 +2110,31 @@
               Sign in with the right account type and move straight into the
               workflow that matches your role.
             </p>
+          </div>
+
+          <div class="mobile-quick-panel" aria-hidden="true">
+            <h3>Everything important, without the extra scroll.</h3>
+            <p>
+              Mobile view now keeps login first and shows only the key product
+              value right where you need it.
+            </p>
+            <div class="mobile-quick-grid">
+              <article class="mobile-quick-item">
+                <i class="fa-solid fa-user-shield"></i>
+                <strong>Role-based login</strong>
+                <span>Admin and staff flow stay separate and clear.</span>
+              </article>
+              <article class="mobile-quick-item">
+                <i class="fa-solid fa-file-invoice"></i>
+                <strong>Invoice ready</strong>
+                <span>Counter workflow remains one tap away after login.</span>
+              </article>
+              <article class="mobile-quick-item">
+                <i class="fa-solid fa-mobile-screen-button"></i>
+                <strong>Mobile focused</strong>
+                <span>Less height, lighter layout, easier tap targets.</span>
+              </article>
+            </div>
           </div>
 
           <div class="role-preview" aria-label="Access roles">
