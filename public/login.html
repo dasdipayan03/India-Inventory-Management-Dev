@@ -8,6 +8,14 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.0.17/index.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@fontsource-variable/sora@5.0.17/index.min.css"
+    />
     <style>
       * {
         box-sizing: border-box;
@@ -1127,31 +1135,766 @@
         }
       }
     </style>
+    <style>
+      :root {
+        --accent: #1196c7;
+        --accent-dark: #0e6f9b;
+        --accent-soft: rgba(17, 150, 199, 0.1);
+        --navy-strong: #0d2243;
+        --navy-soft: #17386a;
+        --teal-soft: #7be4eb;
+        --ink: #10213f;
+        --muted: #5e7291;
+        --surface: #ffffff;
+        --surface-soft: rgba(249, 252, 255, 0.92);
+        --line-strong: rgba(124, 160, 204, 0.2);
+        --shadow-xl: 0 38px 90px rgba(10, 31, 63, 0.22);
+        --shadow-lg: 0 24px 54px rgba(10, 31, 63, 0.16);
+        --shadow-md: 0 18px 38px rgba(10, 31, 63, 0.12);
+      }
+
+      body {
+        position: relative;
+        overflow-x: hidden;
+        padding: clamp(16px, 3vw, 28px);
+        font-family: "Manrope", "Segoe UI Variable", sans-serif;
+        background:
+          radial-gradient(
+            circle at 8% 10%,
+            rgba(123, 228, 235, 0.26),
+            transparent 26%
+          ),
+          radial-gradient(
+            circle at 92% 16%,
+            rgba(17, 150, 199, 0.26),
+            transparent 28%
+          ),
+          radial-gradient(
+            circle at 50% 100%,
+            rgba(31, 81, 153, 0.18),
+            transparent 40%
+          ),
+          linear-gradient(135deg, #e7f4fb 0%, #f4f8fc 45%, #edf4fb 100%);
+      }
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        border-radius: 999px;
+        pointer-events: none;
+        filter: blur(14px);
+      }
+
+      body::before {
+        inset: auto auto -140px -100px;
+        width: 320px;
+        height: 320px;
+        background: rgba(18, 139, 183, 0.14);
+      }
+
+      body::after {
+        inset: 40px -80px auto auto;
+        width: 260px;
+        height: 260px;
+        background: rgba(123, 228, 235, 0.14);
+      }
+
+      .site {
+        position: relative;
+        max-width: 1280px;
+        min-height: calc(100vh - clamp(32px, 5vw, 56px));
+        grid-template-columns: minmax(0, 1.12fr) minmax(360px, 452px);
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.68);
+        border-radius: 36px;
+        box-shadow: var(--shadow-xl);
+        backdrop-filter: blur(18px);
+      }
+
+      .site::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+        background-size: 124px 124px;
+        opacity: 0.22;
+        pointer-events: none;
+      }
+
+      .promo,
+      .auth {
+        position: relative;
+        padding: clamp(24px, 4vw, 40px);
+      }
+
+      .promo {
+        overflow: hidden;
+        color: #eff8ff;
+        background:
+          radial-gradient(
+            circle at top right,
+            rgba(123, 228, 235, 0.18),
+            transparent 28%
+          ),
+          radial-gradient(
+            circle at bottom left,
+            rgba(17, 150, 199, 0.18),
+            transparent 26%
+          ),
+          linear-gradient(155deg, #0d2347 0%, #15345f 48%, #173a68 100%);
+      }
+
+      .promo::before {
+        content: "";
+        position: absolute;
+        inset: -20% auto auto 58%;
+        width: 360px;
+        height: 360px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(123, 228, 235, 0.14),
+          transparent 70%
+        );
+        pointer-events: none;
+      }
+
+      .promo-shell {
+        position: relative;
+        z-index: 1;
+        max-width: 680px;
+        display: grid;
+        gap: 22px;
+      }
+
+      .promo-copy {
+        margin-bottom: 0;
+        gap: 16px;
+      }
+
+      .promo .eyebrow {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        color: #ddf7ff;
+      }
+
+      .promo-copy h3,
+      .auth-head h2,
+      .brand h1,
+      .form-title strong,
+      .popup-box h3,
+      .footer-popup h3 {
+        font-family: "Sora Variable", "Manrope", sans-serif;
+      }
+
+      .promo-copy h3 {
+        font-size: clamp(36px, 5vw, 58px);
+        line-height: 0.98;
+        letter-spacing: -0.06em;
+        color: #ffffff;
+        max-width: 11ch;
+      }
+
+      .promo-copy p {
+        max-width: 56ch;
+        color: rgba(231, 244, 255, 0.82);
+        font-size: 15px;
+        line-height: 1.8;
+      }
+
+      .promo-highlights li {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        box-shadow: none;
+        color: #ffffff;
+        backdrop-filter: blur(12px);
+      }
+
+      .promo-highlights i {
+        color: var(--teal-soft);
+      }
+
+      .promo-proof-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .proof-card {
+        padding: 16px 17px;
+        border-radius: 22px;
+        background: rgba(8, 22, 46, 0.34);
+        border: 1px solid rgba(219, 234, 254, 0.14);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      }
+
+      .proof-card span {
+        display: block;
+        margin-bottom: 8px;
+        color: rgba(221, 247, 255, 0.72);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      .proof-card strong {
+        display: block;
+        color: #ffffff;
+        font-size: 18px;
+        line-height: 1.2;
+      }
+
+      .proof-card small {
+        display: block;
+        margin-top: 7px;
+        color: rgba(231, 244, 255, 0.72);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .slides {
+        min-height: 292px;
+        margin-bottom: 0;
+        padding: 26px;
+        border-radius: 30px;
+        background:
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.08),
+            rgba(255, 255, 255, 0.02)
+          ),
+          linear-gradient(
+            145deg,
+            rgba(6, 16, 35, 0.26),
+            rgba(29, 74, 138, 0.18)
+          );
+        border: 1px solid rgba(219, 234, 254, 0.14);
+        box-shadow: var(--shadow-lg);
+        backdrop-filter: blur(18px);
+      }
+
+      .slide {
+        inset: 26px;
+      }
+
+      .slide-tag {
+        background: rgba(255, 255, 255, 0.1);
+        color: #dcf7ff;
+      }
+
+      .slide-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+        box-shadow: none;
+      }
+
+      .slide h4 {
+        color: #ffffff;
+        font-size: 30px;
+      }
+
+      .slide p {
+        color: rgba(231, 244, 255, 0.82);
+      }
+
+      .features {
+        gap: 14px;
+      }
+
+      .feature {
+        border-radius: 22px;
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(219, 234, 254, 0.14);
+        box-shadow: none;
+      }
+
+      .feature:hover {
+        border-color: rgba(123, 228, 235, 0.28);
+        box-shadow: 0 18px 34px rgba(5, 14, 29, 0.18);
+      }
+
+      .feature i {
+        width: 40px;
+        height: 40px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff;
+      }
+
+      .feature strong {
+        color: #ffffff;
+        font-size: 15px;
+      }
+
+      .feature span {
+        color: rgba(231, 244, 255, 0.76);
+      }
+
+      .auth {
+        display: flex;
+        align-items: stretch;
+        background:
+          linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.96),
+            rgba(245, 249, 253, 0.88)
+          ),
+          linear-gradient(
+            135deg,
+            rgba(17, 150, 199, 0.08),
+            rgba(14, 111, 155, 0.03)
+          );
+        border-right: 0;
+        border-left: 1px solid rgba(219, 234, 254, 0.6);
+      }
+
+      .auth-inner {
+        max-width: 430px;
+        margin: auto;
+      }
+
+      .brand {
+        margin-bottom: 22px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+      }
+
+      .logo {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        background:
+          linear-gradient(145deg, rgba(17, 150, 199, 0.18), rgba(123, 228, 235, 0.12)),
+          #ffffff;
+        box-shadow:
+          0 16px 30px rgba(17, 150, 199, 0.16),
+          inset 0 1px 0 rgba(255, 255, 255, 0.86);
+      }
+
+      .logo img {
+        width: 60px;
+        height: 60px;
+      }
+
+      .brand h1 {
+        font-size: 22px;
+        letter-spacing: -0.04em;
+      }
+
+      .brand p {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .auth-head {
+        margin-bottom: 18px;
+      }
+
+      .auth .eyebrow {
+        background: rgba(17, 150, 199, 0.08);
+        color: var(--accent-dark);
+        border: 1px solid rgba(17, 150, 199, 0.12);
+      }
+
+      .auth-head h2 {
+        margin-bottom: 10px;
+        color: var(--ink);
+        font-size: clamp(34px, 4vw, 46px);
+        line-height: 1.02;
+        letter-spacing: -0.06em;
+      }
+
+      .auth-head p {
+        color: var(--muted);
+        font-size: 15px;
+        line-height: 1.75;
+      }
+
+      .role-preview {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .role-preview-card {
+        padding: 15px 16px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(191, 219, 254, 0.56);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+      }
+
+      .role-preview-card span {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--accent-dark);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .role-preview-card strong {
+        display: block;
+        color: var(--ink);
+        font-size: 16px;
+        line-height: 1.3;
+      }
+
+      .role-preview-card small {
+        display: block;
+        margin-top: 7px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .auth-card {
+        border-radius: 30px;
+        padding: 26px;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.94),
+          rgba(248, 251, 255, 0.92)
+        );
+        border: 1px solid rgba(191, 219, 254, 0.46);
+        box-shadow: var(--shadow-md);
+      }
+
+      .auth-mode-switch {
+        margin-bottom: 14px;
+        padding: 7px;
+        border-radius: 20px;
+        background: linear-gradient(180deg, #f1f8fd, #e9f4fb);
+        border: 1px solid rgba(191, 219, 254, 0.72);
+      }
+
+      .auth-mode-btn {
+        min-height: 46px;
+        border-radius: 16px;
+        font-weight: 800;
+      }
+
+      .auth-mode-btn.active {
+        color: var(--accent-dark);
+        box-shadow: 0 14px 28px rgba(17, 150, 199, 0.16);
+      }
+
+      .auth-mode-note {
+        margin-bottom: 18px;
+        padding: 12px 14px;
+        border-radius: 16px;
+        background: rgba(17, 150, 199, 0.06);
+        border: 1px solid rgba(17, 150, 199, 0.12);
+        color: var(--muted);
+        font-size: 12.5px;
+      }
+
+      .form-title strong {
+        font-size: 20px;
+        letter-spacing: -0.03em;
+      }
+
+      .form-title span {
+        margin-top: 6px;
+        line-height: 1.7;
+      }
+
+      .form-status {
+        border-radius: 16px;
+      }
+
+      .field-label {
+        margin-bottom: 8px;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+      }
+
+      .input-stack {
+        margin-bottom: 15px;
+      }
+
+      .input-group {
+        min-height: 56px;
+        padding: 14px 15px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+      }
+
+      .input-group:focus-within {
+        border-color: rgba(17, 150, 199, 0.9);
+        box-shadow:
+          0 0 0 4px rgba(17, 150, 199, 0.11),
+          0 14px 28px rgba(17, 150, 199, 0.12);
+        transform: translateY(-2px);
+      }
+
+      .input-group input {
+        font-size: 14px;
+      }
+
+      .toggle-password:hover,
+      .toggle-password.active {
+        background: rgba(17, 150, 199, 0.1);
+      }
+
+      .btn {
+        min-height: 54px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+        box-shadow:
+          0 18px 34px rgba(17, 150, 199, 0.22),
+          inset 0 1px 0 rgba(255, 255, 255, 0.24);
+      }
+
+      .btn:hover {
+        box-shadow: 0 22px 38px rgba(17, 150, 199, 0.28);
+      }
+
+      .small-links {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        text-align: center;
+      }
+
+      .small-links a {
+        color: var(--accent-dark);
+      }
+
+      .install-card {
+        margin-top: 18px;
+        padding: 14px;
+        border-radius: 18px;
+        border: 1px solid rgba(191, 219, 254, 0.72);
+        background: linear-gradient(135deg, rgba(233, 246, 255, 0.94), #ffffff);
+      }
+
+      .install-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 14px;
+      }
+
+      .install-app-btn {
+        min-height: 40px;
+        padding-inline: 14px;
+        border-radius: 12px;
+      }
+
+      .auth-support-strip {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .auth-support-card {
+        padding: 14px 15px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(191, 219, 254, 0.52);
+      }
+
+      .auth-support-card strong {
+        display: block;
+        color: var(--ink);
+        font-size: 13px;
+      }
+
+      .auth-support-card span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.55;
+      }
+
+      .site-footer {
+        position: relative;
+        z-index: 1;
+        padding: 18px 26px;
+        border-top: 1px solid rgba(191, 219, 254, 0.46);
+        background: rgba(255, 255, 255, 0.84);
+      }
+
+      .footer-links a,
+      .copyright {
+        color: var(--muted);
+      }
+
+      @media (max-width: 1120px) {
+        .site {
+          grid-template-columns: 1fr;
+        }
+
+        .auth {
+          order: -1;
+          border-left: 0;
+          border-bottom: 1px solid rgba(219, 234, 254, 0.55);
+        }
+
+        .auth-inner,
+        .promo-shell {
+          max-width: none;
+        }
+
+        .promo-copy h3 {
+          max-width: 13ch;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .site {
+          border-radius: 28px;
+        }
+
+        .promo,
+        .auth {
+          padding: 22px;
+        }
+
+        .promo-proof-grid,
+        .features,
+        .role-preview,
+        .auth-support-strip {
+          grid-template-columns: 1fr;
+        }
+
+        .promo-copy h3 {
+          max-width: none;
+          font-size: clamp(30px, 10vw, 42px);
+        }
+
+        .slides {
+          min-height: 254px;
+          padding: 20px;
+        }
+
+        .slide {
+          inset: 20px;
+        }
+
+        .slide h4 {
+          font-size: 24px;
+        }
+
+        .auth-card {
+          padding: 20px;
+          border-radius: 24px;
+        }
+
+        .site-footer {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .footer-links {
+          gap: 14px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        body {
+          padding: 12px;
+        }
+
+        .site {
+          min-height: auto;
+          border-radius: 24px;
+        }
+
+        .promo,
+        .auth {
+          padding: 18px;
+        }
+
+        .brand {
+          gap: 12px;
+          margin-bottom: 18px;
+        }
+
+        .logo {
+          width: 58px;
+          height: 58px;
+        }
+
+        .auth-head h2 {
+          font-size: 32px;
+        }
+
+        .btn {
+          min-height: 52px;
+        }
+
+        .small-links {
+          gap: 6px 12px;
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="site" role="main">
       <section class="promo" aria-label="Product highlights">
         <div class="promo-shell">
           <div class="promo-copy">
-            <span class="eyebrow">Built for Indian shops</span>
+            <span class="eyebrow">Retail Control, Reframed</span>
             <h3>
-              Run stock, billing, and customer dues from one focused workspace.
+              One polished workspace for stock, invoicing, reports, and daily shop control.
             </h3>
             <p>
-              India Inventory Management keeps daily shop operations cleaner,
-              faster, and easier to review without juggling registers,
-              notebooks, and spreadsheets.
+              India Inventory Management gives admins full business visibility
+              and staff a focused counter-ready login, so daily work stays
+              faster, cleaner, and easier to review on both laptop and mobile.
             </p>
             <ul class="promo-highlights">
-              <li><i class="fa-solid fa-bolt"></i> Faster sale entry</li>
+              <li><i class="fa-solid fa-bolt"></i> Faster counter flow</li>
+              <li>
+                <i class="fa-solid fa-user-shield"></i> Admin + staff access
+              </li>
               <li>
                 <i class="fa-solid fa-file-arrow-down"></i> Export-ready reports
               </li>
-              <li>
-                <i class="fa-solid fa-clock-rotate-left"></i> Real-time stock
-                updates
-              </li>
             </ul>
+          </div>
+
+          <div class="promo-proof-grid" aria-label="Platform highlights">
+            <article class="proof-card">
+              <span>Role Access</span>
+              <strong>Admin control with focused staff workspace</strong>
+              <small>
+                Owner account manages the full system while staff stays limited
+                to stock entry and invoice work.
+              </small>
+            </article>
+            <article class="proof-card">
+              <span>Daily Billing</span>
+              <strong>Invoice, sale, and stock stay in sync</strong>
+              <small>
+                Counter activity updates inventory and invoice records without
+                extra manual tracking.
+              </small>
+            </article>
+            <article class="proof-card">
+              <span>Device Ready</span>
+              <strong>Built for desktop review and mobile use</strong>
+              <small>
+                The experience stays clearer for office laptops and shop-floor
+                phones alike.
+              </small>
+            </article>
           </div>
 
           <div class="slides" aria-hidden="true">
@@ -1281,10 +2024,30 @@
 
           <div class="auth-head">
             <span class="eyebrow">Secure access</span>
-            <h2>Welcome back</h2>
+            <h2>Welcome to your business login</h2>
             <p>
-              Sign in to continue managing inventory, invoices, and reports.
+              Sign in with the right account type and move straight into the
+              workflow that matches your role.
             </p>
+          </div>
+
+          <div class="role-preview" aria-label="Access roles">
+            <article class="role-preview-card">
+              <span>Admin</span>
+              <strong>Full shop visibility and control</strong>
+              <small>
+                Inventory, invoice setup, reports, GST, dues, and staff account
+                management in one workspace.
+              </small>
+            </article>
+            <article class="role-preview-card">
+              <span>Staff</span>
+              <strong>Focused counter-ready access</strong>
+              <small>
+                Add stock and complete sale plus invoice work without exposing
+                admin-only business controls.
+              </small>
+            </article>
           </div>
 
           <div class="auth-card">
@@ -1668,6 +2431,23 @@
                 <a href="#" id="backToLogin2">Back to login</a>
               </div>
             </form>
+          </div>
+
+          <div class="auth-support-strip" aria-hidden="true">
+            <article class="auth-support-card">
+              <strong>Professional on larger screens</strong>
+              <span>
+                Spacious two-panel layout keeps product context and auth flow
+                visible together on laptop screens.
+              </span>
+            </article>
+            <article class="auth-support-card">
+              <strong>Smoother on phones</strong>
+              <span>
+                Mobile layout prioritizes the login form first, with cleaner
+                spacing and easier tap targets.
+              </span>
+            </article>
           </div>
         </div>
       </section>
