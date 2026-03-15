@@ -1564,7 +1564,7 @@ function renderLedgerTable(rows, mode = "summary") {
         Outstanding: ${formatCurrency(totalOutstanding)}
       </span>
     </div>
-    <table class="table table-sm text-center align-middle">
+    <table class="table table-sm text-center align-middle dashboard-table dashboard-table--ledger">
       ${tableHead}
       <tbody>${tableBody}</tbody>
     </table>
