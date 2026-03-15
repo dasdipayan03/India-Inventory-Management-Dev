@@ -1298,8 +1298,8 @@
       </header>
 
       <section class="hero">
-        <div class="hero-main">
-          <div class="glass card">
+        <div class="hero-main" id="heroMain">
+          <div id="liveSessionCard" class="glass card">
             <div class="eyebrow">Live Session</div>
             <h2>Smart Invoice Builder.</h2>
             <p class="sub">
@@ -1330,7 +1330,7 @@
             </div>
           </div>
 
-          <section class="glass shop-panel">
+          <section id="shopProfileCard" class="glass shop-panel">
             <details id="shopDetails" class="shop-details">
               <summary class="shop-summary">
                 <div class="shop-summary-copy">
@@ -1403,7 +1403,7 @@
           </section>
         </div>
 
-        <aside class="glass card summary-box">
+        <aside id="invoicePulseCard" class="glass card summary-box">
           <div>
             <div class="eyebrow">Invoice Pulse</div>
             <h2>Quick status before submit</h2>
@@ -1487,7 +1487,7 @@
             </div>
           </section>
 
-          <section class="glass card">
+          <section id="lineItemsCard" class="glass card">
             <div class="toolbar">
               <div>
                 <div class="eyebrow">Line Items</div>
@@ -1526,7 +1526,7 @@
         </div>
 
         <div class="grid">
-          <section class="glass card">
+          <section id="checkoutCard" class="glass card">
             <div class="eyebrow">Checkout</div>
             <h2>Invoice summary</h2>
             <p class="sub">Review totals and submit when ready.</p>
@@ -1798,6 +1798,12 @@
           searchModeText: $("searchModeText"),
           searchCountText: $("searchCountText"),
           searchHintText: $("searchHintText"),
+          heroMain: $("heroMain"),
+          liveSessionCard: $("liveSessionCard"),
+          shopProfileCard: $("shopProfileCard"),
+          invoicePulseCard: $("invoicePulseCard"),
+          lineItemsCard: $("lineItemsCard"),
+          checkoutCard: $("checkoutCard"),
           shopDetails: $("shopDetails"),
           shopName: $("shopName"),
           shopAddress: $("shopAddress"),
@@ -1832,6 +1838,33 @@
           popupTitle: $("popupTitle"),
           popupMessage: $("popupMessage"),
         };
+
+        const syncMobileCardLayout = () => {
+          if (
+            !dom.heroMain ||
+            !dom.liveSessionCard ||
+            !dom.shopProfileCard ||
+            !dom.invoicePulseCard ||
+            !dom.lineItemsCard ||
+            !dom.checkoutCard
+          ) {
+            return;
+          }
+
+          if (window.matchMedia("(max-width: 991px)").matches) {
+            dom.heroMain.insertBefore(dom.shopProfileCard, dom.liveSessionCard);
+            dom.checkoutCard.parentElement?.insertBefore(
+              dom.invoicePulseCard,
+              dom.checkoutCard,
+            );
+            return;
+          }
+
+          dom.heroMain.appendChild(dom.shopProfileCard);
+          dom.heroMain.parentElement?.appendChild(dom.invoicePulseCard);
+        };
+
+        syncMobileCardLayout();
 
         const invoiceDropdown = document.createElement("div");
         invoiceDropdown.className = "dropdown-list";
@@ -2914,6 +2947,7 @@
         dom.logoutBtn.addEventListener("click", logoutAndRedirect);
 
         window.addEventListener("resize", () => {
+          syncMobileCardLayout();
           if (!isMobileLayout()) {
             closeSidebar();
           }
