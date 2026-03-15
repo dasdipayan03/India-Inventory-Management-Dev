@@ -533,6 +533,7 @@
           rgba(255, 255, 255, 0.94),
           rgba(248, 251, 255, 0.86)
         );
+        margin-top: 16px;
       }
 
       .panel-card--highlight {
@@ -919,7 +920,11 @@
         padding: 18px;
         border-radius: 20px;
         border: 1px solid rgba(191, 219, 254, 0.42);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 251, 255, 0.88));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.94),
+          rgba(246, 251, 255, 0.88)
+        );
         box-shadow: var(--shadow-md);
       }
 
@@ -976,7 +981,11 @@
         padding: 16px;
         border-radius: 18px;
         border: 1px solid rgba(191, 219, 254, 0.44);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 250, 255, 0.9));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.96),
+          rgba(245, 250, 255, 0.9)
+        );
       }
 
       .mini-kpi__label {
@@ -1017,7 +1026,11 @@
         padding: 18px;
         border-radius: 22px;
         border: 1px solid rgba(191, 219, 254, 0.42);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 251, 255, 0.9));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.96),
+          rgba(246, 251, 255, 0.9)
+        );
         box-shadow: var(--shadow-md);
       }
 
@@ -1078,7 +1091,11 @@
         margin-top: 16px;
         padding: 18px;
         border-radius: 18px;
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(59, 130, 246, 0.08));
+        background: linear-gradient(
+          135deg,
+          rgba(14, 165, 233, 0.08),
+          rgba(59, 130, 246, 0.08)
+        );
         border: 1px solid rgba(125, 211, 252, 0.34);
       }
 
@@ -2145,21 +2162,28 @@
             <div class="mini-kpi-grid">
               <article class="mini-kpi">
                 <span class="mini-kpi__label">Candidates</span>
-                <strong class="mini-kpi__value" id="reorderCandidateCount">0</strong>
+                <strong class="mini-kpi__value" id="reorderCandidateCount"
+                  >0</strong
+                >
                 <small class="mini-kpi__meta">
                   Items that need replenishment to reach the target stock cover.
                 </small>
               </article>
               <article class="mini-kpi">
                 <span class="mini-kpi__label">Urgent</span>
-                <strong class="mini-kpi__value" id="reorderUrgentCount">0</strong>
+                <strong class="mini-kpi__value" id="reorderUrgentCount"
+                  >0</strong
+                >
                 <small class="mini-kpi__meta">
-                  High-risk items that may run out first based on recent movement.
+                  High-risk items that may run out first based on recent
+                  movement.
                 </small>
               </article>
               <article class="mini-kpi">
                 <span class="mini-kpi__label">Suggested Units</span>
-                <strong class="mini-kpi__value" id="reorderSuggestedUnits">0</strong>
+                <strong class="mini-kpi__value" id="reorderSuggestedUnits"
+                  >0</strong
+                >
                 <small class="mini-kpi__meta">
                   Total recommended quantity to rebuild the stock buffer.
                 </small>
@@ -2170,7 +2194,8 @@
                   Rs. 0.00
                 </strong>
                 <small class="mini-kpi__meta">
-                  Approximate buying cost using the latest buying rate on record.
+                  Approximate buying cost using the latest buying rate on
+                  record.
                 </small>
               </article>
             </div>
@@ -2439,7 +2464,9 @@
                 style="--kpi-glow: rgba(14, 165, 233, 0.16)"
               >
                 <span class="report-kpi__label">Invoices</span>
-                <strong class="report-kpi__value" id="gstInvoiceCount">0</strong>
+                <strong class="report-kpi__value" id="gstInvoiceCount"
+                  >0</strong
+                >
                 <small class="report-kpi__note">
                   Invoices found in the selected date range.
                 </small>
@@ -2558,28 +2585,36 @@
                 <div class="mini-kpi-grid">
                   <article class="mini-kpi">
                     <span class="mini-kpi__label">Period</span>
-                    <strong class="mini-kpi__value" id="gstFilingPeriod">-</strong>
+                    <strong class="mini-kpi__value" id="gstFilingPeriod"
+                      >-</strong
+                    >
                     <small class="mini-kpi__meta">
                       Active date range for this GST review.
                     </small>
                   </article>
                   <article class="mini-kpi">
                     <span class="mini-kpi__label">Top Month</span>
-                    <strong class="mini-kpi__value" id="gstTopCollectionMonth">-</strong>
+                    <strong class="mini-kpi__value" id="gstTopCollectionMonth"
+                      >-</strong
+                    >
                     <small class="mini-kpi__meta">
                       Month that contributed the highest GST collection.
                     </small>
                   </article>
                   <article class="mini-kpi">
                     <span class="mini-kpi__label">Zero GST Invoices</span>
-                    <strong class="mini-kpi__value" id="gstZeroRatedInvoices">0</strong>
+                    <strong class="mini-kpi__value" id="gstZeroRatedInvoices"
+                      >0</strong
+                    >
                     <small class="mini-kpi__meta">
                       Invoices that carried no GST in the selected date range.
                     </small>
                   </article>
                   <article class="mini-kpi">
                     <span class="mini-kpi__label">Dominant Rate</span>
-                    <strong class="mini-kpi__value" id="gstDominantRate">0.00%</strong>
+                    <strong class="mini-kpi__value" id="gstDominantRate"
+                      >0.00%</strong
+                    >
                     <small class="mini-kpi__meta">
                       GST rate slab contributing the largest taxable value.
                     </small>
@@ -2629,7 +2664,9 @@
                 <div class="insight-panel__head">
                   <div>
                     <span class="insight-panel__eyebrow">Month-wise View</span>
-                    <strong class="insight-panel__title">Monthly GST summary</strong>
+                    <strong class="insight-panel__title"
+                      >Monthly GST summary</strong
+                    >
                     <span class="insight-panel__copy">
                       Review month-by-month invoice count, taxable value, GST,
                       and final invoice total for filing prep.
@@ -2680,7 +2717,9 @@
                 <div class="insight-panel__head">
                   <div>
                     <span class="insight-panel__eyebrow">Rate Slabs</span>
-                    <strong class="insight-panel__title">Rate-wise breakup</strong>
+                    <strong class="insight-panel__title"
+                      >Rate-wise breakup</strong
+                    >
                     <span class="insight-panel__copy">
                       Identify which GST slabs are contributing most to taxable
                       value and collection in the selected period.
