@@ -9,6 +9,7 @@ const state = {
   lowStockRows: [],
   ledgerMode: "empty",
   currentLedgerNumber: "",
+  sidebarScrollY: 0,
   charts: {
     businessTrend: null,
     last13Months: null,
@@ -390,16 +391,40 @@ function updateSectionMeta(button) {
   dom.sectionBadge.textContent = button.dataset.badge || "Live";
 }
 
+function lockBodyScroll() {
+  if (!isMobileLayout() || document.body.classList.contains("body-scroll-lock")) {
+    return;
+  }
+
+  state.sidebarScrollY = window.scrollY || window.pageYOffset || 0;
+  document.body.classList.add("body-scroll-lock");
+  document.body.style.top = `-${state.sidebarScrollY}px`;
+}
+
+function unlockBodyScroll() {
+  if (!document.body.classList.contains("body-scroll-lock")) {
+    return;
+  }
+
+  const scrollY = state.sidebarScrollY || 0;
+  document.body.classList.remove("body-scroll-lock");
+  document.body.style.top = "";
+  window.scrollTo(0, scrollY);
+  state.sidebarScrollY = 0;
+}
+
 function closeSidebar() {
   dom.sidebar.classList.remove("sidebar--open");
   dom.sidebarOverlay.classList.remove("visible");
   dom.sidebarToggle.setAttribute("aria-expanded", "false");
+  unlockBodyScroll();
 }
 
 function openSidebar() {
   dom.sidebar.classList.add("sidebar--open");
   dom.sidebarOverlay.classList.add("visible");
   dom.sidebarToggle.setAttribute("aria-expanded", "true");
+  lockBodyScroll();
 }
 
 function setActiveSection(sectionId) {
