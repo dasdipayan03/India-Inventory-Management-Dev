@@ -41,6 +41,7 @@ const app = express();
 
 // Required for deployment platforms like Railway / Render
 app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
 // =========================================================
 // 🌐 GLOBAL MIDDLEWARE CONFIGURATION
@@ -50,9 +51,43 @@ app.set("trust proxy", 1);
  * Enable CORS
  * Allows frontend to send cookies & requests
  */
+function buildAllowedOrigins() {
+  const explicitOrigins = String(process.env.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  if (explicitOrigins.length) {
+    return explicitOrigins;
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return [
+      "http://localhost:3000",
+      "http://localhost:4000",
+      "http://localhost:5173",
+      "http://localhost:8080",
+      "http://127.0.0.1:3000",
+      "http://127.0.0.1:4000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:8080",
+    ];
+  }
+
+  return [];
+}
+
+const allowedOrigins = new Set(buildAllowedOrigins());
+
 app.use(
   cors({
-    origin: true,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("Origin not allowed by CORS"));
+    },
     credentials: true,
   }),
 );
@@ -129,8 +164,9 @@ if (process.env.NODE_ENV !== "production") {
       PORT: process.env.PORT || "not set",
       DATABASE_URL: process.env.DATABASE_URL ? "✅ exists" : "❌ missing",
       JWT_SECRET: process.env.JWT_SECRET ? "✅ exists" : "❌ missing",
-      EMAIL_USER: process.env.EMAIL_USER ? "✅ exists" : "❌ missing",
-      EMAIL_PASS: process.env.EMAIL_PASS ? "✅ exists" : "❌ missing",
+      BASE_URL: process.env.BASE_URL ? "✅ exists" : "❌ missing",
+      MAIL_RELAY_URL: process.env.MAIL_RELAY_URL ? "✅ exists" : "❌ missing",
+      MAIL_RELAY_KEY: process.env.MAIL_RELAY_KEY ? "✅ exists" : "❌ missing",
     });
   });
 

@@ -511,33 +511,61 @@ router.get(
 
 /* ---------------------- SHOP INFO save ---------------------- */
 router.post("/shop-info", authMiddleware, requireAdmin, async (req, res) => {
-  const { shop_name, shop_address, gst_no, gst_rate } = req.body;
-  const userId = getUserId(req);
+  try {
+    const { shop_name, shop_address, gst_no, gst_rate } = req.body;
+    const userId = getUserId(req);
+    const normalizedGstRate = Number(gst_rate);
 
-  await pool.query(
-    `
-      INSERT INTO settings (user_id,shop_name,shop_address,gst_no,gst_rate)
-      VALUES ($1,$2,$3,$4,$5)
-      ON CONFLICT (user_id)
-      DO UPDATE SET
-        shop_name=EXCLUDED.shop_name,
-        shop_address=EXCLUDED.shop_address,
-        gst_no=EXCLUDED.gst_no,
-        gst_rate=EXCLUDED.gst_rate
-    `,
-    [userId, shop_name, shop_address, gst_no, gst_rate],
-  );
+    if (
+      !Number.isFinite(normalizedGstRate) ||
+      normalizedGstRate < 0 ||
+      normalizedGstRate > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "GST rate must be between 0 and 100.",
+      });
+    }
 
-  res.json({ success: true });
+    await pool.query(
+      `
+        INSERT INTO settings (user_id,shop_name,shop_address,gst_no,gst_rate)
+        VALUES ($1,$2,$3,$4,$5)
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+          shop_name=EXCLUDED.shop_name,
+          shop_address=EXCLUDED.shop_address,
+          gst_no=EXCLUDED.gst_no,
+          gst_rate=EXCLUDED.gst_rate
+      `,
+      [
+        userId,
+        String(shop_name || "").trim(),
+        String(shop_address || "").trim(),
+        String(gst_no || "").trim(),
+        normalizedGstRate,
+      ],
+    );
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Shop info save error:", error);
+    res.status(500).json({ success: false, message: "Failed to save shop info" });
+  }
 });
 
 router.get("/shop-info", authMiddleware, requirePermission("sale_invoice"), async (req, res) => {
-  const userId = getUserId(req);
-  const { rows } = await pool.query(
-    `SELECT shop_name,shop_address,gst_no,gst_rate FROM settings WHERE user_id=$1`,
-    [userId],
-  );
-  res.json({ success: true, settings: rows[0] || {} });
+  try {
+    const userId = getUserId(req);
+    const { rows } = await pool.query(
+      `SELECT shop_name,shop_address,gst_no,gst_rate FROM settings WHERE user_id=$1`,
+      [userId],
+    );
+    res.json({ success: true, settings: rows[0] || {} });
+  } catch (error) {
+    console.error("Shop info load error:", error);
+    res.status(500).json({ success: false, message: "Failed to load shop info" });
+  }
 });
 
 module.exports = router;

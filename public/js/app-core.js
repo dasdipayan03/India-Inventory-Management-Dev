@@ -1,64 +1,43 @@
 (function bootstrapInventoryApp(global) {
+  const permissionContract = global.InventoryPermissionContract || {};
   const apiBase = global.location.origin.includes("localhost")
     ? "http://localhost:4000/api"
     : "/api";
 
   const copyrightText = "© 2026 India Inventory Management - All rights reserved.";
-
-  const staffPermissionOptions = [
-    {
-      value: "add_stock",
-      label: "Add New Stock",
-      shortLabel: "Stock Entry",
-      description: "Create or update stock entries from the main inventory form.",
-    },
-    {
-      value: "sale_invoice",
-      label: "Sale and Invoice",
-      shortLabel: "Invoice",
-      description:
-        "Create sales bills, generate invoices, and open invoice history.",
-    },
-    {
-      value: "stock_report",
-      label: "Stock Report",
-      shortLabel: "Stock Report",
-      description:
-        "Review stock availability, sold quantity, and low stock report.",
-    },
-    {
-      value: "sales_report",
-      label: "Sales Report",
-      shortLabel: "Sales Report",
-      description:
-        "Open sales analytics, export reports, and check date-wise totals.",
-    },
-    {
-      value: "gst_report",
-      label: "GST Report",
-      shortLabel: "GST Report",
-      description: "See GST report data for filing and invoice-wise tax review.",
-    },
-    {
-      value: "customer_due",
-      label: "Customer Due",
-      shortLabel: "Customer Due",
-      description:
-        "Manage due balances, ledger history, and customer collections.",
-    },
+  const staffPageConfig = permissionContract.STAFF_PAGE_CONFIG || {};
+  const staffPermissionKeys = permissionContract.STAFF_PAGE_PERMISSIONS || [];
+  const defaultStaffPermissions = permissionContract.DEFAULT_STAFF_PERMISSIONS || [
+    "add_stock",
+    "sale_invoice",
   ];
-
-  const staffPermissionKeys = staffPermissionOptions.map((option) => option.value);
-  const defaultStaffPermissions = ["add_stock", "sale_invoice"];
   const invoicePagePermission = "sale_invoice";
 
-  const sectionPermissionMap = {
-    addStockSection: "add_stock",
-    itemReportSection: "stock_report",
-    salesReportSection: "sales_report",
-    gstReportSection: "gst_report",
-    customerDebtSection: "customer_due",
+  const permissionDescriptions = {
+    add_stock: "Create or update stock entries from the main inventory form.",
+    sale_invoice:
+      "Create sales bills, generate invoices, and open invoice history.",
+    stock_report: "Review stock availability, sold quantity, and low stock report.",
+    sales_report:
+      "Open sales analytics, export reports, and check date-wise totals.",
+    gst_report: "See GST report data for filing and invoice-wise tax review.",
+    customer_due:
+      "Manage due balances, ledger history, and customer collections.",
   };
+
+  const staffPermissionOptions = staffPermissionKeys.map((permission) => ({
+    value: permission,
+    label: staffPageConfig[permission]?.label || permission,
+    shortLabel: staffPageConfig[permission]?.shortLabel || permission,
+    sectionId: staffPageConfig[permission]?.sectionId || "",
+    description: permissionDescriptions[permission] || "",
+  }));
+
+  const sectionPermissionMap = Object.fromEntries(
+    Object.entries(staffPageConfig)
+      .filter(([, config]) => config.sectionId && config.sectionId !== "invoicePage")
+      .map(([permission, config]) => [config.sectionId, permission]),
+  );
 
   const sidebarItems = [
     {
@@ -66,9 +45,9 @@
       sectionId: "addStockSection",
       permission: "add_stock",
       iconClass: "fas fa-plus-circle",
-      label: "Add New Stock",
+      label: staffPageConfig.add_stock?.label || "Add New Stock",
       eyebrow: "Inventory Intake",
-      title: "Add New Stock",
+      title: staffPageConfig.add_stock?.label || "Add New Stock",
       description:
         "Keep quantity, buying rate, and selling rate aligned when fresh stock arrives.",
       badge: "Stock",
@@ -78,9 +57,9 @@
       route: "invoice.html",
       permission: invoicePagePermission,
       iconClass: "fa-solid fa-file-invoice",
-      label: "Sale and Invoice",
+      label: staffPageConfig.sale_invoice?.label || "Sale and Invoice",
       eyebrow: "Billing Workspace",
-      title: "Sale and Invoice",
+      title: staffPageConfig.sale_invoice?.label || "Sale and Invoice",
       description:
         "Create sale entries, generate polished invoices, and review recent billing activity.",
       badge: "Invoice",
@@ -90,9 +69,9 @@
       sectionId: "itemReportSection",
       permission: "stock_report",
       iconClass: "fas fa-boxes",
-      label: "Stock Report",
+      label: staffPageConfig.stock_report?.label || "Stock Report",
       eyebrow: "Inventory Insights",
-      title: "Stock Report",
+      title: staffPageConfig.stock_report?.label || "Stock Report",
       description:
         "Search any item, review availability, and spot low stock before it becomes urgent.",
       badge: "Reports",
@@ -102,9 +81,9 @@
       sectionId: "salesReportSection",
       permission: "sales_report",
       iconClass: "fas fa-chart-line",
-      label: "Sales Report",
+      label: staffPageConfig.sales_report?.label || "Sales Report",
       eyebrow: "Revenue Tracking",
-      title: "Sales Report",
+      title: staffPageConfig.sales_report?.label || "Sales Report",
       description:
         "Explore date-wise sales, export PDF or Excel files, and monitor trend charts month after month.",
       badge: "Sales",
@@ -114,9 +93,9 @@
       sectionId: "gstReportSection",
       permission: "gst_report",
       iconClass: "fas fa-receipt",
-      label: "GST Report",
+      label: staffPageConfig.gst_report?.label || "GST Report",
       eyebrow: "Tax Compliance",
-      title: "GST Report",
+      title: staffPageConfig.gst_report?.label || "GST Report",
       description:
         "Review invoice-wise GST for any date range, then export polished reports for filing and bookkeeping.",
       badge: "GST",
@@ -126,9 +105,9 @@
       sectionId: "customerDebtSection",
       permission: "customer_due",
       iconClass: "fas fa-user-clock",
-      label: "Customer Due",
+      label: staffPageConfig.customer_due?.label || "Customer Due",
       eyebrow: "Collections",
-      title: "Customer Due",
+      title: staffPageConfig.customer_due?.label || "Customer Due",
       description:
         "Capture customer balances, search dues quickly, and keep ledger follow-up organized.",
       badge: "Ledger",
@@ -157,6 +136,10 @@
   }
 
   function normalizePermissions(values) {
+    if (typeof permissionContract.normalizePermissions === "function") {
+      return permissionContract.normalizePermissions(values);
+    }
+
     const list = Array.isArray(values) ? values : [];
     const normalized = list
       .map((value) => String(value || "").trim().toLowerCase())
@@ -195,17 +178,63 @@
     return labels.join(", ");
   }
 
+  function clearStoredSession() {
+    global.localStorage.removeItem("token");
+    global.localStorage.removeItem("user");
+  }
+
+  function isMobileLayout() {
+    return global.matchMedia("(max-width: 991px)").matches;
+  }
+
+  function isAdminUser(user) {
+    return String(user?.role || "").toLowerCase() !== "staff";
+  }
+
+  function getUserPermissions(user) {
+    if (isAdminUser(user)) {
+      return new Set(["all"]);
+    }
+
+    return new Set(normalizePermissions(user?.permissions));
+  }
+
+  function canAccessPermission(user, ...permissions) {
+    if (isAdminUser(user)) {
+      return true;
+    }
+
+    const granted = getUserPermissions(user);
+    return permissions.some((permission) => granted.has(permission));
+  }
+
+  function canAccessSection(user, sectionId) {
+    if (sectionId === "staffAccessSection") {
+      return isAdminUser(user);
+    }
+
+    const permission = sectionPermissionMap[sectionId];
+    return permission ? canAccessPermission(user, permission) : isAdminUser(user);
+  }
+
   global.InventoryApp = Object.freeze({
     apiBase,
+    canAccessPermission,
+    canAccessSection,
+    clearStoredSession,
     copyrightText,
     defaultStaffPermissions,
     escapeHtml,
     formatPermissionSummary,
     getPermissionOption,
+    getUserPermissions,
     invoicePagePermission,
+    isAdminUser,
+    isMobileLayout,
     normalizePermissions,
     sectionPermissionMap,
     sidebarItems,
+    staffPageConfig,
     staffPermissionKeys,
     staffPermissionOptions,
   });

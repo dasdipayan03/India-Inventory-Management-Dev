@@ -1682,6 +1682,7 @@
         <p id="popupMessage" class="sub"></p>
       </div>
     </div>
+    <script src="js/permission-contract.js"></script>
     <script src="js/app-core.js"></script>
     <script src="js/app-shell.js"></script>
     <script>
@@ -1740,22 +1741,12 @@
         document.body.removeChild(a);
       };
 
-      const clearStoredSession = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-      };
-
-      const STAFF_PERMISSION_OPTIONS = appConfig.staffPermissionOptions || [];
-      const STAFF_PERMISSION_KEYS =
-        appConfig.staffPermissionKeys ||
-        STAFF_PERMISSION_OPTIONS.map((option) => option.value);
-      const SECTION_PERMISSION_MAP = appConfig.sectionPermissionMap || {
-        addStockSection: "add_stock",
-        itemReportSection: "stock_report",
-        salesReportSection: "sales_report",
-        gstReportSection: "gst_report",
-        customerDebtSection: "customer_due",
-      };
+      const clearStoredSession =
+        appConfig.clearStoredSession ||
+        (() => {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        });
 
       async function authFetch(url, options = {}) {
         options.headers = options.headers || {};
@@ -1863,85 +1854,33 @@
           "Content-Type": "application/json",
         });
 
-        const isMobileLayout = () =>
-          window.matchMedia("(max-width: 991px)").matches;
+        const isMobileLayout =
+          appConfig.isMobileLayout ||
+          (() => window.matchMedia("(max-width: 991px)").matches);
 
-        const isAdminSession = () => sessionUser?.role !== "staff";
-
-        const normalizeStaffPermissions = (values) => {
-          if (typeof appConfig.normalizePermissions === "function") {
-            return appConfig.normalizePermissions(values);
-          }
-
-          const list = Array.isArray(values) ? values : [];
-          const normalized = list
-            .map((value) => String(value || "").trim().toLowerCase())
-            .filter((value) => STAFF_PERMISSION_KEYS.includes(value));
-
-          return [...new Set(normalized)];
-        };
-
-        const getPermissionOption = (permission) =>
-          typeof appConfig.getPermissionOption === "function"
-            ? appConfig.getPermissionOption(permission)
-            : STAFF_PERMISSION_OPTIONS.find(
-                (option) => option.value === permission,
-              ) || null;
+        const isAdminSession = () =>
+          typeof appConfig.isAdminUser === "function"
+            ? appConfig.isAdminUser(sessionUser)
+            : sessionUser?.role !== "staff";
 
         const getPermissionSummary = (permissions, options = {}) => {
-          if (typeof appConfig.formatPermissionSummary === "function") {
-            return appConfig.formatPermissionSummary(permissions, options);
-          }
-
-          const short = Boolean(options.short);
-          const normalized = normalizeStaffPermissions(permissions);
-
-          if (!normalized.length) {
-            return short ? "no assigned pages" : "No assigned pages";
-          }
-
-          if (normalized.length === STAFF_PERMISSION_KEYS.length) {
-            return short ? "all business pages" : "All business pages";
-          }
-
-          const labels = normalized.map((permission) => {
-            const option = getPermissionOption(permission);
-            return option ? option[short ? "shortLabel" : "label"] : permission;
-          });
-
-          if (labels.length > 3) {
-            return `${labels.length} pages`;
-          }
-
-          return labels.join(", ");
-        };
-
-        const getUserPermissions = () => {
-          if (isAdminSession()) {
-            return new Set(["all"]);
-          }
-
-          return new Set(normalizeStaffPermissions(sessionUser?.permissions));
+          return typeof appConfig.formatPermissionSummary === "function"
+            ? appConfig.formatPermissionSummary(permissions, options)
+            : "No assigned pages";
         };
 
         const canAccessPermission = (...permissions) => {
-          if (isAdminSession()) {
-            return true;
-          }
-
-          const granted = getUserPermissions();
-          return permissions.some((permission) => granted.has(permission));
+          return typeof appConfig.canAccessPermission === "function"
+            ? appConfig.canAccessPermission(sessionUser, ...permissions)
+            : true;
         };
 
         const canAccessInvoicePage = () => canAccessPermission("sale_invoice");
 
         const canAccessDashboardSection = (sectionId) => {
-          if (sectionId === "staffAccessSection") {
-            return isAdminSession();
-          }
-
-          const permission = SECTION_PERMISSION_MAP[sectionId];
-          return permission ? canAccessPermission(permission) : isAdminSession();
+          return typeof appConfig.canAccessSection === "function"
+            ? appConfig.canAccessSection(sessionUser, sectionId)
+            : true;
         };
 
         const getFirstAccessibleDashboardSection = () =>

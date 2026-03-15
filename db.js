@@ -15,6 +15,18 @@
  */
 const { Pool } = require("pg");
 
+function shouldUseSsl(databaseUrl) {
+  if (process.env.DB_SSL === "true") {
+    return true;
+  }
+
+  if (process.env.DB_SSL === "false") {
+    return false;
+  }
+
+  return !/localhost|127\.0\.0\.1/i.test(databaseUrl);
+}
+
 // =========================================================
 // 🔐 ENVIRONMENT VARIABLE CHECK
 // Ensures DATABASE_URL exists before server starts.
@@ -41,15 +53,18 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 
   // 🔒 SSL Configuration (Required for cloud DB like Render)
-  ssl: {
-    require: true,
-    rejectUnauthorized: false,
-  },
+  ssl: shouldUseSsl(process.env.DATABASE_URL)
+    ? {
+        require: true,
+        rejectUnauthorized: false,
+      }
+    : false,
 
   // ⚙️ Pool Configuration
   // Maximum number of active DB connections at a time
   // Prevents too many simultaneous connections
   max: 10,
+  connectionTimeoutMillis: 10000,
 
   // If a connection stays idle for 30 seconds,
   // it will be automatically closed

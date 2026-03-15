@@ -31,13 +31,6 @@ const DEFAULT_STAFF_PERMISSIONS = appConfig.defaultStaffPermissions || [
 const STAFF_PERMISSION_KEYS =
   appConfig.staffPermissionKeys ||
   STAFF_PERMISSION_OPTIONS.map((option) => option.value);
-const SECTION_PERMISSION_MAP = appConfig.sectionPermissionMap || {
-  addStockSection: "add_stock",
-  itemReportSection: "stock_report",
-  salesReportSection: "sales_report",
-  gstReportSection: "gst_report",
-  customerDebtSection: "customer_due",
-};
 const INVOICE_PAGE_PERMISSION = appConfig.invoicePagePermission || "sale_invoice";
 
 const formatters = {
@@ -55,6 +48,12 @@ const formatters = {
 };
 
 const dom = {};
+const clearStoredSession =
+  appConfig.clearStoredSession ||
+  (() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  });
 
 function getToken() {
   return localStorage.getItem("token") || "";
@@ -122,9 +121,9 @@ function toInputDate(date) {
   return localDate.toISOString().slice(0, 10);
 }
 
-function isMobileLayout() {
-  return window.matchMedia("(max-width: 991px)").matches;
-}
+const isMobileLayout =
+  appConfig.isMobileLayout ||
+  (() => window.matchMedia("(max-width: 991px)").matches);
 
 function sanitizeFileName(value) {
   return String(value || "download")
@@ -150,73 +149,33 @@ function parseFormattedNumber(value) {
 }
 
 function isAdminSession() {
-  return state.sessionUser?.role !== "staff";
+  return typeof appConfig.isAdminUser === "function"
+    ? appConfig.isAdminUser(state.sessionUser)
+    : state.sessionUser?.role !== "staff";
 }
 
 function normalizeStaffPermissions(values) {
-  if (typeof appConfig.normalizePermissions === "function") {
-    return appConfig.normalizePermissions(values);
-  }
-
-  const list = Array.isArray(values) ? values : [];
-  const normalized = list
-    .map((value) => String(value || "").trim().toLowerCase())
-    .filter((value) => STAFF_PERMISSION_KEYS.includes(value));
-
-  return [...new Set(normalized)];
-}
-
-function getUserPermissions() {
-  if (isAdminSession()) {
-    return new Set(["all"]);
-  }
-
-  return new Set(normalizeStaffPermissions(state.sessionUser?.permissions));
+  return typeof appConfig.normalizePermissions === "function"
+    ? appConfig.normalizePermissions(values)
+    : [];
 }
 
 function getPermissionOption(permission) {
-  if (typeof appConfig.getPermissionOption === "function") {
-    return appConfig.getPermissionOption(permission);
-  }
-
-  return STAFF_PERMISSION_OPTIONS.find((option) => option.value === permission) || null;
+  return typeof appConfig.getPermissionOption === "function"
+    ? appConfig.getPermissionOption(permission)
+    : null;
 }
 
 function formatPermissionSummary(permissions, options = {}) {
-  if (typeof appConfig.formatPermissionSummary === "function") {
-    return appConfig.formatPermissionSummary(permissions, options);
-  }
-
-  const short = Boolean(options.short);
-  const normalized = normalizeStaffPermissions(permissions);
-
-  if (!normalized.length) {
-    return short ? "no assigned pages" : "No assigned pages";
-  }
-
-  if (normalized.length === STAFF_PERMISSION_KEYS.length) {
-    return short ? "all business pages" : "All business pages";
-  }
-
-  const labels = normalized.map((permission) => {
-    const option = getPermissionOption(permission);
-    return option ? option[short ? "shortLabel" : "label"] : permission;
-  });
-
-  if (labels.length > 3) {
-    return `${labels.length} pages`;
-  }
-
-  return labels.join(", ");
+  return typeof appConfig.formatPermissionSummary === "function"
+    ? appConfig.formatPermissionSummary(permissions, options)
+    : "No assigned pages";
 }
 
 function canAccessPermission(...permissions) {
-  if (isAdminSession()) {
-    return true;
-  }
-
-  const granted = getUserPermissions();
-  return permissions.some((permission) => granted.has(permission));
+  return typeof appConfig.canAccessPermission === "function"
+    ? appConfig.canAccessPermission(state.sessionUser, ...permissions)
+    : true;
 }
 
 function canAccessInvoicePage() {
@@ -224,12 +183,9 @@ function canAccessInvoicePage() {
 }
 
 function canAccessSection(sectionId) {
-  if (sectionId === "staffAccessSection") {
-    return isAdminSession();
-  }
-
-  const permission = SECTION_PERMISSION_MAP[sectionId];
-  return permission ? canAccessPermission(permission) : isAdminSession();
+  return typeof appConfig.canAccessSection === "function"
+    ? appConfig.canAccessSection(state.sessionUser, sectionId)
+    : true;
 }
 
 function getAccessibleSectionIds() {
@@ -240,11 +196,6 @@ function getAccessibleSectionIds() {
 
 function getFirstAccessibleSection() {
   return getAccessibleSectionIds()[0] || null;
-}
-
-function clearStoredSession() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
 }
 
 function cacheElements() {

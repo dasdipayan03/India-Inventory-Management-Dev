@@ -7,7 +7,7 @@ const {
   DEFAULT_STAFF_PERMISSIONS,
   STAFF_PAGE_PERMISSIONS,
   normalizePermissions,
-} = require("../permissions");
+} = require("../public/js/permission-contract");
 const {
   authMiddleware,
   getUserId,
@@ -258,13 +258,17 @@ router.post("/forgot-password", async (req, res) => {
       return res.status(400).json({ error: "Email required" });
     }
 
+    const genericMessage = {
+      message: "If account exists, reset link has been sent.",
+    };
+
     const result = await pool.query(
       "SELECT id FROM users WHERE LOWER(email) = LOWER($1)",
       [email],
     );
 
     if (result.rowCount === 0) {
-      return res.status(400).json({ error: "Email does not exist" });
+      return res.json(genericMessage);
     }
 
     const reset_token = crypto.randomBytes(20).toString("hex");
@@ -275,26 +279,40 @@ router.post("/forgot-password", async (req, res) => {
       [reset_token, expires, email],
     );
 
-    const resetLink = `${process.env.BASE_URL}/reset.html?token=${reset_token}&email=${encodeURIComponent(email)}`;
+    const baseUrl =
+      process.env.BASE_URL || `${req.protocol}://${req.get("host")}`;
+    const resetLink = `${baseUrl}/reset.html?token=${reset_token}&email=${encodeURIComponent(email)}`;
 
-    await fetch(process.env.MAIL_RELAY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        key: process.env.MAIL_RELAY_KEY,
-        to: email,
-        subject: "Reset your password",
-        html: `
-          <p>You requested a password reset.</p>
-          <p><a href="${resetLink}">Reset Password</a></p>
-          <p>Valid for 15 minutes.</p>
-        `,
-      }),
-    });
+    if (process.env.MAIL_RELAY_URL && process.env.MAIL_RELAY_KEY) {
+      const relayResponse = await fetch(process.env.MAIL_RELAY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: process.env.MAIL_RELAY_KEY,
+          to: email,
+          subject: "Reset your password",
+          html: `
+            <p>You requested a password reset.</p>
+            <p><a href="${resetLink}">Reset Password</a></p>
+            <p>Valid for 15 minutes.</p>
+          `,
+        }),
+      });
 
-    return res.json({
-      message: "If account exists, reset link has been sent.",
-    });
+      if (!relayResponse.ok) {
+        console.error(
+          "Mail relay request failed with status:",
+          relayResponse.status,
+        );
+      }
+    } else {
+      console.error(
+        "Mail relay configuration missing. Reset email was not sent for:",
+        email,
+      );
+    }
+
+    return res.json(genericMessage);
   } catch (err) {
     console.error("Forgot password error:", err);
     return res.status(500).json({ error: "Server error" });

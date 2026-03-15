@@ -14,7 +14,7 @@ const pool = require("../db");
 const {
   DEFAULT_STAFF_PERMISSIONS,
   normalizePermissions,
-} = require("../permissions");
+} = require("../public/js/permission-contract");
 
 if (!process.env.JWT_SECRET) {
   console.error("JWT_SECRET not found in environment variables.");
