@@ -115,8 +115,16 @@
         border-radius: 30px;
         color: #eff6ff;
         background:
-          linear-gradient(180deg, rgba(31, 58, 108, 0.98), rgba(11, 29, 58, 0.97)),
-          radial-gradient(circle at top right, rgba(45, 212, 191, 0.2), transparent 28%);
+          linear-gradient(
+            180deg,
+            rgba(31, 58, 108, 0.98),
+            rgba(11, 29, 58, 0.97)
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(45, 212, 191, 0.2),
+            transparent 28%
+          );
         box-shadow: 0 32px 70px rgba(17, 29, 58, 0.16);
       }
 
@@ -174,7 +182,11 @@
       .sidebar button:hover,
       .sidebar button.active {
         transform: translateX(2px);
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(45, 212, 191, 0.12));
+        background: linear-gradient(
+          135deg,
+          rgba(14, 165, 233, 0.18),
+          rgba(45, 212, 191, 0.12)
+        );
         color: #ffffff;
         box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.18);
       }
@@ -1219,7 +1231,12 @@
           <i class="fas fa-plus-circle"></i>
           <span>Add New Stock</span>
         </button>
-        <button id="invoiceNavBtn" class="active" type="button" aria-current="page">
+        <button
+          id="invoiceNavBtn"
+          class="active"
+          type="button"
+          aria-current="page"
+        >
           <i class="fa-solid fa-file-invoice"></i>
           <span>Sale and Invoice</span>
         </button>
@@ -1242,7 +1259,7 @@
       </div>
 
       <div class="sidebar__footer">
-        <p>(c) 2026 India Inventory Management - All rights reserved.</p>
+        <p>© 2026 India Inventory Management - All rights reserved.</p>
       </div>
     </aside>
 
@@ -1798,7 +1815,10 @@
           window.matchMedia("(max-width: 991px)").matches;
 
         const lockBodyScroll = () => {
-          if (!isMobileLayout() || document.body.classList.contains("body-scroll-lock")) {
+          if (
+            !isMobileLayout() ||
+            document.body.classList.contains("body-scroll-lock")
+          ) {
             return;
           }
 
@@ -2444,9 +2464,7 @@
             updateSearchStatus(
               query ? "Filtered list" : "Latest list",
               "0 result",
-              query
-                ? `No results for "${query}".`
-                : "No invoices found yet.",
+              query ? `No results for "${query}".` : "No invoices found yet.",
             );
             return;
           }
@@ -2591,7 +2609,8 @@
           items: rows()
             .map(rowData)
             .filter(
-              (item) => item.description && item.quantity !== 0 && item.rate > 0,
+              (item) =>
+                item.description && item.quantity !== 0 && item.rate > 0,
             )
             .map(({ description, quantity, rate }) => ({
               description,
