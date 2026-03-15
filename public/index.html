@@ -47,8 +47,16 @@
         font-family: "Segoe UI Variable", "Segoe UI", sans-serif;
         color: var(--ink-main);
         background:
-          radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 24%),
-          radial-gradient(circle at top right, rgba(14, 165, 233, 0.22), transparent 26%),
+          radial-gradient(
+            circle at top left,
+            rgba(20, 184, 166, 0.18),
+            transparent 24%
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(14, 165, 233, 0.22),
+            transparent 26%
+          ),
           linear-gradient(180deg, #eef6ff 0%, #f7fbff 38%, #f4f9ff 100%);
         visibility: hidden;
       }
@@ -62,7 +70,11 @@
         position: fixed;
         inset: auto -10% -30% 45%;
         height: 480px;
-        background: radial-gradient(circle, rgba(14, 165, 233, 0.16), transparent 68%);
+        background: radial-gradient(
+          circle,
+          rgba(14, 165, 233, 0.16),
+          transparent 68%
+        );
         pointer-events: none;
         z-index: 0;
       }
@@ -128,8 +140,16 @@
         border-radius: 30px;
         color: #eff6ff;
         background:
-          linear-gradient(180deg, rgba(31, 58, 108, 0.98), rgba(11, 29, 58, 0.97)),
-          radial-gradient(circle at top right, rgba(45, 212, 191, 0.2), transparent 28%);
+          linear-gradient(
+            180deg,
+            rgba(31, 58, 108, 0.98),
+            rgba(11, 29, 58, 0.97)
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(45, 212, 191, 0.2),
+            transparent 28%
+          );
         box-shadow: var(--shadow-xl);
       }
 
@@ -187,7 +207,11 @@
       .sidebar button:hover,
       .sidebar button.active {
         transform: translateX(2px);
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.18), rgba(45, 212, 191, 0.12));
+        background: linear-gradient(
+          135deg,
+          rgba(14, 165, 233, 0.18),
+          rgba(45, 212, 191, 0.12)
+        );
         color: #ffffff;
         box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.18);
       }
@@ -231,7 +255,11 @@
         overflow: hidden;
         border: 1px solid rgba(255, 255, 255, 0.58);
         border-radius: var(--radius-xl);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(245, 250, 255, 0.8));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.88),
+          rgba(245, 250, 255, 0.8)
+        );
         box-shadow: var(--shadow-lg);
         backdrop-filter: blur(14px);
       }
@@ -247,7 +275,11 @@
         width: 220px;
         height: 220px;
         border-radius: 999px;
-        background: radial-gradient(circle, rgba(14, 165, 233, 0.18), transparent 68%);
+        background: radial-gradient(
+          circle,
+          rgba(14, 165, 233, 0.18),
+          transparent 68%
+        );
       }
 
       .hero-panel__user {
@@ -329,7 +361,11 @@
         padding: 20px 20px 18px;
         border: 1px solid rgba(255, 255, 255, 0.56);
         border-radius: 24px;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 251, 255, 0.86));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.94),
+          rgba(246, 251, 255, 0.86)
+        );
         box-shadow: var(--shadow-md);
       }
 
@@ -382,7 +418,11 @@
         padding: 20px 22px;
         border-radius: 24px;
         border: 1px solid rgba(255, 255, 255, 0.58);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(246, 251, 255, 0.78));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.84),
+          rgba(246, 251, 255, 0.78)
+        );
         box-shadow: var(--shadow-md);
       }
 
@@ -461,25 +501,41 @@
         padding: 24px;
         border-radius: var(--radius-lg);
         border: 1px solid rgba(255, 255, 255, 0.58);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(247, 251, 255, 0.84));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.92),
+          rgba(247, 251, 255, 0.84)
+        );
         box-shadow: var(--shadow-lg);
       }
 
       .panel-card--surface {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 251, 255, 0.86));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.94),
+          rgba(248, 251, 255, 0.86)
+        );
       }
 
       .panel-card--highlight {
         color: #e2edf9;
         background:
-          radial-gradient(circle at top right, rgba(45, 212, 191, 0.16), transparent 30%),
+          radial-gradient(
+            circle at top right,
+            rgba(45, 212, 191, 0.16),
+            transparent 30%
+          ),
           linear-gradient(180deg, #193563, #0f2447);
       }
 
       .panel-card--alert {
         margin-top: 16px;
         border-color: rgba(248, 113, 113, 0.22);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 246, 246, 0.92));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.96),
+          rgba(255, 246, 246, 0.92)
+        );
       }
 
       .panel-card__header,
@@ -523,7 +579,11 @@
         display: grid;
         place-items: center;
         border-radius: 18px;
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(20, 184, 166, 0.12));
+        background: linear-gradient(
+          135deg,
+          rgba(14, 165, 233, 0.14),
+          rgba(20, 184, 166, 0.12)
+        );
         color: var(--cyan-strong);
         font-size: 19px;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -806,7 +866,11 @@
       }
 
       .analytics-card {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 251, 255, 0.86));
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.94),
+          rgba(246, 251, 255, 0.86)
+        );
         border: 1px solid rgba(255, 255, 255, 0.58);
         border-radius: 22px;
         padding: 22px;
@@ -1126,7 +1190,7 @@
           margin-right: -20px;
           border-left: 0;
           border-right: 0;
-          border-radius: 0;
+          border-radius: 3;
         }
 
         .mobile-table-wrap .summary-strip,
@@ -1227,7 +1291,10 @@
       </div>
 
       <div class="sidebar__footer">
-        <p>All current features stay available. This dashboard shell only improves usability and polish.</p>
+        <p>
+          All current features stay available. This dashboard shell only
+          improves usability and polish.
+        </p>
       </div>
     </aside>
 
@@ -1258,29 +1325,42 @@
         </header>
 
         <section class="overview-grid" aria-label="Dashboard Overview">
-          <article class="overview-card" style="--card-glow: rgba(14, 165, 233, 0.18)">
+          <article
+            class="overview-card"
+            style="--card-glow: rgba(14, 165, 233, 0.18)"
+          >
             <span class="overview-card__label">
               <i class="fa-solid fa-boxes-stacked"></i>
               Catalog Items
             </span>
-            <strong class="overview-card__value" id="statCatalogCount">0</strong>
+            <strong class="overview-card__value" id="statCatalogCount"
+              >0</strong
+            >
             <small class="overview-card__note" id="statCatalogNote">
               Total tracked items in your stock catalog
             </small>
           </article>
 
-          <article class="overview-card" style="--card-glow: rgba(20, 184, 166, 0.16)">
+          <article
+            class="overview-card"
+            style="--card-glow: rgba(20, 184, 166, 0.16)"
+          >
             <span class="overview-card__label">
               <i class="fa-solid fa-wallet"></i>
               Catalog Value
             </span>
-            <strong class="overview-card__value" id="statCatalogValue">Rs. 0.00</strong>
+            <strong class="overview-card__value" id="statCatalogValue"
+              >Rs. 0.00</strong
+            >
             <small class="overview-card__note" id="statCatalogValueNote">
               Estimated stock value based on buying rates
             </small>
           </article>
 
-          <article class="overview-card" style="--card-glow: rgba(245, 158, 11, 0.16)">
+          <article
+            class="overview-card"
+            style="--card-glow: rgba(245, 158, 11, 0.16)"
+          >
             <span class="overview-card__label">
               <i class="fa-solid fa-triangle-exclamation"></i>
               Low Stock
@@ -1291,12 +1371,17 @@
             </small>
           </article>
 
-          <article class="overview-card" style="--card-glow: rgba(59, 130, 246, 0.16)">
+          <article
+            class="overview-card"
+            style="--card-glow: rgba(59, 130, 246, 0.16)"
+          >
             <span class="overview-card__label">
               <i class="fa-solid fa-hand-holding-dollar"></i>
               Due Balance
             </span>
-            <strong class="overview-card__value" id="statDueBalance">Rs. 0.00</strong>
+            <strong class="overview-card__value" id="statDueBalance"
+              >Rs. 0.00</strong
+            >
             <small class="overview-card__note" id="statDueNote">
               Total outstanding customer balance
             </small>
@@ -1305,7 +1390,9 @@
 
         <section class="section-meta" aria-live="polite">
           <div>
-            <p class="section-meta__eyebrow" id="sectionEyebrow">Inventory Intake</p>
+            <p class="section-meta__eyebrow" id="sectionEyebrow">
+              Inventory Intake
+            </p>
             <h3 id="sectionHeading">Add New Stock</h3>
             <p id="sectionLead">
               Keep quantity, buying rate, and selling rate aligned when fresh
@@ -1334,7 +1421,9 @@
 
               <div class="row g-3">
                 <div class="col-12">
-                  <label class="form-label small">Search Existing Item For Add</label>
+                  <label class="form-label small"
+                    >Search Existing Item For Add</label
+                  >
                   <div class="position-relative">
                     <input
                       type="text"
@@ -1395,7 +1484,11 @@
                 </div>
 
                 <div class="col-12">
-                  <button class="btn btn-primary w-100" id="addStockBtn" type="button">
+                  <button
+                    class="btn btn-primary w-100"
+                    id="addStockBtn"
+                    type="button"
+                  >
                     <i class="fas fa-plus-circle"></i>
                     Add Stock
                   </button>
@@ -1435,8 +1528,13 @@
               </div>
 
               <ul class="support-list">
-                <li>Pick an old item to compare the latest rate before saving.</li>
-                <li>Buying rate changes automatically refresh the suggested selling rate.</li>
+                <li>
+                  Pick an old item to compare the latest rate before saving.
+                </li>
+                <li>
+                  Buying rate changes automatically refresh the suggested
+                  selling rate.
+                </li>
                 <li>You can still edit the selling rate manually any time.</li>
               </ul>
             </aside>
@@ -1461,7 +1559,9 @@
 
             <div class="row g-3 align-items-end">
               <div class="col-lg-8">
-                <label class="form-label small">Item Search / Direct Search</label>
+                <label class="form-label small"
+                  >Item Search / Direct Search</label
+                >
                 <div class="position-relative">
                   <input
                     type="text"
@@ -1474,13 +1574,21 @@
                 </div>
               </div>
               <div class="col-sm-6 col-lg-2">
-                <button class="btn btn-primary w-100" id="loadItemReportBtn" type="button">
+                <button
+                  class="btn btn-primary w-100"
+                  id="loadItemReportBtn"
+                  type="button"
+                >
                   <i class="fas fa-search"></i>
                   Search
                 </button>
               </div>
               <div class="col-sm-6 col-lg-2">
-                <button class="btn btn-info w-100" id="itemReportPdfBtn" type="button">
+                <button
+                  class="btn btn-info w-100"
+                  id="itemReportPdfBtn"
+                  type="button"
+                >
                   <i class="fas fa-file-pdf"></i>
                   Download PDF
                 </button>
@@ -1526,7 +1634,11 @@
             </div>
           </section>
 
-          <section id="lowStockCard" class="panel-card panel-card--alert" hidden>
+          <section
+            id="lowStockCard"
+            class="panel-card panel-card--alert"
+            hidden
+          >
             <div class="panel-heading">
               <div>
                 <span class="panel-kicker">Stock Alert</span>
@@ -1603,7 +1715,11 @@
               </div>
               <div class="col-lg-4">
                 <label class="form-label small">Load Report</label>
-                <button class="btn btn-primary w-100" id="loadSalesBtn" type="button">
+                <button
+                  class="btn btn-primary w-100"
+                  id="loadSalesBtn"
+                  type="button"
+                >
                   <i class="fas fa-search"></i>
                   Load Sales Report
                 </button>
@@ -1618,7 +1734,11 @@
                 </button>
               </div>
               <div class="col-sm-6">
-                <button class="btn btn-success w-100" id="excelBtn" type="button">
+                <button
+                  class="btn btn-success w-100"
+                  id="excelBtn"
+                  type="button"
+                >
                   <i class="fas fa-file-excel"></i>
                   Download Excel
                 </button>
@@ -1673,14 +1793,20 @@
 
           <div class="chart-grid">
             <section class="analytics-card">
-              <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+              <div
+                class="d-flex justify-content-between align-items-center gap-3 mb-3"
+              >
                 <div>
                   <h5 class="analytics-title mb-1">Growth Overview</h5>
                   <p class="panel-subtitle mb-0">
                     Compare monthly sales and profit from the same chart.
                   </p>
                 </div>
-                <select id="yearFilter" class="form-select form-select-sm" style="width: 130px">
+                <select
+                  id="yearFilter"
+                  class="form-select form-select-sm"
+                  style="width: 130px"
+                >
                   <option value="all">All</option>
                 </select>
               </div>
@@ -1778,7 +1904,11 @@
                 </div>
 
                 <div class="col-12">
-                  <button class="btn btn-danger w-100" id="submitDebtBtn" type="button">
+                  <button
+                    class="btn btn-danger w-100"
+                    id="submitDebtBtn"
+                    type="button"
+                  >
                     <i class="fas fa-check-circle"></i>
                     Submit
                   </button>
@@ -1815,13 +1945,21 @@
 
               <div class="row g-2 mb-3">
                 <div class="col-sm-6">
-                  <button class="btn btn-success w-100" id="searchLedgerBtn" type="button">
+                  <button
+                    class="btn btn-success w-100"
+                    id="searchLedgerBtn"
+                    type="button"
+                  >
                     <i class="fas fa-search"></i>
                     Search
                   </button>
                 </div>
                 <div class="col-sm-6">
-                  <button class="btn btn-secondary w-100" id="showAllDuesBtn" type="button">
+                  <button
+                    class="btn btn-secondary w-100"
+                    id="showAllDuesBtn"
+                    type="button"
+                  >
                     <i class="fas fa-list"></i>
                     All Customers
                   </button>
