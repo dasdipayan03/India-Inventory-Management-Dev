@@ -1,6 +1,9 @@
-const apiBase = window.location.origin.includes("localhost")
-  ? "http://localhost:4000/api"
-  : "/api";
+const appConfig = window.InventoryApp || {};
+const apiBase =
+  appConfig.apiBase ||
+  (window.location.origin.includes("localhost")
+    ? "http://localhost:4000/api"
+    : "/api");
 
 const state = {
   itemNames: [],
@@ -20,57 +23,22 @@ const state = {
   sessionUser: null,
 };
 
-const STAFF_PERMISSION_OPTIONS = [
-  {
-    value: "add_stock",
-    label: "Add New Stock",
-    shortLabel: "Stock Entry",
-    description: "Create or update stock entries from the main inventory form.",
-  },
-  {
-    value: "sale_invoice",
-    label: "Sale and Invoice",
-    shortLabel: "Invoice",
-    description: "Create sales bills, generate invoices, and open invoice history.",
-  },
-  {
-    value: "stock_report",
-    label: "Stock Report",
-    shortLabel: "Stock Report",
-    description: "Review stock availability, sold quantity, and low stock report.",
-  },
-  {
-    value: "sales_report",
-    label: "Sales Report",
-    shortLabel: "Sales Report",
-    description: "Open sales analytics, export reports, and check date-wise totals.",
-  },
-  {
-    value: "gst_report",
-    label: "GST Report",
-    shortLabel: "GST Report",
-    description: "See GST report data for filing and invoice-wise tax review.",
-  },
-  {
-    value: "customer_due",
-    label: "Customer Due",
-    shortLabel: "Customer Due",
-    description: "Manage due balances, ledger history, and customer collections.",
-  },
+const STAFF_PERMISSION_OPTIONS = appConfig.staffPermissionOptions || [];
+const DEFAULT_STAFF_PERMISSIONS = appConfig.defaultStaffPermissions || [
+  "add_stock",
+  "sale_invoice",
 ];
-
-const DEFAULT_STAFF_PERMISSIONS = ["add_stock", "sale_invoice"];
-const STAFF_PERMISSION_KEYS = STAFF_PERMISSION_OPTIONS.map(
-  (option) => option.value,
-);
-const SECTION_PERMISSION_MAP = {
+const STAFF_PERMISSION_KEYS =
+  appConfig.staffPermissionKeys ||
+  STAFF_PERMISSION_OPTIONS.map((option) => option.value);
+const SECTION_PERMISSION_MAP = appConfig.sectionPermissionMap || {
   addStockSection: "add_stock",
   itemReportSection: "stock_report",
   salesReportSection: "sales_report",
   gstReportSection: "gst_report",
   customerDebtSection: "customer_due",
 };
-const INVOICE_PAGE_PERMISSION = "sale_invoice";
+const INVOICE_PAGE_PERMISSION = appConfig.invoicePagePermission || "sale_invoice";
 
 const formatters = {
   whole: new Intl.NumberFormat("en-IN", {
@@ -168,13 +136,14 @@ function sanitizeFileName(value) {
     .toLowerCase();
 }
 
-function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+const escapeHtml =
+  appConfig.escapeHtml ||
+  ((value) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;"));
 
 function parseFormattedNumber(value) {
   return Number(String(value || "").replace(/[^0-9.]/g, "")) || 0;
@@ -185,6 +154,10 @@ function isAdminSession() {
 }
 
 function normalizeStaffPermissions(values) {
+  if (typeof appConfig.normalizePermissions === "function") {
+    return appConfig.normalizePermissions(values);
+  }
+
   const list = Array.isArray(values) ? values : [];
   const normalized = list
     .map((value) => String(value || "").trim().toLowerCase())
@@ -202,13 +175,18 @@ function getUserPermissions() {
 }
 
 function getPermissionOption(permission) {
-  return (
-    STAFF_PERMISSION_OPTIONS.find((option) => option.value === permission) ||
-    null
-  );
+  if (typeof appConfig.getPermissionOption === "function") {
+    return appConfig.getPermissionOption(permission);
+  }
+
+  return STAFF_PERMISSION_OPTIONS.find((option) => option.value === permission) || null;
 }
 
 function formatPermissionSummary(permissions, options = {}) {
+  if (typeof appConfig.formatPermissionSummary === "function") {
+    return appConfig.formatPermissionSummary(permissions, options);
+  }
+
   const short = Boolean(options.short);
   const normalized = normalizeStaffPermissions(permissions);
 
@@ -3159,6 +3137,7 @@ function bindStaffEvents() {
 }
 
 window.addEventListener("DOMContentLoaded", async () => {
+  window.InventoryAppShell?.renderSidebar("dashboard");
   cacheElements();
   bindSidebarEvents();
   bindPopupEvents();

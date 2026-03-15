@@ -1266,94 +1266,10 @@
         </p>
       </div>
 
-      <div class="sidebar__nav">
-        <button
-          data-nav-section="addStockSection"
-          data-eyebrow="Inventory Intake"
-          data-title="Add New Stock"
-          data-description="Keep quantity, buying rate, and selling rate aligned when fresh stock arrives."
-          data-badge="Stock"
-          type="button"
-        >
-          <i class="fas fa-plus-circle"></i>
-          <span>Add New Stock</span>
-        </button>
-        <button
-          id="invoiceNavBtn"
-          class="active"
-          data-eyebrow="Billing Workspace"
-          data-title="Sale and Invoice"
-          data-description="Create sale entries, generate polished invoices, and review recent billing activity."
-          data-badge="Invoice"
-          type="button"
-          aria-current="page"
-        >
-          <i class="fa-solid fa-file-invoice"></i>
-          <span>Sale and Invoice</span>
-        </button>
-        <button
-          data-nav-section="itemReportSection"
-          data-eyebrow="Inventory Insights"
-          data-title="Stock Report"
-          data-description="Search any item, review availability, and spot low stock before it becomes urgent."
-          data-badge="Reports"
-          type="button"
-        >
-          <i class="fas fa-boxes"></i>
-          <span>Stock Report</span>
-        </button>
-        <button
-          data-nav-section="salesReportSection"
-          data-eyebrow="Revenue Tracking"
-          data-title="Sales Report"
-          data-description="Explore date-wise sales, export PDF or Excel files, and monitor trend charts month after month."
-          data-badge="Sales"
-          type="button"
-        >
-          <i class="fas fa-chart-line"></i>
-          <span>Sales Report</span>
-        </button>
-        <button
-          data-nav-section="gstReportSection"
-          data-eyebrow="Tax Compliance"
-          data-title="GST Report"
-          data-description="Review invoice-wise GST for any date range, then export polished reports for filing and bookkeeping."
-          data-badge="GST"
-          type="button"
-        >
-          <i class="fas fa-receipt"></i>
-          <span>GST Report</span>
-        </button>
-        <button
-          data-nav-section="customerDebtSection"
-          data-eyebrow="Collections"
-          data-title="Customer Due"
-          data-description="Capture customer balances, search dues quickly, and keep ledger follow-up organized."
-          data-badge="Ledger"
-          type="button"
-        >
-          <i class="fas fa-user-clock"></i>
-          <span>Customer Due</span>
-        </button>
-        <button
-          data-nav-section="staffAccessSection"
-          data-eyebrow="Access Control"
-          data-title="Staff Access"
-          data-description="Create up to two staff accounts, keep credentials organized, and control who can work inside the shop workspace."
-          data-badge="Team"
-          type="button"
-        >
-          <i class="fa-solid fa-users-gear"></i>
-          <span>Staff Access</span>
-        </button>
-        <button id="logoutBtn" type="button">
-          <i class="fas fa-sign-out-alt"></i>
-          <span>Logout</span>
-        </button>
-      </div>
+      <div class="sidebar__nav" id="sidebarNav"></div>
 
       <div class="sidebar__footer">
-        <p>© 2026 India Inventory Management - All rights reserved.</p>
+        <p id="sidebarFooterText">© 2026 India Inventory Management - All rights reserved.</p>
       </div>
     </aside>
 
@@ -1766,8 +1682,11 @@
         <p id="popupMessage" class="sub"></p>
       </div>
     </div>
+    <script src="js/app-core.js"></script>
+    <script src="js/app-shell.js"></script>
     <script>
-      const API_PREFIX = "/api";
+      const appConfig = window.InventoryApp || {};
+      const API_PREFIX = appConfig.apiBase || "/api";
       const token = localStorage.getItem("token");
       const DRAFT_KEY = "invoice_page_draft_v3";
       const money = new Intl.NumberFormat("en-IN", {
@@ -1800,13 +1719,15 @@
         );
       };
 
-      const escapeHtml = (value) =>
-        String(value ?? "")
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
+      const escapeHtml =
+        appConfig.escapeHtml ||
+        ((value) =>
+          String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;"));
 
       const formatMoney = (value) => money.format(Number(value) || 0);
 
@@ -1824,42 +1745,11 @@
         localStorage.removeItem("user");
       };
 
-      const STAFF_PERMISSION_OPTIONS = [
-        {
-          value: "add_stock",
-          label: "Add New Stock",
-          shortLabel: "Stock Entry",
-        },
-        {
-          value: "sale_invoice",
-          label: "Sale and Invoice",
-          shortLabel: "Invoice",
-        },
-        {
-          value: "stock_report",
-          label: "Stock Report",
-          shortLabel: "Stock Report",
-        },
-        {
-          value: "sales_report",
-          label: "Sales Report",
-          shortLabel: "Sales Report",
-        },
-        {
-          value: "gst_report",
-          label: "GST Report",
-          shortLabel: "GST Report",
-        },
-        {
-          value: "customer_due",
-          label: "Customer Due",
-          shortLabel: "Customer Due",
-        },
-      ];
-      const STAFF_PERMISSION_KEYS = STAFF_PERMISSION_OPTIONS.map(
-        (option) => option.value,
-      );
-      const SECTION_PERMISSION_MAP = {
+      const STAFF_PERMISSION_OPTIONS = appConfig.staffPermissionOptions || [];
+      const STAFF_PERMISSION_KEYS =
+        appConfig.staffPermissionKeys ||
+        STAFF_PERMISSION_OPTIONS.map((option) => option.value);
+      const SECTION_PERMISSION_MAP = appConfig.sectionPermissionMap || {
         addStockSection: "add_stock",
         itemReportSection: "stock_report",
         salesReportSection: "sales_report",
@@ -1884,6 +1774,8 @@
           window.location.href = "login.html";
           return;
         }
+
+        window.InventoryAppShell?.renderSidebar("invoice");
 
         const $ = (id) => document.getElementById(id);
         const dom = {
@@ -1977,6 +1869,10 @@
         const isAdminSession = () => sessionUser?.role !== "staff";
 
         const normalizeStaffPermissions = (values) => {
+          if (typeof appConfig.normalizePermissions === "function") {
+            return appConfig.normalizePermissions(values);
+          }
+
           const list = Array.isArray(values) ? values : [];
           const normalized = list
             .map((value) => String(value || "").trim().toLowerCase())
@@ -1986,10 +1882,17 @@
         };
 
         const getPermissionOption = (permission) =>
-          STAFF_PERMISSION_OPTIONS.find((option) => option.value === permission) ||
-          null;
+          typeof appConfig.getPermissionOption === "function"
+            ? appConfig.getPermissionOption(permission)
+            : STAFF_PERMISSION_OPTIONS.find(
+                (option) => option.value === permission,
+              ) || null;
 
         const getPermissionSummary = (permissions, options = {}) => {
+          if (typeof appConfig.formatPermissionSummary === "function") {
+            return appConfig.formatPermissionSummary(permissions, options);
+          }
+
           const short = Boolean(options.short);
           const normalized = normalizeStaffPermissions(permissions);
 

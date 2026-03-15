@@ -1814,93 +1814,10 @@
         </p>
       </div>
 
-      <div class="sidebar__nav">
-        <button
-          data-section="addStockSection"
-          data-eyebrow="Inventory Intake"
-          data-title="Add New Stock"
-          data-description="Keep quantity, buying rate, and selling rate aligned when fresh stock arrives."
-          data-badge="Stock"
-          class="active"
-          type="button"
-        >
-          <i class="fas fa-plus-circle"></i>
-          <span>Add New Stock</span>
-        </button>
-        <button
-          id="invoiceBtn"
-          data-eyebrow="Billing Workspace"
-          data-title="Sale and Invoice"
-          data-description="Create sale entries, generate polished invoices, and review recent billing activity."
-          data-badge="Invoice"
-          type="button"
-        >
-          <i class="fa-solid fa-file-invoice"></i>
-          <span>Sale and Invoice</span>
-        </button>
-        <button
-          data-section="itemReportSection"
-          data-eyebrow="Inventory Insights"
-          data-title="Stock Report"
-          data-description="Search any item, review availability, and spot low stock before it becomes urgent."
-          data-badge="Reports"
-          type="button"
-        >
-          <i class="fas fa-boxes"></i>
-          <span>Stock Report</span>
-        </button>
-        <button
-          data-section="salesReportSection"
-          data-eyebrow="Revenue Tracking"
-          data-title="Sales Report"
-          data-description="Explore date-wise sales, export PDF or Excel files, and monitor trend charts month after month."
-          data-badge="Sales"
-          type="button"
-        >
-          <i class="fas fa-chart-line"></i>
-          <span>Sales Report</span>
-        </button>
-        <button
-          data-section="gstReportSection"
-          data-eyebrow="Tax Compliance"
-          data-title="GST Report"
-          data-description="Review invoice-wise GST for any date range, then export polished reports for filing and bookkeeping."
-          data-badge="GST"
-          type="button"
-        >
-          <i class="fas fa-receipt"></i>
-          <span>GST Report</span>
-        </button>
-        <button
-          data-section="customerDebtSection"
-          data-eyebrow="Collections"
-          data-title="Customer Due"
-          data-description="Capture customer balances, search dues quickly, and keep ledger follow-up organized."
-          data-badge="Ledger"
-          type="button"
-        >
-          <i class="fas fa-user-clock"></i>
-          <span>Customer Due</span>
-        </button>
-        <button
-          data-section="staffAccessSection"
-          data-eyebrow="Access Control"
-          data-title="Staff Access"
-          data-description="Create up to two staff accounts, keep credentials organized, and control who can work inside the shop workspace."
-          data-badge="Team"
-          type="button"
-        >
-          <i class="fa-solid fa-users-gear"></i>
-          <span>Staff Access</span>
-        </button>
-        <button id="logoutBtn" type="button">
-          <i class="fas fa-sign-out-alt"></i>
-          <span>Logout</span>
-        </button>
-      </div>
+      <div class="sidebar__nav" id="sidebarNav"></div>
 
       <div class="sidebar__footer">
-        <p>© 2026 India Inventory Management - All rights reserved.</p>
+        <p id="sidebarFooterText">© 2026 India Inventory Management - All rights reserved.</p>
       </div>
     </aside>
 
@@ -3244,6 +3161,8 @@
     </div>
 
     <script src="js/chart.min.js"></script>
+    <script src="js/app-core.js"></script>
+    <script src="js/app-shell.js"></script>
     <script src="js/dashboard.js"></script>
   </body>
 </html>
