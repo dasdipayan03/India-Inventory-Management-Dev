@@ -806,6 +806,10 @@
       .dashboard-table--low-stock td:first-child,
       .dashboard-table--sales th:nth-child(2),
       .dashboard-table--sales td:nth-child(2),
+      .dashboard-table--gst th:nth-child(2),
+      .dashboard-table--gst td:nth-child(2),
+      .dashboard-table--gst th:nth-child(3),
+      .dashboard-table--gst td:nth-child(3),
       .dashboard-table--ledger td:first-child,
       .dashboard-table--ledger td:last-child {
         text-align: left;
@@ -814,6 +818,8 @@
       .dashboard-table--item-report td:first-child,
       .dashboard-table--low-stock td:first-child,
       .dashboard-table--sales td:nth-child(2),
+      .dashboard-table--gst td:nth-child(2),
+      .dashboard-table--gst td:nth-child(3),
       .dashboard-table--ledger td:first-child,
       .dashboard-table--ledger td:last-child {
         white-space: normal;
@@ -881,6 +887,66 @@
         color: var(--cyan-strong);
         font-size: 13px;
         font-weight: 700;
+      }
+
+      .report-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 18px;
+      }
+
+      .report-kpi {
+        position: relative;
+        overflow: hidden;
+        padding: 18px;
+        border-radius: 20px;
+        border: 1px solid rgba(191, 219, 254, 0.42);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(246, 251, 255, 0.88));
+        box-shadow: var(--shadow-md);
+      }
+
+      .report-kpi::after {
+        content: "";
+        position: absolute;
+        inset: auto -18px -28px auto;
+        width: 90px;
+        height: 90px;
+        border-radius: 999px;
+        background: var(--kpi-glow, rgba(14, 165, 233, 0.16));
+      }
+
+      .report-kpi__label {
+        position: relative;
+        z-index: 1;
+        display: block;
+        color: var(--ink-soft);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .report-kpi__value {
+        position: relative;
+        z-index: 1;
+        display: block;
+        margin-top: 10px;
+        color: var(--ink-strong);
+        font-size: clamp(22px, 2vw, 30px);
+        line-height: 1.05;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+      }
+
+      .report-kpi__note {
+        position: relative;
+        z-index: 1;
+        display: block;
+        margin-top: 8px;
+        color: var(--ink-soft);
+        font-size: 12px;
+        line-height: 1.55;
       }
 
       .analytics-card {
@@ -1115,6 +1181,10 @@
           padding: 20px;
         }
 
+        .report-kpi-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .section-meta {
           align-items: flex-start;
           flex-direction: column;
@@ -1166,6 +1236,17 @@
           line-height: 1.3;
         }
 
+        .dashboard-table--item-report td:first-child,
+        .dashboard-table--low-stock td:first-child,
+        .dashboard-table--sales td:nth-child(2),
+        .dashboard-table--gst td:nth-child(2),
+        .dashboard-table--gst td:nth-child(3),
+        .dashboard-table--ledger td:first-child,
+        .dashboard-table--ledger td:last-child {
+          min-width: 170px;
+          white-space: normal;
+        }
+
         .dashboard-table--item-report th:nth-child(1),
         .dashboard-table--low-stock th:nth-child(1) {
           width: 30%;
@@ -1202,13 +1283,41 @@
           width: 21%;
         }
 
+        .dashboard-table--gst th:nth-child(1) {
+          width: 14%;
+        }
+
+        .dashboard-table--gst th:nth-child(2) {
+          width: 22%;
+        }
+
+        .dashboard-table--gst th:nth-child(3) {
+          width: 26%;
+        }
+
+        .dashboard-table--gst th:nth-child(4) {
+          width: 13%;
+        }
+
+        .dashboard-table--gst th:nth-child(5) {
+          width: 11%;
+        }
+
+        .dashboard-table--gst th:nth-child(6) {
+          width: 14%;
+        }
+
+        .report-kpi-grid {
+          grid-template-columns: 1fr;
+        }
+
         .mobile-table-wrap {
           width: calc(100% + 40px);
           margin-left: -20px;
           margin-right: -20px;
           border-left: 0;
           border-right: 0;
-          border-radius: 3;
+          border-radius: 0;
         }
 
         .mobile-table-wrap .summary-strip,
@@ -1290,6 +1399,17 @@
         >
           <i class="fas fa-chart-line"></i>
           <span>Sales Report</span>
+        </button>
+        <button
+          data-section="gstReportSection"
+          data-eyebrow="Tax Compliance"
+          data-title="GST Report"
+          data-description="Review invoice-wise GST for any date range, then export polished reports for filing and bookkeeping."
+          data-badge="GST"
+          type="button"
+        >
+          <i class="fas fa-receipt"></i>
+          <span>GST Report</span>
         </button>
         <button
           data-section="customerDebtSection"
@@ -1844,6 +1964,170 @@
               </div>
             </section>
           </div>
+        </div>
+
+        <div id="gstReportSection" class="form-section">
+          <section class="panel-card panel-card--surface">
+            <div class="panel-heading">
+              <div>
+                <span class="panel-kicker">Tax Compliance</span>
+                <h4>GST report and exports</h4>
+                <p class="panel-subtitle">
+                  Review invoice-wise taxable value and GST collected for any
+                  date range, then export the same report as PDF or Excel.
+                </p>
+              </div>
+              <div class="panel-card__icon">
+                <i class="fas fa-receipt"></i>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-sm-6 col-lg-4">
+                <label class="form-label small">From Date</label>
+                <input type="date" id="gstFromDate" class="form-control" />
+              </div>
+              <div class="col-sm-6 col-lg-4">
+                <label class="form-label small">To Date</label>
+                <input type="date" id="gstToDate" class="form-control" />
+              </div>
+              <div class="col-lg-4">
+                <label class="form-label small">Load Report</label>
+                <button
+                  class="btn btn-primary w-100"
+                  id="loadGstBtn"
+                  type="button"
+                >
+                  <i class="fas fa-search"></i>
+                  Load GST Report
+                </button>
+              </div>
+            </div>
+
+            <div class="row g-2 mt-1">
+              <div class="col-sm-6">
+                <button class="btn btn-info w-100" id="gstPdfBtn" type="button">
+                  <i class="fas fa-file-pdf"></i>
+                  Download PDF
+                </button>
+              </div>
+              <div class="col-sm-6">
+                <button
+                  class="btn btn-success w-100"
+                  id="gstExcelBtn"
+                  type="button"
+                >
+                  <i class="fas fa-file-excel"></i>
+                  Download Excel
+                </button>
+              </div>
+            </div>
+
+            <div class="report-kpi-grid">
+              <article
+                class="report-kpi"
+                style="--kpi-glow: rgba(14, 165, 233, 0.16)"
+              >
+                <span class="report-kpi__label">Invoices</span>
+                <strong class="report-kpi__value" id="gstInvoiceCount">0</strong>
+                <small class="report-kpi__note">
+                  Invoices found in the selected date range.
+                </small>
+              </article>
+              <article
+                class="report-kpi"
+                style="--kpi-glow: rgba(59, 130, 246, 0.16)"
+              >
+                <span class="report-kpi__label">Taxable Value</span>
+                <strong class="report-kpi__value" id="gstTaxableTotal">
+                  Rs. 0.00
+                </strong>
+                <small class="report-kpi__note">
+                  Net sales value before GST is applied.
+                </small>
+              </article>
+              <article
+                class="report-kpi"
+                style="--kpi-glow: rgba(20, 184, 166, 0.16)"
+              >
+                <span class="report-kpi__label">GST Collected</span>
+                <strong class="report-kpi__value" id="gstCollectedTotal">
+                  Rs. 0.00
+                </strong>
+                <small class="report-kpi__note">
+                  Total GST amount recorded in the invoices.
+                </small>
+              </article>
+              <article
+                class="report-kpi"
+                style="--kpi-glow: rgba(245, 158, 11, 0.16)"
+              >
+                <span class="report-kpi__label">Invoice Total</span>
+                <strong class="report-kpi__value" id="gstReportGrandTotal">
+                  Rs. 0.00
+                </strong>
+                <small class="report-kpi__note">
+                  Final invoice total including GST.
+                </small>
+              </article>
+            </div>
+
+            <hr class="my-4" />
+
+            <div class="table-responsive mobile-table-wrap">
+              <table
+                class="table table-sm text-center align-middle dashboard-table dashboard-table--gst"
+              >
+                <thead>
+                  <tr>
+                    <th>
+                      <span class="table-label-full">Date</span>
+                      <span class="table-label-compact">Date</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">Invoice No</span>
+                      <span class="table-label-compact">Inv No</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">Customer</span>
+                      <span class="table-label-compact">Cust.</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">Taxable Amount</span>
+                      <span class="table-label-compact">Taxable</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">GST Amount</span>
+                      <span class="table-label-compact">GST</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">Invoice Total</span>
+                      <span class="table-label-compact">Total</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="gstReportBody">
+                  <tr>
+                    <td colspan="6" class="text-muted">
+                      Select a date range and load the GST report.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="summary-strip">
+              <span class="summary-pill">
+                <i class="fa-solid fa-percent"></i>
+                Effective GST Rate: <span id="gstEffectiveRate">0.00%</span>
+              </span>
+              <span class="summary-pill">
+                <i class="fa-solid fa-calculator"></i>
+                Avg GST / Invoice: Rs.
+                <span id="gstAveragePerInvoice">0.00</span>
+              </span>
+            </div>
+          </section>
         </div>
 
         <div id="customerDebtSection" class="form-section">

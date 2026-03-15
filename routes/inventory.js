@@ -833,6 +833,349 @@ router.get("/sales/report/excel", async (req, res) => {
   }
 });
 
+async function fetchGstReportRows(userId, from, to) {
+  const result = await pool.query(
+    `SELECT
+      i.date AS created_at,
+      i.invoice_no,
+      COALESCE(NULLIF(TRIM(i.customer_name), ''), 'Walk-in Customer') AS customer_name,
+      COALESCE(i.subtotal, 0) AS taxable_amount,
+      CASE
+        WHEN COALESCE(i.subtotal, 0) = 0 THEN 0
+        ELSE ROUND(ABS((i.gst_amount / NULLIF(i.subtotal, 0)) * 100)::numeric, 2)
+      END AS gst_rate,
+      COALESCE(i.gst_amount, 0) AS gst_amount,
+      COALESCE(i.total_amount, 0) AS invoice_total
+     FROM invoices i
+     WHERE i.user_id = $1
+       AND (i.date AT TIME ZONE 'Asia/Kolkata')::date >= $2::date
+       AND (i.date AT TIME ZONE 'Asia/Kolkata')::date <= $3::date
+     ORDER BY i.date ASC, i.id ASC`,
+    [userId, from, to],
+  );
+
+  return result.rows;
+}
+
+function summarizeGstRows(rows) {
+  return rows.reduce(
+    (summary, row) => {
+      summary.invoiceCount += 1;
+      summary.taxableTotal += Number(row.taxable_amount) || 0;
+      summary.gstTotal += Number(row.gst_amount) || 0;
+      summary.grandTotal += Number(row.invoice_total) || 0;
+      return summary;
+    },
+    {
+      invoiceCount: 0,
+      taxableTotal: 0,
+      gstTotal: 0,
+      grandTotal: 0,
+    },
+  );
+}
+
+// ----------------- GST REPORT table (JSON PREVIEW) -----------------
+router.get("/gst/report", async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { from, to } = req.query;
+
+    if (!from || !to) {
+      return res.status(400).json({ error: "Missing date range" });
+    }
+
+    const rows = await fetchGstReportRows(userId, from, to);
+    res.json(rows);
+  } catch (err) {
+    console.error("GST report JSON error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ----------------- GST REPORT (PDF DOWNLOAD) -----------------
+router.get("/gst/report/pdf", async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { from, to } = req.query;
+
+    if (!from || !to) {
+      return res.status(400).json({ error: "Missing date range" });
+    }
+
+    const rows = await fetchGstReportRows(userId, from, to);
+    const summary = summarizeGstRows(rows);
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const gstColumns = [
+      { label: "Date", x: 46, width: 64 },
+      { label: "Invoice No", x: 114, width: 112 },
+      { label: "Customer", x: 230, width: 120 },
+      { label: "Taxable", x: 354, width: 64, align: "right" },
+      { label: "GST", x: 422, width: 58, align: "right" },
+      { label: "Total", x: 484, width: 58, align: "right" },
+    ];
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=gst_report_${from}_to_${to}.pdf`,
+    );
+
+    doc.pipe(res);
+
+    drawPdfBanner(
+      doc,
+      "GST Report",
+      `Invoice-wise GST from ${from} to ${to}`,
+      `Generated: ${formatIstDate(new Date())}`,
+    );
+
+    drawPdfTableHeader(doc, gstColumns);
+
+    rows.forEach((row, index) => {
+      if (doc.y > 720) {
+        doc.addPage();
+        drawPdfTableHeader(doc, gstColumns);
+      }
+
+      const y = doc.y;
+      const invoiceHeight = doc.heightOfString(row.invoice_no || "", {
+        width: 112,
+      });
+      const customerHeight = doc.heightOfString(row.customer_name || "", {
+        width: 120,
+      });
+      const rowHeight = Math.max(invoiceHeight, customerHeight, 18);
+
+      if (index % 2 === 0) {
+        doc.save();
+        doc.rect(40, y - 2, 515, rowHeight + 6).fill(PDF_THEME.rowAlt);
+        doc.restore();
+      }
+
+      doc.fillColor(PDF_THEME.ink).font("Helvetica").fontSize(10);
+      doc.text(formatIstDate(row.created_at), 46, y, { width: 64 });
+      doc.text(row.invoice_no || "-", 114, y, { width: 112 });
+      doc.text(row.customer_name || "-", 230, y, { width: 120 });
+      doc.text(formatCurrency(row.taxable_amount), 354, y, {
+        width: 64,
+        align: "right",
+      });
+      doc.text(formatCurrency(row.gst_amount), 422, y, {
+        width: 58,
+        align: "right",
+      });
+      doc.text(formatCurrency(row.invoice_total), 484, y, {
+        width: 58,
+        align: "right",
+      });
+
+      doc
+        .moveTo(40, y + rowHeight + 2)
+        .lineTo(555, y + rowHeight + 2)
+        .strokeColor(PDF_THEME.line)
+        .stroke();
+
+      doc.y = y + rowHeight + 6;
+    });
+
+    const summaryHeight = 64;
+    ensurePdfSpace(doc, summaryHeight + 12, () => drawPdfTableHeader(doc, gstColumns));
+
+    const summaryY = doc.y + 6;
+    doc.save();
+    doc.roundedRect(304, summaryY, 251, summaryHeight, 14)
+      .fillAndStroke("#f8fbff", PDF_THEME.line);
+    doc.restore();
+
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(PDF_THEME.navy);
+    doc.text(`Invoices: ${summary.invoiceCount}`, 320, summaryY + 12, { width: 100 });
+    doc.text(`GST: Rs. ${formatCurrency(summary.gstTotal)}`, 430, summaryY + 12, {
+      width: 108,
+      align: "right",
+    });
+    doc.text(`Taxable: Rs. ${formatCurrency(summary.taxableTotal)}`, 320, summaryY + 34, {
+      width: 120,
+    });
+    doc.text(`Total: Rs. ${formatCurrency(summary.grandTotal)}`, 430, summaryY + 34, {
+      width: 108,
+      align: "right",
+    });
+
+    doc.fillColor(PDF_THEME.ink);
+    doc.end();
+  } catch (err) {
+    console.error("GST PDF error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ----------------- GST REPORT (EXCEL DOWNLOAD) -----------------
+router.get("/gst/report/excel", async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { from, to } = req.query;
+
+    if (!from || !to) {
+      return res.status(400).json({ error: "Missing date range" });
+    }
+
+    const rows = await fetchGstReportRows(userId, from, to);
+    const summary = summarizeGstRows(rows);
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("GST Report");
+    workbook.creator = "India Inventory Management";
+    workbook.created = new Date();
+    sheet.views = [{ state: "frozen", ySplit: 3 }];
+    sheet.pageSetup = {
+      orientation: "landscape",
+      fitToPage: true,
+      fitToWidth: 1,
+      margins: {
+        left: 0.3,
+        right: 0.3,
+        top: 0.5,
+        bottom: 0.5,
+        header: 0.2,
+        footer: 0.2,
+      },
+    };
+
+    sheet.columns = [
+      { header: "Date", key: "date", width: 15 },
+      { header: "Invoice No", key: "invoice", width: 24 },
+      { header: "Customer", key: "customer", width: 24 },
+      { header: "Taxable Amount", key: "taxable", width: 16 },
+      { header: "GST Amount", key: "gst", width: 14 },
+      { header: "Invoice Total", key: "total", width: 16 },
+    ];
+
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.alignment = { horizontal: "center" };
+    headerRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFEFF6FF" },
+    };
+    headerRow.eachCell((cell) => {
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+        left: { style: "thin" },
+        right: { style: "thin" },
+      };
+    });
+
+    sheet.insertRow(1, ["GST Report"]);
+    sheet.mergeCells("A1:F1");
+    sheet.getCell("A1").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF17315D" },
+    };
+    sheet.getCell("A1").font = {
+      size: 16,
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
+    sheet.getCell("A1").alignment = { horizontal: "center" };
+
+    sheet.insertRow(
+      2,
+      [`Invoice-wise GST from ${from} to ${to}   |   Generated: ${formatIstDate(new Date())}`],
+    );
+    sheet.mergeCells("A2:F2");
+    sheet.getCell("A2").alignment = { horizontal: "center" };
+    sheet.getCell("A2").font = { italic: true, color: { argb: "FF475569" } };
+    sheet.autoFilter = "A3:F3";
+
+    rows.forEach((row, index) => {
+      const excelRow = sheet.addRow({
+        date: formatIstDate(row.created_at),
+        invoice: row.invoice_no,
+        customer: row.customer_name,
+        taxable: Number(row.taxable_amount) || 0,
+        gst: Number(row.gst_amount) || 0,
+        total: Number(row.invoice_total) || 0,
+      });
+
+      excelRow.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin" },
+          bottom: { style: "thin" },
+          left: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+
+      excelRow.alignment = { vertical: "middle" };
+      excelRow.getCell("A").alignment = { horizontal: "center" };
+      excelRow.getCell("B").alignment = { wrapText: true };
+      excelRow.getCell("C").alignment = { wrapText: true };
+      excelRow.getCell("D").alignment = { horizontal: "right" };
+      excelRow.getCell("E").alignment = { horizontal: "right" };
+      excelRow.getCell("F").alignment = { horizontal: "right" };
+
+      if (index % 2 === 1) {
+        excelRow.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF8FBFF" },
+          };
+        });
+      }
+
+      excelRow.getCell(4).numFmt = "#,##0.00";
+      excelRow.getCell(5).numFmt = "#,##0.00";
+      excelRow.getCell(6).numFmt = "#,##0.00";
+    });
+
+    sheet.addRow([]);
+
+    const totalRow = sheet.addRow({
+      customer: `Invoices: ${summary.invoiceCount}`,
+      taxable: summary.taxableTotal,
+      gst: summary.gstTotal,
+      total: summary.grandTotal,
+    });
+    totalRow.font = { bold: true };
+    totalRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFE0F2FE" },
+    };
+    totalRow.eachCell((cell) => {
+      cell.border = {
+        top: { style: "thin" },
+        bottom: { style: "thin" },
+      };
+    });
+    totalRow.getCell("D").numFmt = "#,##0.00";
+    totalRow.getCell("E").numFmt = "#,##0.00";
+    totalRow.getCell("F").numFmt = "#,##0.00";
+    totalRow.getCell("D").alignment = { horizontal: "right" };
+    totalRow.getCell("E").alignment = { horizontal: "right" };
+    totalRow.getCell("F").alignment = { horizontal: "right" };
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=gst_report_${from}_to_${to}.xlsx`,
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error("GST Excel error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ------------------- CUSTOMER DEBTS -------------------
 
 router.post("/debts", async (req, res) => {

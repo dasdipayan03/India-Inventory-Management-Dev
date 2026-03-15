@@ -6,6 +6,7 @@ const state = {
   itemNames: [],
   currentItemReportRows: [],
   currentSalesRows: [],
+  currentGstRows: [],
   lowStockRows: [],
   ledgerMode: "empty",
   currentLedgerNumber: "",
@@ -145,6 +146,18 @@ function cacheElements() {
     excelBtn: document.getElementById("excelBtn"),
     salesReportBody: document.getElementById("salesReportBody"),
     salesGrandTotal: document.getElementById("salesGrandTotal"),
+    gstFromDate: document.getElementById("gstFromDate"),
+    gstToDate: document.getElementById("gstToDate"),
+    loadGstBtn: document.getElementById("loadGstBtn"),
+    gstPdfBtn: document.getElementById("gstPdfBtn"),
+    gstExcelBtn: document.getElementById("gstExcelBtn"),
+    gstReportBody: document.getElementById("gstReportBody"),
+    gstInvoiceCount: document.getElementById("gstInvoiceCount"),
+    gstTaxableTotal: document.getElementById("gstTaxableTotal"),
+    gstCollectedTotal: document.getElementById("gstCollectedTotal"),
+    gstReportGrandTotal: document.getElementById("gstReportGrandTotal"),
+    gstAveragePerInvoice: document.getElementById("gstAveragePerInvoice"),
+    gstEffectiveRate: document.getElementById("gstEffectiveRate"),
     yearFilter: document.getElementById("yearFilter"),
     businessTrendChart: document.getElementById("businessTrendChart"),
     growthBadge: document.getElementById("growthBadge"),
@@ -950,6 +963,85 @@ function renderSalesReport(rows) {
   dom.salesGrandTotal.textContent = formatters.money.format(grandTotal);
 }
 
+function validateGstDates() {
+  const fromDate = dom.gstFromDate.value;
+  const toDate = dom.gstToDate.value;
+
+  if (!fromDate || !toDate) {
+    showPopup(
+      "error",
+      "Missing date range",
+      "Select both From and To dates before loading the GST report.",
+      { autoClose: false },
+    );
+    return false;
+  }
+
+  if (fromDate > toDate) {
+    showPopup(
+      "error",
+      "Invalid date range",
+      "From date cannot be later than To date.",
+      { autoClose: false },
+    );
+    return false;
+  }
+
+  return true;
+}
+
+function renderGstReport(rows) {
+  dom.gstReportBody.innerHTML = "";
+
+  if (!rows.length) {
+    dom.gstReportBody.innerHTML =
+      '<tr><td colspan="6" class="text-muted">No GST records found for this range.</td></tr>';
+    dom.gstInvoiceCount.textContent = "0";
+    dom.gstTaxableTotal.textContent = "Rs. 0.00";
+    dom.gstCollectedTotal.textContent = "Rs. 0.00";
+    dom.gstReportGrandTotal.textContent = "Rs. 0.00";
+    dom.gstAveragePerInvoice.textContent = "0.00";
+    dom.gstEffectiveRate.textContent = "0.00%";
+    return;
+  }
+
+  let taxableTotal = 0;
+  let gstTotal = 0;
+  let grandTotal = 0;
+
+  rows.forEach((row) => {
+    const taxableAmount = Number(row.taxable_amount) || 0;
+    const gstAmount = Number(row.gst_amount) || 0;
+    const invoiceTotal = Number(row.invoice_total) || 0;
+
+    taxableTotal += taxableAmount;
+    gstTotal += gstAmount;
+    grandTotal += invoiceTotal;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${formatDate(row.created_at)}</td>
+      <td>${escapeHtml(row.invoice_no || "-")}</td>
+      <td>${escapeHtml(row.customer_name || "Walk-in Customer")}</td>
+      <td>${formatCurrency(taxableAmount)}</td>
+      <td>${formatCurrency(gstAmount)}</td>
+      <td>${formatCurrency(invoiceTotal)}</td>
+    `;
+    dom.gstReportBody.appendChild(tr);
+  });
+
+  const invoiceCount = rows.length;
+  const averageGst = invoiceCount ? gstTotal / invoiceCount : 0;
+  const effectiveRate = taxableTotal ? (gstTotal / taxableTotal) * 100 : 0;
+
+  dom.gstInvoiceCount.textContent = formatCount(invoiceCount);
+  dom.gstTaxableTotal.textContent = formatCurrency(taxableTotal);
+  dom.gstCollectedTotal.textContent = formatCurrency(gstTotal);
+  dom.gstReportGrandTotal.textContent = formatCurrency(grandTotal);
+  dom.gstAveragePerInvoice.textContent = formatters.money.format(averageGst);
+  dom.gstEffectiveRate.textContent = `${formatNumber(Math.abs(effectiveRate))}%`;
+}
+
 async function loadSalesReport(options = {}) {
   if (!validateSalesDates()) {
     return;
@@ -986,6 +1078,49 @@ async function loadSalesReport(options = {}) {
           "error",
           "Sales report unavailable",
           "Could not load sales data for the selected range.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+async function loadGstReport(options = {}) {
+  if (!validateGstDates()) {
+    return;
+  }
+
+  const fromDate = dom.gstFromDate.value;
+  const toDate = dom.gstToDate.value;
+  const query = `/gst/report?from=${fromDate}&to=${toDate}`;
+
+  const task = async () => {
+    const rows = await fetchJSON(query);
+    state.currentGstRows = Array.isArray(rows) ? rows : [];
+    renderGstReport(state.currentGstRows);
+  };
+
+  if (options.silent) {
+    try {
+      await task();
+    } catch (error) {
+      console.error("GST report load failed:", error);
+    }
+    return;
+  }
+
+  await withButtonState(
+    dom.loadGstBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Loading GST...',
+    async () => {
+      try {
+        await task();
+      } catch (error) {
+        console.error("GST report load failed:", error);
+        showPopup(
+          "error",
+          "GST report unavailable",
+          "Could not load GST data for the selected range.",
           { autoClose: false },
         );
       }
@@ -1087,6 +1222,76 @@ async function downloadSalesExcel() {
           "error",
           "Download failed",
           error.message || "Could not download the sales Excel file.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+async function downloadGstPDF() {
+  if (!validateGstDates()) {
+    return;
+  }
+
+  const fromDate = dom.gstFromDate.value;
+  const toDate = dom.gstToDate.value;
+
+  await withButtonState(
+    dom.gstPdfBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Preparing PDF...',
+    async () => {
+      try {
+        await downloadAuthenticatedFile(
+          `/gst/report/pdf?from=${fromDate}&to=${toDate}`,
+          `gst-report-${fromDate}-to-${toDate}.pdf`,
+        );
+        showPopup(
+          "success",
+          "Download complete",
+          "The GST report PDF has been downloaded.",
+        );
+      } catch (error) {
+        console.error("GST PDF download failed:", error);
+        showPopup(
+          "error",
+          "Download failed",
+          error.message || "Could not download the GST PDF.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
+async function downloadGstExcel() {
+  if (!validateGstDates()) {
+    return;
+  }
+
+  const fromDate = dom.gstFromDate.value;
+  const toDate = dom.gstToDate.value;
+
+  await withButtonState(
+    dom.gstExcelBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Preparing Excel...',
+    async () => {
+      try {
+        await downloadAuthenticatedFile(
+          `/gst/report/excel?from=${fromDate}&to=${toDate}`,
+          `gst-report-${fromDate}-to-${toDate}.xlsx`,
+        );
+        showPopup(
+          "success",
+          "Download complete",
+          "The GST report Excel file has been downloaded.",
+        );
+      } catch (error) {
+        console.error("GST Excel download failed:", error);
+        showPopup(
+          "error",
+          "Download failed",
+          error.message || "Could not download the GST Excel file.",
           { autoClose: false },
         );
       }
@@ -1734,6 +1939,8 @@ function setDefaultSalesDates() {
 
   dom.fromDate.value = toInputDate(firstDay);
   dom.toDate.value = toInputDate(today);
+  dom.gstFromDate.value = toInputDate(firstDay);
+  dom.gstToDate.value = toInputDate(today);
 }
 
 function bindSidebarEvents() {
@@ -1868,6 +2075,24 @@ function bindReportEvents() {
   dom.loadSalesBtn.addEventListener("click", () => loadSalesReport());
   dom.pdfBtn.addEventListener("click", downloadSalesPDF);
   dom.excelBtn.addEventListener("click", downloadSalesExcel);
+
+  dom.gstFromDate.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      loadGstReport();
+    }
+  });
+
+  dom.gstToDate.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      loadGstReport();
+    }
+  });
+
+  dom.loadGstBtn.addEventListener("click", () => loadGstReport());
+  dom.gstPdfBtn.addEventListener("click", downloadGstPDF);
+  dom.gstExcelBtn.addEventListener("click", downloadGstExcel);
 }
 
 function bindCustomerDueEvents() {
