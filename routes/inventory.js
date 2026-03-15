@@ -52,20 +52,34 @@ function safeFilePart(value) {
     .toLowerCase();
 }
 
-function drawPdfBanner(doc, title, subtitle, rightText) {
+async function getShopName(userId) {
+  const result = await pool.query(
+    `SELECT COALESCE(NULLIF(TRIM(shop_name), ''), 'India Inventory Management') AS shop_name
+     FROM settings
+     WHERE user_id = $1
+     LIMIT 1`,
+    [userId],
+  );
+
+  return result.rows[0]?.shop_name || "India Inventory Management";
+}
+
+function drawPdfBanner(doc, title, shopName, subtitle, rightText) {
   const x = 40;
   const y = 34;
   const width = 515;
-  const height = 62;
+  const height = 78;
 
   doc.save();
   doc.roundedRect(x, y, width, height, 14).fill(PDF_THEME.navy);
   doc.fillColor("white").font("Helvetica-Bold").fontSize(18);
   doc.text(title, x + 18, y + 14, { width: 260 });
+  doc.fillColor("#eff6ff").font("Helvetica-Bold").fontSize(11);
+  doc.text(shopName, x + 18, y + 36, { width: 300 });
   doc.fillColor("#dbeafe").font("Helvetica").fontSize(10);
-  doc.text(subtitle, x + 18, y + 38, { width: 300 });
+  doc.text(subtitle, x + 18, y + 52, { width: 300 });
   doc.fillColor("#eff6ff").font("Helvetica").fontSize(10);
-  doc.text(rightText, x + 330, y + 18, { width: 165, align: "right" });
+  doc.text(rightText, x + 330, y + 22, { width: 165, align: "right" });
   doc.restore();
 
   doc.fillColor(PDF_THEME.ink).font("Helvetica").fontSize(10);
@@ -320,6 +334,7 @@ router.get("/items/report/pdf", async (req, res) => {
   try {
     const user_id = getUserId(req);
     const { name } = req.query;
+    const shopName = await getShopName(user_id);
 
     let params = [user_id];
     let nameFilter = "";
@@ -375,6 +390,7 @@ router.get("/items/report/pdf", async (req, res) => {
     drawPdfBanner(
       doc,
       "Stock Report",
+      shopName,
       reportScope,
       `Generated: ${formatIstDate(new Date())}`,
     );
@@ -443,6 +459,7 @@ router.get("/items/report/pdf", async (req, res) => {
       drawPdfBanner(
         doc,
         "Stock Summary",
+        shopName,
         reportScope,
         `Generated: ${formatIstDate(new Date())}`,
       );
@@ -523,6 +540,7 @@ router.get("/sales/report/pdf", async (req, res) => {
   try {
     const user_id = getUserId(req);
     const { from, to } = req.query;
+    const shopName = await getShopName(user_id);
 
     if (!from || !to) {
       return res.status(400).json({ error: "Missing date range" });
@@ -565,6 +583,7 @@ router.get("/sales/report/pdf", async (req, res) => {
     drawPdfBanner(
       doc,
       "Sales Report",
+      shopName,
       `Date range: ${from} to ${to}`,
       `Generated: ${formatIstDate(new Date())}`,
     );
@@ -655,6 +674,7 @@ router.get("/sales/report/excel", async (req, res) => {
   try {
     const user_id = getUserId(req);
     const { from, to } = req.query;
+    const shopName = await getShopName(user_id);
 
     if (!from || !to) {
       return res.status(400).json({ error: "Missing date range" });
@@ -680,7 +700,7 @@ router.get("/sales/report/excel", async (req, res) => {
     const sheet = workbook.addWorksheet("Sales Report");
     workbook.creator = "India Inventory Management";
     workbook.created = new Date();
-    sheet.views = [{ state: "frozen", ySplit: 3 }];
+    sheet.views = [{ state: "frozen", ySplit: 4 }];
     sheet.pageSetup = {
       orientation: "landscape",
       fitToPage: true,
@@ -695,7 +715,6 @@ router.get("/sales/report/excel", async (req, res) => {
       },
     };
 
-    // 1️⃣ Column headers FIRST
     sheet.columns = [
       { header: "Sl No", key: "sl", width: 8 },
       { header: "Date", key: "date", width: 15 },
@@ -705,8 +724,37 @@ router.get("/sales/report/excel", async (req, res) => {
       { header: "Amount", key: "total", width: 14 },
     ];
 
-    // style header row (row-1)
-    const headerRow = sheet.getRow(1);
+    sheet.insertRow(1, [`Sales Report`]);
+    sheet.mergeCells("A1:F1");
+    sheet.getCell("A1").font = { size: 16, bold: true };
+    sheet.getCell("A1").alignment = { horizontal: "center" };
+    sheet.getCell("A1").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF17315D" },
+    };
+    sheet.getCell("A1").font = { size: 16, bold: true, color: { argb: "FFFFFFFF" } };
+
+    sheet.insertRow(2, [shopName]);
+    sheet.mergeCells("A2:F2");
+    sheet.getCell("A2").alignment = { horizontal: "center" };
+    sheet.getCell("A2").font = { size: 12, bold: true, color: { argb: "FF17315D" } };
+    sheet.getCell("A2").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFF8FBFF" },
+    };
+
+    sheet.insertRow(
+      3,
+      [`From: ${from}   To: ${to}   |   Generated: ${formatIstDate(new Date())}`],
+    );
+    sheet.mergeCells("A3:F3");
+    sheet.getCell("A3").alignment = { horizontal: "center" };
+    sheet.getCell("A3").font = { italic: true, color: { argb: "FF475569" } };
+    sheet.autoFilter = "A4:F4";
+
+    const headerRow = sheet.getRow(4);
     headerRow.font = { bold: true };
     headerRow.alignment = { horizontal: "center" };
     headerRow.fill = {
@@ -723,28 +771,6 @@ router.get("/sales/report/excel", async (req, res) => {
       };
     });
 
-    // 2️⃣ Insert title rows ABOVE data (not splice)
-    sheet.insertRow(1, [`Sales Report`]);
-    sheet.mergeCells("A1:F1");
-    sheet.getCell("A1").font = { size: 16, bold: true };
-    sheet.getCell("A1").alignment = { horizontal: "center" };
-    sheet.getCell("A1").fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF17315D" },
-    };
-    sheet.getCell("A1").font = { size: 16, bold: true, color: { argb: "FFFFFFFF" } };
-
-    sheet.insertRow(
-      2,
-      [`From: ${from}   To: ${to}   |   Generated: ${formatIstDate(new Date())}`],
-    );
-    sheet.mergeCells("A2:F2");
-    sheet.getCell("A2").alignment = { horizontal: "center" };
-    sheet.getCell("A2").font = { italic: true, color: { argb: "FF475569" } };
-    sheet.autoFilter = "A3:F3";
-
-    // 3️⃣ Data rows
     let grandTotal = 0;
 
     result.rows.forEach((r, i) => {
@@ -898,6 +924,7 @@ router.get("/gst/report/pdf", async (req, res) => {
   try {
     const userId = getUserId(req);
     const { from, to } = req.query;
+    const shopName = await getShopName(userId);
 
     if (!from || !to) {
       return res.status(400).json({ error: "Missing date range" });
@@ -926,6 +953,7 @@ router.get("/gst/report/pdf", async (req, res) => {
     drawPdfBanner(
       doc,
       "GST Report",
+      shopName,
       `Invoice-wise GST from ${from} to ${to}`,
       `Generated: ${formatIstDate(new Date())}`,
     );
@@ -1015,6 +1043,7 @@ router.get("/gst/report/excel", async (req, res) => {
   try {
     const userId = getUserId(req);
     const { from, to } = req.query;
+    const shopName = await getShopName(userId);
 
     if (!from || !to) {
       return res.status(400).json({ error: "Missing date range" });
@@ -1026,7 +1055,7 @@ router.get("/gst/report/excel", async (req, res) => {
     const sheet = workbook.addWorksheet("GST Report");
     workbook.creator = "India Inventory Management";
     workbook.created = new Date();
-    sheet.views = [{ state: "frozen", ySplit: 3 }];
+    sheet.views = [{ state: "frozen", ySplit: 4 }];
     sheet.pageSetup = {
       orientation: "landscape",
       fitToPage: true,
@@ -1050,7 +1079,40 @@ router.get("/gst/report/excel", async (req, res) => {
       { header: "Invoice Total", key: "total", width: 16 },
     ];
 
-    const headerRow = sheet.getRow(1);
+    sheet.insertRow(1, ["GST Report"]);
+    sheet.mergeCells("A1:F1");
+    sheet.getCell("A1").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF17315D" },
+    };
+    sheet.getCell("A1").font = {
+      size: 16,
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
+    sheet.getCell("A1").alignment = { horizontal: "center" };
+
+    sheet.insertRow(2, [shopName]);
+    sheet.mergeCells("A2:F2");
+    sheet.getCell("A2").alignment = { horizontal: "center" };
+    sheet.getCell("A2").font = { size: 12, bold: true, color: { argb: "FF17315D" } };
+    sheet.getCell("A2").fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FFF8FBFF" },
+    };
+
+    sheet.insertRow(
+      3,
+      [`Invoice-wise GST from ${from} to ${to}   |   Generated: ${formatIstDate(new Date())}`],
+    );
+    sheet.mergeCells("A3:F3");
+    sheet.getCell("A3").alignment = { horizontal: "center" };
+    sheet.getCell("A3").font = { italic: true, color: { argb: "FF475569" } };
+    sheet.autoFilter = "A4:F4";
+
+    const headerRow = sheet.getRow(4);
     headerRow.font = { bold: true };
     headerRow.alignment = { horizontal: "center" };
     headerRow.fill = {
@@ -1066,29 +1128,6 @@ router.get("/gst/report/excel", async (req, res) => {
         right: { style: "thin" },
       };
     });
-
-    sheet.insertRow(1, ["GST Report"]);
-    sheet.mergeCells("A1:F1");
-    sheet.getCell("A1").fill = {
-      type: "pattern",
-      pattern: "solid",
-      fgColor: { argb: "FF17315D" },
-    };
-    sheet.getCell("A1").font = {
-      size: 16,
-      bold: true,
-      color: { argb: "FFFFFFFF" },
-    };
-    sheet.getCell("A1").alignment = { horizontal: "center" };
-
-    sheet.insertRow(
-      2,
-      [`Invoice-wise GST from ${from} to ${to}   |   Generated: ${formatIstDate(new Date())}`],
-    );
-    sheet.mergeCells("A2:F2");
-    sheet.getCell("A2").alignment = { horizontal: "center" };
-    sheet.getCell("A2").font = { italic: true, color: { argb: "FF475569" } };
-    sheet.autoFilter = "A3:F3";
 
     rows.forEach((row, index) => {
       const excelRow = sheet.addRow({
