@@ -2010,12 +2010,13 @@
             )
             .join("");
           host.style.display = "block";
-          host.querySelectorAll(".dropdown-item").forEach((node) =>
-            node.addEventListener("click", () => {
+          host.querySelectorAll(".dropdown-item").forEach((node) => {
+            node.addEventListener("pointerdown", (event) => {
+              event.preventDefault();
               onSelect(node.textContent);
               host.style.display = "none";
-            }),
-          );
+            });
+          });
         };
 
         async function loadItemNames() {
