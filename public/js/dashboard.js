@@ -17,7 +17,10 @@ const state = {
     last13Months: null,
   },
   popupTimer: null,
+  sessionUser: null,
 };
+
+const STAFF_ALLOWED_SECTIONS = new Set(["addStockSection"]);
 
 const formatters = {
   whole: new Intl.NumberFormat("en-IN", {
@@ -127,6 +130,19 @@ function parseFormattedNumber(value) {
   return Number(String(value || "").replace(/[^0-9.]/g, "")) || 0;
 }
 
+function isAdminSession() {
+  return state.sessionUser?.role !== "staff";
+}
+
+function canAccessSection(sectionId) {
+  return isAdminSession() || STAFF_ALLOWED_SECTIONS.has(sectionId);
+}
+
+function clearStoredSession() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+}
+
 function cacheElements() {
   Object.assign(dom, {
     sidebar: document.getElementById("sidebar"),
@@ -138,7 +154,9 @@ function cacheElements() {
     formSections: Array.from(document.querySelectorAll(".form-section")),
     logoutBtn: document.getElementById("logoutBtn"),
     invoiceBtn: document.getElementById("invoiceBtn"),
+    overviewGrid: document.getElementById("overviewGrid"),
     currentDateLabel: document.getElementById("currentDateLabel"),
+    sessionRoleChip: document.getElementById("sessionRoleChip"),
     welcomeUser: document.getElementById("welcomeUser"),
     heroSubtitle: document.getElementById("heroSubtitle"),
     sectionEyebrow: document.getElementById("sectionEyebrow"),
@@ -226,6 +244,13 @@ function cacheElements() {
     searchLedgerBtn: document.getElementById("searchLedgerBtn"),
     showAllDuesBtn: document.getElementById("showAllDuesBtn"),
     ledgerTable: document.getElementById("ledgerTable"),
+    staffName: document.getElementById("staffName"),
+    staffUsername: document.getElementById("staffUsername"),
+    staffPassword: document.getElementById("staffPassword"),
+    createStaffBtn: document.getElementById("createStaffBtn"),
+    staffList: document.getElementById("staffList"),
+    staffLimitValue: document.getElementById("staffLimitValue"),
+    staffRemainingValue: document.getElementById("staffRemainingValue"),
     commonPopup: document.getElementById("commonPopup"),
     popupOverlay: document.getElementById("popupOverlay"),
     popupBox: document.getElementById("popupBox"),
@@ -293,6 +318,17 @@ async function downloadAuthenticatedFile(path, fallbackName) {
   window.setTimeout(() => {
     window.URL.revokeObjectURL(blobUrl);
   }, 1500);
+}
+
+async function logoutAndRedirect() {
+  try {
+    await fetchJSON("/auth/logout", { method: "POST" });
+  } catch (error) {
+    console.error("Logout request failed:", error);
+  } finally {
+    clearStoredSession();
+    window.location.replace("login.html");
+  }
 }
 
 async function withButtonState(button, loadingHtml, task) {
@@ -444,6 +480,43 @@ function updateHeroSummary(metrics = {}) {
     : "Your dashboard is ready to track stock, reports, invoices, and dues from one polished workspace.";
 }
 
+function applySessionAccess(user) {
+  state.sessionUser = user;
+
+  const isStaff = user?.role === "staff";
+  const accessibleSection = isStaff ? "addStockSection" : "addStockSection";
+
+  if (dom.sessionRoleChip) {
+    dom.sessionRoleChip.innerHTML = isStaff
+      ? '<i class="fa-solid fa-user-lock"></i> Staff Workspace'
+      : '<i class="fa-solid fa-shield-halved"></i> Admin Workspace';
+  }
+
+  if (dom.overviewGrid) {
+    dom.overviewGrid.hidden = isStaff;
+  }
+
+  dom.sectionButtons.forEach((button) => {
+    const sectionId = button.dataset.section;
+    button.hidden = !canAccessSection(sectionId);
+  });
+
+  dom.formSections.forEach((section) => {
+    section.hidden = !canAccessSection(section.id);
+  });
+
+  const displayName = (user?.name || "").trim() || "Workspace User";
+  const ownerName = (user?.ownerName || "").trim();
+  dom.welcomeUser.textContent = `Welcome, ${displayName}`;
+  dom.heroSubtitle.textContent = isStaff
+    ? `${ownerName || "Your admin"} assigned you stock intake and sale plus invoice access only.`
+    : "Your dashboard is syncing the latest inventory and sales view.";
+
+  if (isStaff) {
+    localStorage.setItem("activeSection", accessibleSection);
+  }
+}
+
 function updateSectionMeta(button) {
   if (!button) {
     return;
@@ -493,6 +566,10 @@ function openSidebar() {
 }
 
 function setActiveSection(sectionId) {
+  if (!canAccessSection(sectionId)) {
+    sectionId = "addStockSection";
+  }
+
   const target = document.getElementById(sectionId);
   if (!target) {
     return;
@@ -514,6 +591,10 @@ function setActiveSection(sectionId) {
 
   if (sectionId === "itemReportSection") {
     loadLowStock({ silent: true });
+  }
+
+  if (sectionId === "staffAccessSection" && isAdminSession()) {
+    loadStaffAccounts({ silent: true });
   }
 
   if (isMobileLayout()) {
@@ -586,16 +667,12 @@ async function checkAuth() {
 
   try {
     const user = await fetchJSON("/auth/me");
-    const userName = (user.name || "").trim() || "Shop Owner";
-
     localStorage.setItem("user", JSON.stringify(user));
-    dom.welcomeUser.textContent = `Welcome, ${userName}`;
     document.body.style.visibility = "visible";
     return user;
   } catch (error) {
     console.error("Auth check failed:", error);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearStoredSession();
     document.body.style.visibility = "visible";
     showPopup("error", "Session expired", "Please log in again to continue.", {
       autoClose: false,
@@ -2251,6 +2328,206 @@ async function showAllDues(options = {}) {
   );
 }
 
+function normalizeStaffUsername(value) {
+  return String(value || "")
+    .replace(/\s+/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+function resetStaffForm() {
+  if (!dom.staffName || !dom.staffUsername || !dom.staffPassword) {
+    return;
+  }
+
+  dom.staffName.value = "";
+  dom.staffUsername.value = "";
+  dom.staffPassword.value = "";
+}
+
+function renderStaffList(data = {}) {
+  if (!dom.staffList) {
+    return;
+  }
+
+  const staff = Array.isArray(data.staff) ? data.staff : [];
+  const limit = Number(data.limit) || 2;
+  const remaining = Math.max(Number(data.remaining) || 0, 0);
+
+  if (dom.staffLimitValue) {
+    dom.staffLimitValue.textContent = formatCount(limit);
+  }
+
+  if (dom.staffRemainingValue) {
+    dom.staffRemainingValue.textContent = formatCount(remaining);
+  }
+
+  if (dom.createStaffBtn) {
+    dom.createStaffBtn.disabled = remaining <= 0;
+  }
+
+  if (!staff.length) {
+    dom.staffList.innerHTML = `
+      <div class="empty-ledger">
+        No staff accounts yet. Create the first staff login to get started.
+      </div>
+    `;
+    return;
+  }
+
+  dom.staffList.innerHTML = `
+    <table class="table table-sm text-center align-middle dashboard-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Username</th>
+          <th>Created</th>
+          <th>Access</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${staff
+          .map(
+            (member) => `
+              <tr>
+                <td>${escapeHtml(member.name || "-")}</td>
+                <td>${escapeHtml(member.username || "-")}</td>
+                <td>${formatDate(member.created_at)}</td>
+                <td>${member.is_active ? "Stock + Invoice" : "Inactive"}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm staff-delete-btn"
+                    data-staff-id="${member.id}"
+                  >
+                    <i class="fa-solid fa-trash"></i>
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            `,
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+
+  dom.staffList.querySelectorAll(".staff-delete-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const staffId = button.dataset.staffId;
+      await withButtonState(
+        button,
+        '<i class="fa-solid fa-spinner fa-spin"></i>',
+        async () => {
+          try {
+            await fetchJSON(`/auth/staff/${staffId}`, { method: "DELETE" });
+            await loadStaffAccounts({ silent: true });
+            showPopup(
+              "success",
+              "Staff removed",
+              "The staff account has been removed successfully.",
+            );
+          } catch (error) {
+            showPopup(
+              "error",
+              "Delete failed",
+              error.message || "Could not remove the staff account.",
+              { autoClose: false },
+            );
+          }
+        },
+      );
+    });
+  });
+}
+
+async function loadStaffAccounts(options = {}) {
+  if (!isAdminSession() || !dom.staffList) {
+    return;
+  }
+
+  try {
+    const data = await fetchJSON("/auth/staff");
+    renderStaffList(data);
+  } catch (error) {
+    console.error("Staff list load failed:", error);
+    if (!options.silent) {
+      showPopup(
+        "error",
+        "Load failed",
+        error.message || "Could not load staff accounts.",
+        { autoClose: false },
+      );
+    }
+  }
+}
+
+async function createStaffAccount() {
+  const name = String(dom.staffName?.value || "").replace(/\s+/g, " ").trim();
+  const username = normalizeStaffUsername(dom.staffUsername?.value);
+  const password = String(dom.staffPassword?.value || "");
+
+  dom.staffUsername.value = username;
+
+  if (!name || !username || !password) {
+    showPopup(
+      "error",
+      "Missing details",
+      "Enter staff name, username, and password before creating the account.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
+    showPopup(
+      "error",
+      "Invalid username",
+      "Username must be 3-30 characters and can use letters, numbers, dot, underscore, or hyphen.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  if (password.length < 6) {
+    showPopup(
+      "error",
+      "Weak password",
+      "Staff password must be at least 6 characters long.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  await withButtonState(
+    dom.createStaffBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Creating...',
+    async () => {
+      try {
+        await fetchJSON("/auth/staff", {
+          method: "POST",
+          body: JSON.stringify({ name, username, password }),
+        });
+        resetStaffForm();
+        await loadStaffAccounts({ silent: true });
+        showPopup(
+          "success",
+          "Staff account created",
+          "New staff login is ready to use.",
+        );
+      } catch (error) {
+        showPopup(
+          "error",
+          "Create failed",
+          error.message || "Could not create the staff account.",
+          { autoClose: false },
+        );
+      }
+    },
+  );
+}
+
 function restrictToDigits(input) {
   input.addEventListener("input", () => {
     input.value = input.value.replace(/\D/g, "").slice(0, 10);
@@ -2289,11 +2566,7 @@ function bindSidebarEvents() {
     window.location.href = "invoice.html";
   });
 
-  dom.logoutBtn.addEventListener("click", () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.replace("login.html");
-  });
+  dom.logoutBtn.addEventListener("click", logoutAndRedirect);
 
   window.addEventListener("resize", () => {
     if (!isMobileLayout()) {
@@ -2485,6 +2758,27 @@ function bindCustomerDueEvents() {
   dom.showAllDuesBtn.addEventListener("click", () => showAllDues());
 }
 
+function bindStaffEvents() {
+  if (!dom.createStaffBtn) {
+    return;
+  }
+
+  [dom.staffName, dom.staffUsername, dom.staffPassword].forEach((input) => {
+    input?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        createStaffAccount();
+      }
+    });
+  });
+
+  dom.staffUsername?.addEventListener("blur", () => {
+    dom.staffUsername.value = normalizeStaffUsername(dom.staffUsername.value);
+  });
+
+  dom.createStaffBtn.addEventListener("click", createStaffAccount);
+}
+
 window.addEventListener("DOMContentLoaded", async () => {
   cacheElements();
   bindSidebarEvents();
@@ -2492,6 +2786,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   bindInventoryEvents();
   bindReportEvents();
   bindCustomerDueEvents();
+  bindStaffEvents();
   updateCurrentDateLabel();
   hidePreviousBuyingRate();
   renderEmptyLedger(
@@ -2510,28 +2805,34 @@ window.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  applySessionAccess(user);
+
   const savedSection = localStorage.getItem("activeSection");
-  const validSection = dom.sectionButtons.some(
+  const visibleButtons = dom.sectionButtons.filter((button) => !button.hidden);
+  const validSection = visibleButtons.some(
     (button) => button.dataset.section === savedSection,
   )
     ? savedSection
-    : dom.sectionButtons[0]?.dataset.section;
+    : visibleButtons[0]?.dataset.section;
 
   if (validSection) {
     setActiveSection(validSection);
   }
 
   await loadItemNames({ silent: true });
-  initYearFilter();
 
-  await Promise.allSettled([
-    loadDashboardOverview({ silent: true }),
-    loadBusinessTrend("all", { silent: true }),
-    loadLast13MonthsChart({ silent: true }),
-  ]);
+  if (isAdminSession()) {
+    initYearFilter();
+    await Promise.allSettled([
+      loadDashboardOverview({ silent: true }),
+      loadBusinessTrend("all", { silent: true }),
+      loadLast13MonthsChart({ silent: true }),
+      loadStaffAccounts({ silent: true }),
+    ]);
 
-  if (validSection === "itemReportSection") {
-    await loadLowStock({ silent: true });
+    if (validSection === "itemReportSection") {
+      await loadLowStock({ silent: true });
+    }
   }
 });
 

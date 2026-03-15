@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const PDFDocument = require("pdfkit");
 const pool = require("../db");
-const { authMiddleware } = require("../middleware/auth");
+const { authMiddleware, getUserId, requireAdmin } = require("../middleware/auth");
 
 /* ---------------------- Helper: pad serial ---------------------- */
 function padSerial(n) {
@@ -39,7 +39,7 @@ async function generateInvoiceNoWithClient(client, userId) {
 
 /* ---------------------- GET: Preview Next Invoice ---------------------- */
 router.get("/invoices/new", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
+  const userId = getUserId(req);
   const client = await pool.connect();
   try {
     const todayDate = new Date()
@@ -65,7 +65,7 @@ router.get("/invoices/new", authMiddleware, async (req, res) => {
 
 /* ---------------------- POST: SAVE INVOICE (FINAL LOGIC) ---------------------- */
 router.post("/invoices", authMiddleware, async (req, res) => {
-  const userId = req.user.id;
+  const userId = getUserId(req);
   const { customer_name, contact, address, gst_no, items } = req.body;
 
   if (!Array.isArray(items) || !items.length) {
@@ -196,13 +196,14 @@ router.post("/invoices", authMiddleware, async (req, res) => {
 
 //---------- invoice search dropdown -----------//
 router.get("/invoices/numbers", authMiddleware, async (req, res) => {
+  const userId = getUserId(req);
   const { rows } = await pool.query(
     `SELECT invoice_no
          FROM invoices
          WHERE user_id = $1
          ORDER BY date DESC
          LIMIT 50`,
-    [req.user.id],
+    [userId],
   );
 
   res.json(rows.map((r) => r.invoice_no));
@@ -216,7 +217,7 @@ router.get("/invoices", authMiddleware, async (req, res) => {
       Math.max(Number.parseInt(req.query.limit, 10) || 100, 1),
       200,
     );
-    const params = [req.user.id];
+    const params = [getUserId(req)];
     const filters = [];
 
     if (rawQuery) {
@@ -267,6 +268,7 @@ router.get("/invoices", authMiddleware, async (req, res) => {
 
 /* ---------------------- GET: Invoice Details ---------------------- */
 router.get("/invoices/:invoiceNo", authMiddleware, async (req, res) => {
+  const userId = getUserId(req);
   const { rows } = await pool.query(
     `
       SELECT i.*, COALESCE(json_agg(ii.*)
@@ -276,7 +278,7 @@ router.get("/invoices/:invoiceNo", authMiddleware, async (req, res) => {
       WHERE i.user_id=$2 AND i.invoice_no=$1
       GROUP BY i.id
     `,
-    [req.params.invoiceNo, req.user.id],
+    [req.params.invoiceNo, userId],
   );
 
   if (!rows[0]) return res.status(404).json({ success: false });
@@ -298,7 +300,7 @@ router.get(
   authMiddleware,
 
   async (req, res) => {
-    const userId = req.user.id;
+    const userId = getUserId(req);
     const invoiceNo = req.params.invoiceNo.replace(/['"%]+/g, "").trim();
 
     try {
@@ -502,9 +504,9 @@ router.get(
 );
 
 /* ---------------------- SHOP INFO save ---------------------- */
-router.post("/shop-info", authMiddleware, async (req, res) => {
+router.post("/shop-info", authMiddleware, requireAdmin, async (req, res) => {
   const { shop_name, shop_address, gst_no, gst_rate } = req.body;
-  const userId = req.user.id;
+  const userId = getUserId(req);
 
   await pool.query(
     `
@@ -524,9 +526,10 @@ router.post("/shop-info", authMiddleware, async (req, res) => {
 });
 
 router.get("/shop-info", authMiddleware, async (req, res) => {
+  const userId = getUserId(req);
   const { rows } = await pool.query(
     `SELECT shop_name,shop_address,gst_no,gst_rate FROM settings WHERE user_id=$1`,
-    [req.user.id],
+    [userId],
   );
   res.json({ success: true, settings: rows[0] || {} });
 });

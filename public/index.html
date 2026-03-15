@@ -1745,6 +1745,17 @@
           <i class="fas fa-user-clock"></i>
           <span>Customer Due</span>
         </button>
+        <button
+          data-section="staffAccessSection"
+          data-eyebrow="Access Control"
+          data-title="Staff Access"
+          data-description="Create up to two staff accounts, keep credentials organized, and control who can work inside the shop workspace."
+          data-badge="Team"
+          type="button"
+        >
+          <i class="fa-solid fa-users-gear"></i>
+          <span>Staff Access</span>
+        </button>
         <button id="logoutBtn" type="button">
           <i class="fas fa-sign-out-alt"></i>
           <span>Logout</span>
@@ -1771,9 +1782,9 @@
 
           <div class="hero-panel__user">
             <div>
-              <span class="hero-chip">
-                <i class="fa-solid fa-wave-square"></i>
-                Live Workspace
+              <span class="hero-chip" id="sessionRoleChip">
+                <i class="fa-solid fa-shield-halved"></i>
+                Admin Workspace
               </span>
               <h2 id="welcomeUser"></h2>
             </div>
@@ -1783,7 +1794,11 @@
           </div>
         </header>
 
-        <section class="overview-grid" aria-label="Dashboard Overview">
+        <section
+          id="overviewGrid"
+          class="overview-grid"
+          aria-label="Dashboard Overview"
+        >
           <article
             class="overview-card"
             style="--card-glow: rgba(14, 165, 233, 0.18)"
@@ -2913,6 +2928,124 @@
               <div id="ledgerTable" class="table-responsive mobile-table-wrap">
                 <div class="empty-ledger">
                   Search a customer or load all due balances to view the ledger.
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div id="staffAccessSection" class="form-section">
+          <div class="section-grid section-grid--dues">
+            <section class="panel-card panel-card--surface">
+              <div class="panel-heading">
+                <div>
+                  <span class="panel-kicker">Team Setup</span>
+                  <h4>Create staff account</h4>
+                  <p class="panel-subtitle">
+                    Admin can create up to two staff logins with username and
+                    password based access.
+                  </p>
+                </div>
+                <div class="panel-card__icon">
+                  <i class="fa-solid fa-user-plus"></i>
+                </div>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label small">Staff Name</label>
+                  <input
+                    id="staffName"
+                    type="text"
+                    class="form-control"
+                    placeholder="Staff full name"
+                  />
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label small">Username</label>
+                  <input
+                    id="staffUsername"
+                    type="text"
+                    class="form-control"
+                    placeholder="username"
+                    autocomplete="off"
+                    autocapitalize="none"
+                  />
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label small">Password</label>
+                  <input
+                    id="staffPassword"
+                    type="password"
+                    class="form-control"
+                    placeholder="At least 6 characters"
+                  />
+                </div>
+
+                <div class="col-12">
+                  <div class="panel-card panel-card--alert">
+                    <div class="panel-heading mb-0">
+                      <div>
+                        <span class="panel-kicker">Permission Scope</span>
+                        <h5>Staff will get limited workspace access</h5>
+                        <p class="panel-subtitle">
+                          Staff can only open Add New Stock and Sale and
+                          Invoice. Reports, GST, customer dues, and staff
+                          management remain admin only.
+                        </p>
+                      </div>
+                      <div class="panel-card__icon">
+                        <i class="fa-solid fa-user-shield"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-12">
+                  <button
+                    class="btn btn-primary w-100"
+                    id="createStaffBtn"
+                    type="button"
+                  >
+                    <i class="fa-solid fa-plus"></i>
+                    Create Staff Account
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel-card panel-card--surface">
+              <div class="panel-heading">
+                <div>
+                  <span class="panel-kicker">Access Overview</span>
+                  <h4>Current staff accounts</h4>
+                  <p class="panel-subtitle">
+                    Review active staff logins and remove them when access is no
+                    longer needed.
+                  </p>
+                </div>
+                <div class="panel-card__icon">
+                  <i class="fa-solid fa-users-line"></i>
+                </div>
+              </div>
+
+              <div class="summary-strip mb-3">
+                <span class="summary-pill">
+                  <i class="fa-solid fa-user-group"></i>
+                  Limit: <span id="staffLimitValue">2</span>
+                </span>
+                <span class="summary-pill">
+                  <i class="fa-solid fa-layer-group"></i>
+                  Remaining Slots: <span id="staffRemainingValue">2</span>
+                </span>
+              </div>
+
+              <div id="staffList" class="table-responsive mobile-table-wrap">
+                <div class="empty-ledger">
+                  No staff accounts yet. Create the first staff login to get
+                  started.
                 </div>
               </div>
             </section>

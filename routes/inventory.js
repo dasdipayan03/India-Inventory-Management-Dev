@@ -3,7 +3,7 @@ const express = require("express");
 const pool = require("../db");
 const PDFDocument = require("pdfkit");
 const ExcelJS = require("exceljs");
-const { authMiddleware, getUserId } = require("../middleware/auth");
+const { authMiddleware, getUserId, requireAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 // ===== STOCK ALERT CONFIG =====
@@ -265,7 +265,7 @@ router.get("/items/info", async (req, res) => {
 });
 
 // ----------------- ITEM WISE STOCK & SALES REPORT (JSON) -----------------
-router.get("/items/report", async (req, res) => {
+router.get("/items/report", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const { name } = req.query;
@@ -306,7 +306,7 @@ router.get("/items/report", async (req, res) => {
 });
 
 // ----------------- STOCK ALERTS (Days of Stock Model) -----------------
-router.get("/items/low-stock", async (req, res) => {
+router.get("/items/low-stock", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
 
@@ -357,7 +357,7 @@ router.get("/items/low-stock", async (req, res) => {
 });
 
 // ----------------- REORDER SUGGESTIONS (Replenishment Planner) -----------------
-router.get("/items/reorder-suggestions", async (req, res) => {
+router.get("/items/reorder-suggestions", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
 
@@ -457,7 +457,7 @@ router.get("/items/reorder-suggestions", async (req, res) => {
 });
 
 // ----------------- ITEM WISE STOCK & SALES REPORT (PDF) -----------------
-router.get("/items/report/pdf", async (req, res) => {
+router.get("/items/report/pdf", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const { name } = req.query;
@@ -636,7 +636,7 @@ router.get("/items/report/pdf", async (req, res) => {
 });
 
 // ----------------- SALES REPORT table (JSON PREVIEW) -----------------
-router.get("/sales/report", async (req, res) => {
+router.get("/sales/report", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const { from, to } = req.query;
@@ -669,7 +669,7 @@ router.get("/sales/report", async (req, res) => {
 });
 
 // ----------------- SALES REPORT (PDF DOWNLOAD) -----------------
-router.get("/sales/report/pdf", async (req, res) => {
+router.get("/sales/report/pdf", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const { from, to } = req.query;
@@ -805,7 +805,7 @@ router.get("/sales/report/pdf", async (req, res) => {
 });
 
 // ----------------- SALES REPORT (EXCEL DOWNLOAD) -----------------
-router.get("/sales/report/excel", async (req, res) => {
+router.get("/sales/report/excel", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const { from, to } = req.query;
@@ -1044,7 +1044,7 @@ function summarizeGstRows(rows) {
 }
 
 // ----------------- GST REPORT table (JSON PREVIEW) -----------------
-router.get("/gst/report", async (req, res) => {
+router.get("/gst/report", requireAdmin, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { from, to } = req.query;
@@ -1062,7 +1062,7 @@ router.get("/gst/report", async (req, res) => {
 });
 
 // ----------------- GST REPORT (PDF DOWNLOAD) -----------------
-router.get("/gst/report/pdf", async (req, res) => {
+router.get("/gst/report/pdf", requireAdmin, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { from, to } = req.query;
@@ -1201,7 +1201,7 @@ router.get("/gst/report/pdf", async (req, res) => {
 });
 
 // ----------------- GST REPORT (EXCEL DOWNLOAD) -----------------
-router.get("/gst/report/excel", async (req, res) => {
+router.get("/gst/report/excel", requireAdmin, async (req, res) => {
   try {
     const userId = getUserId(req);
     const { from, to } = req.query;
@@ -1382,7 +1382,7 @@ router.get("/gst/report/excel", async (req, res) => {
 
 // ------------------- CUSTOMER DEBTS -------------------
 
-router.post("/debts", async (req, res) => {
+router.post("/debts", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const {
@@ -1416,7 +1416,7 @@ router.post("/debts", async (req, res) => {
 });
 
 // ----------------- CUSTOMER AUTOSUGGEST -----------------
-router.get("/debts/customers", async (req, res) => {
+router.get("/debts/customers", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const { q } = req.query;
@@ -1449,7 +1449,7 @@ router.get("/debts/customers", async (req, res) => {
 });
 
 // Full ledger
-router.get("/debts/:number", async (req, res) => {
+router.get("/debts/:number", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const number = req.params.number;
@@ -1476,7 +1476,7 @@ router.get("/debts/:number", async (req, res) => {
 });
 
 // Summary dues
-router.get("/debts", async (req, res) => {
+router.get("/debts", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const result = await pool.query(
@@ -1499,7 +1499,7 @@ router.get("/debts", async (req, res) => {
   }
 });
 
-router.get("/dashboard/overview", async (req, res) => {
+router.get("/dashboard/overview", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
 
@@ -1590,7 +1590,7 @@ router.use((err, req, res, next) => {
 });
 
 // ----------------- MONTHLY SALES + PROFIT TREND -----------------
-router.get("/sales/monthly-trend", async (req, res) => {
+router.get("/sales/monthly-trend", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
     const yearParam = req.query.year;
@@ -1629,7 +1629,7 @@ router.get("/sales/monthly-trend", async (req, res) => {
 // ----------------- MONTHLY SALES + PROFIT TREND end -----------------
 
 // ----------------- LAST 13 MONTH SALES CHART -----------------
-router.get("/sales/last-13-months", async (req, res) => {
+router.get("/sales/last-13-months", requireAdmin, async (req, res) => {
   try {
     const user_id = getUserId(req);
 

@@ -200,6 +200,48 @@
         display: block;
       }
 
+      .auth-mode-switch {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 16px;
+        padding: 6px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, #f7fbff, #eef6fd);
+        border: 1px solid rgba(186, 230, 253, 0.9);
+      }
+
+      .auth-mode-btn {
+        border: 0;
+        border-radius: 14px;
+        padding: 11px 14px;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition:
+          background-color 0.2s ease,
+          color 0.2s ease,
+          box-shadow 0.2s ease,
+          transform 0.2s ease;
+      }
+
+      .auth-mode-btn.active {
+        color: var(--accent-dark);
+        background: #ffffff;
+        box-shadow: 0 12px 24px rgba(14, 165, 233, 0.12);
+        transform: translateY(-1px);
+      }
+
+      .auth-mode-note {
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
       .form-title {
         margin: 0 0 18px;
       }
@@ -1248,6 +1290,28 @@
           <div class="auth-card">
             <div id="msg" class="visually-hidden" aria-live="polite"></div>
 
+            <div class="auth-mode-switch" role="tablist" aria-label="Login mode">
+              <button
+                type="button"
+                class="auth-mode-btn active"
+                data-login-mode="admin"
+              >
+                Admin Login
+              </button>
+              <button
+                type="button"
+                class="auth-mode-btn"
+                data-login-mode="staff"
+              >
+                Staff Login
+              </button>
+            </div>
+
+            <p class="auth-mode-note" id="loginModeNote">
+              Admin signs in with email and password. Staff signs in with
+              username and password assigned by the admin.
+            </p>
+
             <form class="form active" id="login" novalidate>
               <div class="form-title">
                 <strong>Log in</strong>
@@ -1345,6 +1409,79 @@
                 >
                   Install
                 </a>
+              </div>
+            </form>
+
+            <form class="form" id="staffLogin" novalidate>
+              <div class="form-title">
+                <strong>Staff log in</strong>
+                <span>Use your assigned username and password to enter the restricted workspace.</span>
+              </div>
+              <div
+                class="form-status"
+                id="staffLoginStatus"
+                aria-live="polite"
+              ></div>
+
+              <div class="input-stack">
+                <label class="field-label" for="staffUsername">Username</label>
+                <div class="input-group">
+                  <i class="fa-solid fa-user"></i>
+                  <input
+                    id="staffUsername"
+                    type="text"
+                    placeholder="Username"
+                    autocomplete="username"
+                    autocapitalize="none"
+                    aria-describedby="staffUsernameHint"
+                    required
+                  />
+                </div>
+                <p
+                  class="field-hint"
+                  id="staffUsernameHint"
+                  data-default-message="Use the username your admin created for you."
+                >
+                  Use the username your admin created for you.
+                </p>
+              </div>
+
+              <div class="input-stack">
+                <label class="field-label" for="staffPassword">Password</label>
+                <div class="input-group password-group has-action">
+                  <i class="fa-solid fa-lock"></i>
+                  <input
+                    id="staffPassword"
+                    type="password"
+                    placeholder="Password"
+                    autocomplete="current-password"
+                    aria-describedby="staffPasswordHint"
+                    required
+                  />
+                  <button
+                    type="button"
+                    class="toggle-password"
+                    data-toggle-password="staffPassword"
+                    aria-label="Show password"
+                  >
+                    <i class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
+                <p
+                  class="field-hint"
+                  id="staffPasswordHint"
+                  data-default-message="Staff passwords are case-sensitive."
+                >
+                  Staff passwords are case-sensitive.
+                </p>
+              </div>
+
+              <button id="staffLoginBtn" class="btn" type="submit">
+                <i class="fa-solid fa-id-card"></i> Staff Login
+              </button>
+
+              <div class="small-links">
+                <a href="#" id="staffBackToAdmin">Back to admin login</a>
               </div>
             </form>
 
@@ -1595,12 +1732,15 @@
         const msgEl = document.getElementById("msg");
         const forms = {
           login: document.getElementById("login"),
+          staffLogin: document.getElementById("staffLogin"),
           register: document.getElementById("register"),
           forgot: document.getElementById("forgot"),
         };
         const fields = {
           loginEmail: document.getElementById("loginEmail"),
           loginPassword: document.getElementById("loginPassword"),
+          staffUsername: document.getElementById("staffUsername"),
+          staffPassword: document.getElementById("staffPassword"),
           regName: document.getElementById("regName"),
           regEmail: document.getElementById("regEmail"),
           regPassword: document.getElementById("regPassword"),
@@ -1609,11 +1749,13 @@
         };
         const statusEls = {
           login: document.getElementById("loginStatus"),
+          staffLogin: document.getElementById("staffLoginStatus"),
           register: document.getElementById("registerStatus"),
           forgot: document.getElementById("forgotStatus"),
         };
         const buttons = {
           login: document.getElementById("loginBtn"),
+          staffLogin: document.getElementById("staffLoginBtn"),
           register: document.getElementById("registerBtn"),
           forgot: document.getElementById("forgotBtn"),
         };
@@ -1633,7 +1775,12 @@
         const popupContent = document.getElementById("popupContent");
         const popupClose = document.getElementById("popupClose");
         const installCard = document.getElementById("installCard");
+        const loginModeNote = document.getElementById("loginModeNote");
+        const loginModeButtons = Array.from(
+          document.querySelectorAll("[data-login-mode]"),
+        );
         const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const usernamePattern = /^[a-zA-Z0-9._-]{3,30}$/;
         let activeFooterTrigger = null;
         let cleanupErrorListeners = () => {};
 
@@ -1690,12 +1837,30 @@
           statusEl.textContent = message;
         };
 
+        const setLoginMode = (mode) => {
+          const isStaff = mode === "staff";
+          loginModeButtons.forEach((button) => {
+            button.classList.toggle(
+              "active",
+              button.dataset.loginMode === mode,
+            );
+          });
+          loginModeNote.textContent = isStaff
+            ? "Staff signs in with username and password and gets only stock plus invoice access."
+            : "Admin signs in with email and password and gets full access to inventory, reports, GST, dues, and staff management.";
+        };
+
         const switchForm = (target) => {
           Object.entries(forms).forEach(([name, form]) => {
             form.classList.toggle("active", name === target);
           });
           Object.keys(statusEls).forEach(clearFormStatus);
           Object.values(fields).forEach(resetInputState);
+          if (target === "staffLogin") {
+            setLoginMode("staff");
+          } else if (target === "login") {
+            setLoginMode("admin");
+          }
         };
 
         const clearSelectedFields = (fieldNames) => {
@@ -1911,6 +2076,106 @@
                   "login",
                   "error",
                   "Login failed. Check your email and password, then try again.",
+                );
+                showPopup("error", error.message);
+              }
+            },
+          );
+        });
+
+        const validateStaffLoginForm = () => {
+          clearFormStatus("staffLogin");
+          resetInputState(fields.staffUsername);
+          resetInputState(fields.staffPassword);
+
+          const username = fields.staffUsername.value.trim().toLowerCase();
+          const password = fields.staffPassword.value;
+          let firstInvalidField = null;
+
+          fields.staffUsername.value = username;
+
+          if (!username) {
+            setInputState(
+              fields.staffUsername,
+              "invalid",
+              "Enter your assigned username.",
+            );
+            firstInvalidField = fields.staffUsername;
+          } else if (!usernamePattern.test(username)) {
+            setInputState(
+              fields.staffUsername,
+              "invalid",
+              "Username can use letters, numbers, dot, underscore, or hyphen.",
+            );
+            firstInvalidField = fields.staffUsername;
+          } else {
+            setInputState(
+              fields.staffUsername,
+              "valid",
+              "Username format looks good.",
+            );
+          }
+
+          if (!password) {
+            setInputState(
+              fields.staffPassword,
+              "invalid",
+              "Enter your password.",
+            );
+            firstInvalidField = firstInvalidField || fields.staffPassword;
+          } else {
+            setInputState(
+              fields.staffPassword,
+              "valid",
+              "Password looks ready.",
+            );
+          }
+
+          if (firstInvalidField) {
+            firstInvalidField.focus();
+            setFormStatus(
+              "staffLogin",
+              "error",
+              "Please correct the highlighted fields.",
+            );
+            return null;
+          }
+
+          return { username, password };
+        };
+
+        forms.staffLogin.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const payload = validateStaffLoginForm();
+          if (!payload) {
+            return;
+          }
+
+          await withPendingState(
+            buttons.staffLogin,
+            '<i class="fa-solid fa-spinner fa-spin"></i> Signing in...',
+            async () => {
+              try {
+                const data = await postJSON("/staff/login", payload);
+                localStorage.setItem("token", data.token);
+                localStorage.setItem("user", JSON.stringify(data.user));
+                setFormStatus(
+                  "staffLogin",
+                  "success",
+                  "Staff login successful. Redirecting...",
+                );
+                showPopup(
+                  "success",
+                  "Staff login successful.",
+                  "index.html",
+                  1200,
+                );
+              } catch (error) {
+                setFormStatus(
+                  "staffLogin",
+                  "error",
+                  "Login failed. Check your username and password, then try again.",
                 );
                 showPopup("error", error.message);
               }
@@ -2163,6 +2428,14 @@
             switchForm("register");
           });
 
+        loginModeButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            switchForm(
+              button.dataset.loginMode === "staff" ? "staffLogin" : "login",
+            );
+          });
+        });
+
         document
           .getElementById("backToLogin1")
           .addEventListener("click", (event) => {
@@ -2172,6 +2445,13 @@
 
         document
           .getElementById("backToLogin2")
+          .addEventListener("click", (event) => {
+            event.preventDefault();
+            switchForm("login");
+          });
+
+        document
+          .getElementById("staffBackToAdmin")
           .addEventListener("click", (event) => {
             event.preventDefault();
             switchForm("login");
@@ -2216,6 +2496,10 @@
               field.value = field.value.replace(/\s{2,}/g, " ");
             }
 
+            if (field === fields.staffUsername) {
+              field.value = field.value.replace(/\s+/g, "").toLowerCase();
+            }
+
             if (
               field === fields.regPassword &&
               fields.regConfirmPassword.value
@@ -2258,6 +2542,30 @@
             });
           },
         );
+
+        fields.staffUsername.addEventListener("blur", () => {
+          const value = fields.staffUsername.value.trim().toLowerCase();
+          fields.staffUsername.value = value;
+
+          if (!value) {
+            resetInputState(fields.staffUsername);
+            return;
+          }
+
+          if (usernamePattern.test(value)) {
+            setInputState(
+              fields.staffUsername,
+              "valid",
+              "Username format looks good.",
+            );
+          } else {
+            setInputState(
+              fields.staffUsername,
+              "invalid",
+              "Use 3-30 characters with letters, numbers, dot, underscore, or hyphen.",
+            );
+          }
+        });
 
         fields.regName.addEventListener("blur", () => {
           const value = normalizeShopName(fields.regName.value);
@@ -2421,6 +2729,7 @@
         });
 
         Object.values(fields).forEach(resetInputState);
+        setLoginMode("admin");
         setFormStatus(
           "login",
           "info",

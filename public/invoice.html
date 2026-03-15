@@ -1313,6 +1313,16 @@
               Live GST refresh, autosave draft, and smarter invoice history
               search.
             </p>
+            <div class="mini-row" style="margin-top: 14px">
+              <span class="mini" id="sessionRolePill">
+                <i class="fa-solid fa-user-shield"></i>
+                Syncing session
+              </span>
+              <span class="mini" id="sessionScopePill">
+                <i class="fa-solid fa-layer-group"></i>
+                Loading access scope
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -1367,6 +1377,10 @@
               </summary>
 
               <div class="shop-body">
+                <p id="shopProfileHelper" class="helper" style="margin-bottom: 16px">
+                  Shop profile is used in invoice preview, GST calculation, and
+                  PDF output.
+                </p>
                 <div class="field-grid">
                   <div class="field">
                     <label for="shopName">Shop Name</label>
@@ -1751,12 +1765,17 @@
         document.body.removeChild(a);
       };
 
+      const clearStoredSession = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      };
+
       async function authFetch(url, options = {}) {
         options.headers = options.headers || {};
         options.headers.Authorization = "Bearer " + token;
         const response = await fetch(url, options);
         if (response.status === 401) {
-          localStorage.removeItem("token");
+          clearStoredSession();
           window.location.href = "login.html";
           return null;
         }
@@ -1776,6 +1795,8 @@
           sidebarToggle: $("sidebarToggle"),
           invoiceNavBtn: $("invoiceNavBtn"),
           logoutBtn: $("logoutBtn"),
+          sessionRolePill: $("sessionRolePill"),
+          sessionScopePill: $("sessionScopePill"),
           dashboardNavButtons: Array.from(
             document.querySelectorAll(".sidebar button[data-nav-section]"),
           ),
@@ -1802,6 +1823,7 @@
           shopAddress: $("shopAddress"),
           gstInput: $("gstInput"),
           gstRateInput: $("gstRateInput"),
+          shopProfileHelper: $("shopProfileHelper"),
           saveGstBtn: $("saveGstBtn"),
           custName: $("custName"),
           custContact: $("custContact"),
@@ -1840,6 +1862,7 @@
         let userGstRate = 18;
         let itemNames = [];
         let invoiceNumbers = [];
+        let sessionUser = null;
         let pendingInvoiceNo = null;
         let popupTimer = null;
         let draftTimer = null;
@@ -1853,6 +1876,56 @@
 
         const isMobileLayout = () =>
           window.matchMedia("(max-width: 991px)").matches;
+
+        const isAdminSession = () => sessionUser?.role !== "staff";
+
+        const canAccessDashboardSection = (sectionId) =>
+          isAdminSession() || sectionId === "addStockSection";
+
+        const setShopProfileEditable = (editable) => {
+          [dom.shopName, dom.shopAddress, dom.gstInput, dom.gstRateInput].forEach(
+            (input) => {
+              input.disabled = !editable;
+            },
+          );
+          dom.saveGstBtn.hidden = !editable;
+        };
+
+        const applySessionAccess = (user) => {
+          sessionUser = user;
+          const isStaff = user?.role === "staff";
+          const ownerName = (user?.ownerName || "").trim();
+
+          dom.sessionRolePill.innerHTML = isStaff
+            ? '<i class="fa-solid fa-user-lock"></i> Staff Workspace'
+            : '<i class="fa-solid fa-user-shield"></i> Admin Workspace';
+          dom.sessionScopePill.innerHTML = isStaff
+            ? `<i class="fa-solid fa-layer-group"></i> ${escapeHtml(ownerName || "Assigned shop")} | Stock + Invoice access`
+            : '<i class="fa-solid fa-layer-group"></i> Full stock, invoice, reports, GST, due, and staff control';
+
+          dom.dashboardNavButtons.forEach((button) => {
+            button.hidden = !canAccessDashboardSection(button.dataset.navSection);
+          });
+
+          setShopProfileEditable(!isStaff);
+          dom.shopProfileHelper.textContent = isStaff
+            ? "Shop profile is visible for invoice calculation only. Only admin can edit this section."
+            : "Shop profile is used in invoice preview, GST calculation, and PDF output.";
+        };
+
+        async function loadSession() {
+          const res = await authFetch(`${API_PREFIX}/auth/me`, {
+            headers: { Authorization: "Bearer " + token },
+          });
+          if (!res || !res.ok) {
+            return null;
+          }
+
+          const user = await res.json();
+          localStorage.setItem("user", JSON.stringify(user));
+          applySessionAccess(user);
+          return user;
+        }
 
         const lockBodyScroll = () => {
           if (
@@ -1893,9 +1966,26 @@
         };
 
         const goToDashboardSection = (sectionId) => {
-          localStorage.setItem("activeSection", sectionId);
+          const safeSection = canAccessDashboardSection(sectionId)
+            ? sectionId
+            : "addStockSection";
+          localStorage.setItem("activeSection", safeSection);
           closeSidebar();
           window.location.href = "index.html";
+        };
+
+        const logoutAndRedirect = async () => {
+          try {
+            await authFetch(`${API_PREFIX}/auth/logout`, {
+              method: "POST",
+              headers: authHeaders(),
+            });
+          } catch (error) {
+            console.error("Logout failed:", error);
+          } finally {
+            clearStoredSession();
+            window.location.replace("login.html");
+          }
         };
 
         const rows = () => Array.from(dom.itemsTbody.querySelectorAll("tr"));
@@ -2603,6 +2693,15 @@
         }
 
         async function saveShopProfile() {
+          if (!isAdminSession()) {
+            showPopup(
+              "error",
+              "Access restricted",
+              "Only admin can update the shop profile.",
+            );
+            return;
+          }
+
           setBusy(dom.saveGstBtn, true, "Saving...");
           try {
             const res = await authFetch(`${API_PREFIX}/shop-info`, {
@@ -2788,11 +2887,7 @@
             goToDashboardSection(button.dataset.navSection),
           ),
         );
-        dom.logoutBtn.addEventListener("click", () => {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          window.location.replace("login.html");
-        });
+        dom.logoutBtn.addEventListener("click", logoutAndRedirect);
 
         window.addEventListener("resize", () => {
           if (!isMobileLayout()) {
@@ -2928,6 +3023,11 @@
         window.addEventListener("beforeunload", saveDraft);
 
         (async function init() {
+          const user = await loadSession();
+          if (!user) {
+            return;
+          }
+
           addItemRow(undefined, true);
           recalcTotals();
           updateInvoiceMeta("--", new Date());
