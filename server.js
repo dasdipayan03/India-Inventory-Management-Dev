@@ -82,6 +82,10 @@ const allowedOrigins = new Set(buildAllowedOrigins());
 app.use(
   cors({
     origin(origin, callback) {
+      if (!allowedOrigins.size) {
+        return callback(null, true);
+      }
+
       if (!origin || allowedOrigins.has(origin)) {
         return callback(null, true);
       }
