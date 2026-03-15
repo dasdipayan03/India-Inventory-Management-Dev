@@ -1865,6 +1865,18 @@
           if (popupTimer) clearTimeout(popupTimer);
         };
 
+        const updateSearchStatus = (modeText, countText, hintText) => {
+          if (dom.searchModeText) {
+            dom.searchModeText.textContent = modeText;
+          }
+          if (dom.searchCountText) {
+            dom.searchCountText.textContent = countText;
+          }
+          if (dom.searchHintText) {
+            dom.searchHintText.textContent = hintText;
+          }
+        };
+
         const updateInvoiceMeta = (invoiceNo, dateValue) => {
           const label = safeDate(dateValue);
           [dom.invoiceNo, dom.summaryInvoiceNo].forEach((el) => {
@@ -2381,10 +2393,11 @@
             </div>
           `;
 
-          dom.searchModeText.textContent = "Invoice detail";
-          dom.searchCountText.textContent = "Detailed view";
-          dom.searchHintText.textContent =
-            "Showing one invoice in detail view.";
+          updateSearchStatus(
+            "Invoice detail",
+            "Detailed view",
+            "Showing one invoice in detail view.",
+          );
           dom.searchResult
             .querySelector(".detail-download")
             .addEventListener("click", (e) =>
@@ -2418,13 +2431,13 @@
                 ? `Nothing matched "${query}".`
                 : "No invoices have been saved yet.",
             );
-            dom.searchModeText.textContent = query
-              ? "Filtered list"
-              : "Latest list";
-            dom.searchCountText.textContent = "0 result";
-            dom.searchHintText.textContent = query
-              ? `No results for "${query}".`
-              : "No invoices found yet.";
+            updateSearchStatus(
+              query ? "Filtered list" : "Latest list",
+              "0 result",
+              query
+                ? `No results for "${query}".`
+                : "No invoices found yet.",
+            );
             return;
           }
 
@@ -2453,13 +2466,13 @@
           bindHistory();
           const label =
             list.length === 1 ? "1 result" : `${list.length} results`;
-          dom.searchModeText.textContent = query
-            ? "Filtered list"
-            : "Latest list";
-          dom.searchCountText.textContent = label;
-          dom.searchHintText.textContent = query
-            ? `Showing ${label} for "${query}".`
-            : `Showing latest ${list.length} invoices.`;
+          updateSearchStatus(
+            query ? "Filtered list" : "Latest list",
+            label,
+            query
+              ? `Showing ${label} for "${query}".`
+              : `Showing latest ${list.length} invoices.`,
+          );
         };
 
         async function loadExact(invoiceNo) {
@@ -2855,10 +2868,11 @@
             loadShopInfo(),
             loadNewInvoice(),
           ]);
-          dom.searchModeText.textContent = "Latest list";
-          dom.searchCountText.textContent = "Latest list";
-          dom.searchHintText.textContent =
-            "Showing latest invoices when search is empty.";
+          updateSearchStatus(
+            "Latest list",
+            "Latest list",
+            "Showing latest invoices when search is empty.",
+          );
           if (!restoreDraft()) {
             dom.itemsTbody.innerHTML = "";
             addItemRow(undefined, true);
