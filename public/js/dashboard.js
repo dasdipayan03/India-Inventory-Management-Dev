@@ -1489,11 +1489,26 @@ function renderLedgerTable(rows, mode = "summary") {
     tableHead = `
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Number</th>
-          <th>Total</th>
-          <th>Credit</th>
-          <th>Balance</th>
+          <th>
+            <span class="table-label-full">Name</span>
+            <span class="table-label-compact">Name</span>
+          </th>
+          <th>
+            <span class="table-label-full">Number</span>
+            <span class="table-label-compact">No.</span>
+          </th>
+          <th>
+            <span class="table-label-full">Total</span>
+            <span class="table-label-compact">Total</span>
+          </th>
+          <th>
+            <span class="table-label-full">Credit</span>
+            <span class="table-label-compact">Credit</span>
+          </th>
+          <th>
+            <span class="table-label-full">Balance</span>
+            <span class="table-label-compact">Bal.</span>
+          </th>
         </tr>
       </thead>
     `;
@@ -1527,11 +1542,26 @@ function renderLedgerTable(rows, mode = "summary") {
     tableHead = `
       <thead>
         <tr>
-          <th>Date</th>
-          <th>Total</th>
-          <th>Credit</th>
-          <th>Balance</th>
-          <th>Remarks</th>
+          <th>
+            <span class="table-label-full">Date</span>
+            <span class="table-label-compact">Date</span>
+          </th>
+          <th>
+            <span class="table-label-full">Total</span>
+            <span class="table-label-compact">Total</span>
+          </th>
+          <th>
+            <span class="table-label-full">Credit</span>
+            <span class="table-label-compact">Credit</span>
+          </th>
+          <th>
+            <span class="table-label-full">Balance</span>
+            <span class="table-label-compact">Bal.</span>
+          </th>
+          <th>
+            <span class="table-label-full">Remarks</span>
+            <span class="table-label-compact">Note</span>
+          </th>
         </tr>
       </thead>
     `;
