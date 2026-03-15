@@ -666,6 +666,12 @@ function setActiveSection(sectionId) {
     loadLowStock({ silent: true });
   }
 
+  if (sectionId === "salesReportSection" && canAccessPermission("sales_report")) {
+    initYearFilter();
+    loadBusinessTrend(dom.yearFilter?.value || "all", { silent: true });
+    loadLast13MonthsChart({ silent: true });
+  }
+
   if (sectionId === "staffAccessSection" && isAdminSession()) {
     loadStaffAccounts({ silent: true });
   }
@@ -1874,7 +1880,11 @@ async function submitDebt() {
 }
 
 async function loadBusinessTrend(year = "all", options = {}) {
-  if (!isAdminSession() || typeof Chart === "undefined" || !dom.businessTrendChart) {
+  if (
+    !canAccessPermission("sales_report") ||
+    typeof Chart === "undefined" ||
+    !dom.businessTrendChart
+  ) {
     return;
   }
 
@@ -2014,6 +2024,10 @@ function updateGrowthBadge(values) {
 }
 
 function initYearFilter() {
+  if (!dom.yearFilter || dom.yearFilter.dataset.initialized === "true") {
+    return;
+  }
+
   const currentYear = new Date().getFullYear();
 
   for (let year = currentYear; year >= currentYear - 5; year -= 1) {
@@ -2026,10 +2040,15 @@ function initYearFilter() {
   dom.yearFilter.addEventListener("change", () => {
     loadBusinessTrend(dom.yearFilter.value, { silent: true });
   });
+  dom.yearFilter.dataset.initialized = "true";
 }
 
 async function loadLast13MonthsChart(options = {}) {
-  if (!isAdminSession() || typeof Chart === "undefined" || !dom.last12MonthsChart) {
+  if (
+    !canAccessPermission("sales_report") ||
+    typeof Chart === "undefined" ||
+    !dom.last12MonthsChart
+  ) {
     return;
   }
 
@@ -3143,18 +3162,29 @@ window.addEventListener("DOMContentLoaded", async () => {
     await loadItemNames({ silent: true });
   }
 
+  const initialTasks = [];
+
   if (isAdminSession()) {
-    initYearFilter();
-    await Promise.allSettled([
+    initialTasks.push(
       loadDashboardOverview({ silent: true }),
+      loadStaffAccounts({ silent: true }),
+    );
+  }
+
+  if (canAccessPermission("sales_report")) {
+    initYearFilter();
+    initialTasks.push(
       loadBusinessTrend("all", { silent: true }),
       loadLast13MonthsChart({ silent: true }),
-      loadStaffAccounts({ silent: true }),
-    ]);
+    );
+  }
 
-    if (validSection === "itemReportSection") {
-      await loadLowStock({ silent: true });
-    }
+  if (initialTasks.length) {
+    await Promise.allSettled(initialTasks);
+  }
+
+  if (isAdminSession() && validSection === "itemReportSection") {
+    await loadLowStock({ silent: true });
   }
 });
 
