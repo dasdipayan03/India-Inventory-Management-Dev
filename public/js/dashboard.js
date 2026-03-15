@@ -8,6 +8,7 @@ const state = {
   currentSalesRows: [],
   currentGstRows: [],
   lowStockRows: [],
+  reorderRows: [],
   ledgerMode: "empty",
   currentLedgerNumber: "",
   sidebarScrollY: 0,
@@ -62,6 +63,37 @@ function formatDate(value) {
     year: "numeric",
     timeZone: "Asia/Kolkata",
   });
+}
+
+function formatPercent(value) {
+  return `${formatters.money.format(Number(value) || 0)}%`;
+}
+
+function formatInputDate(value) {
+  return value ? formatDate(new Date(`${value}T00:00:00`)) : "-";
+}
+
+function getMonthBucket(value) {
+  const parts = new Intl.DateTimeFormat("en-IN", {
+    year: "numeric",
+    month: "2-digit",
+    timeZone: "Asia/Kolkata",
+  }).formatToParts(new Date(value));
+  const year = parts.find((part) => part.type === "year")?.value || "0000";
+  const month = parts.find((part) => part.type === "month")?.value || "01";
+  return `${year}-${month}`;
+}
+
+function formatMonthBucket(bucket) {
+  const [year, month] = String(bucket || "0000-01")
+    .split("-")
+    .map((part) => Number(part) || 0);
+
+  return new Intl.DateTimeFormat("en-IN", {
+    month: "short",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).format(new Date(Date.UTC(year, Math.max(month - 1, 0), 1)));
 }
 
 function toInputDate(date) {
@@ -139,6 +171,15 @@ function cacheElements() {
     lowStockCard: document.getElementById("lowStockCard"),
     lowStockCount: document.getElementById("lowStockCount"),
     lowStockBody: document.getElementById("lowStockBody"),
+    reorderPlannerCard: document.getElementById("reorderPlannerCard"),
+    reorderCandidateCount: document.getElementById("reorderCandidateCount"),
+    reorderUrgentCount: document.getElementById("reorderUrgentCount"),
+    reorderSuggestedUnits: document.getElementById("reorderSuggestedUnits"),
+    reorderEstimatedCost: document.getElementById("reorderEstimatedCost"),
+    reorderFastestItem: document.getElementById("reorderFastestItem"),
+    reorderTargetDays: document.getElementById("reorderTargetDays"),
+    reorderAverageCover: document.getElementById("reorderAverageCover"),
+    reorderPlanBody: document.getElementById("reorderPlanBody"),
     fromDate: document.getElementById("fromDate"),
     toDate: document.getElementById("toDate"),
     loadSalesBtn: document.getElementById("loadSalesBtn"),
@@ -158,6 +199,17 @@ function cacheElements() {
     gstReportGrandTotal: document.getElementById("gstReportGrandTotal"),
     gstAveragePerInvoice: document.getElementById("gstAveragePerInvoice"),
     gstEffectiveRate: document.getElementById("gstEffectiveRate"),
+    gstFilingPeriod: document.getElementById("gstFilingPeriod"),
+    gstTopCollectionMonth: document.getElementById("gstTopCollectionMonth"),
+    gstZeroRatedInvoices: document.getElementById("gstZeroRatedInvoices"),
+    gstDominantRate: document.getElementById("gstDominantRate"),
+    gstTaxableBar: document.getElementById("gstTaxableBar"),
+    gstCollectedBar: document.getElementById("gstCollectedBar"),
+    gstTaxableShare: document.getElementById("gstTaxableShare"),
+    gstCollectedShare: document.getElementById("gstCollectedShare"),
+    gstInvoiceShare: document.getElementById("gstInvoiceShare"),
+    gstMonthlySummaryBody: document.getElementById("gstMonthlySummaryBody"),
+    gstRateSummaryBody: document.getElementById("gstRateSummaryBody"),
     yearFilter: document.getElementById("yearFilter"),
     businessTrendChart: document.getElementById("businessTrendChart"),
     growthBadge: document.getElementById("growthBadge"),
@@ -844,6 +896,115 @@ function updateLowStockOverview(rows) {
   });
 }
 
+function getReorderBadgeClass(priority) {
+  switch (priority) {
+    case "URGENT":
+      return "status-badge-pill status-badge-pill--urgent";
+    case "SOON":
+      return "status-badge-pill status-badge-pill--soon";
+    default:
+      return "status-badge-pill status-badge-pill--buffer";
+  }
+}
+
+function resetReorderPlanner() {
+  dom.reorderPlannerCard.hidden = true;
+  dom.reorderCandidateCount.textContent = "0";
+  dom.reorderUrgentCount.textContent = "0";
+  dom.reorderSuggestedUnits.textContent = "0";
+  dom.reorderEstimatedCost.textContent = "Rs. 0.00";
+  dom.reorderFastestItem.textContent = "-";
+  dom.reorderTargetDays.textContent = "21 days";
+  dom.reorderAverageCover.textContent = "0.00 days";
+  dom.reorderPlanBody.innerHTML =
+    '<tr><td colspan="6" class="text-muted">Reorder suggestions will appear here.</td></tr>';
+}
+
+function renderReorderPlanner(rows) {
+  dom.reorderPlannerCard.hidden = false;
+  dom.reorderPlanBody.innerHTML = "";
+
+  if (!rows.length) {
+    dom.reorderCandidateCount.textContent = "0";
+    dom.reorderUrgentCount.textContent = "0";
+    dom.reorderSuggestedUnits.textContent = "0";
+    dom.reorderEstimatedCost.textContent = "Rs. 0.00";
+    dom.reorderFastestItem.textContent = "Inventory looks healthy";
+    dom.reorderTargetDays.textContent = "21 days";
+    dom.reorderAverageCover.textContent = "--";
+    dom.reorderPlanBody.innerHTML =
+      '<tr><td colspan="6" class="text-muted">No reorder suggestion is needed right now.</td></tr>';
+    return;
+  }
+
+  let suggestedUnits = 0;
+  let estimatedCost = 0;
+  let urgentCount = 0;
+  let totalCoverDays = 0;
+  let coverCount = 0;
+  let fastestMover = rows[0];
+
+  rows.forEach((row) => {
+    const availableQty = Number(row.available_qty) || 0;
+    const dailyRunRate = Number(row.daily_run_rate) || 0;
+    const soldLast30Days = Number(row.sold_30_days) || 0;
+    const daysLeft = Number(row.days_left);
+    const reorderQty = Number(row.recommended_reorder_qty) || 0;
+    const reorderCost = Number(row.reorder_cost) || 0;
+    const targetDays = Number(row.target_days) || 21;
+    const priority = row.priority || "BUFFER";
+    const tr = document.createElement("tr");
+
+    if (priority === "URGENT") {
+      urgentCount += 1;
+      tr.classList.add("reorder-row--urgent");
+    } else if (priority === "SOON") {
+      tr.classList.add("reorder-row--soon");
+    }
+
+    if ((Number(fastestMover?.sold_30_days) || 0) < soldLast30Days) {
+      fastestMover = row;
+    }
+
+    if (Number.isFinite(daysLeft)) {
+      totalCoverDays += daysLeft;
+      coverCount += 1;
+    }
+
+    suggestedUnits += reorderQty;
+    estimatedCost += reorderCost;
+
+    tr.innerHTML = `
+      <td>
+        <div class="table-primary-copy">${escapeHtml(row.item_name)}</div>
+        <div class="table-secondary-copy">
+          <span class="${getReorderBadgeClass(priority)}">${escapeHtml(priority)}</span>
+        </div>
+      </td>
+      <td>${formatNumber(availableQty)}</td>
+      <td>${formatNumber(dailyRunRate)}</td>
+      <td>${Number.isFinite(daysLeft) ? `${formatNumber(daysLeft)} days` : "--"}</td>
+      <td>${formatNumber(reorderQty)}</td>
+      <td>${formatCurrency(reorderCost)}</td>
+    `;
+    dom.reorderPlanBody.appendChild(tr);
+    dom.reorderTargetDays.textContent = `${formatCount(targetDays)} days`;
+  });
+
+  const averageCover = coverCount ? totalCoverDays / coverCount : 0;
+
+  dom.reorderCandidateCount.textContent = formatCount(rows.length);
+  dom.reorderUrgentCount.textContent = formatCount(urgentCount);
+  dom.reorderSuggestedUnits.textContent = formatCount(suggestedUnits);
+  dom.reorderEstimatedCost.textContent = formatCurrency(estimatedCost);
+  dom.reorderFastestItem.textContent = fastestMover
+    ? `${fastestMover.item_name} (${formatNumber(fastestMover.sold_30_days)} sold / 30d)`
+    : "-";
+  dom.reorderAverageCover.textContent = coverCount
+    ? `${formatNumber(averageCover)} days`
+    : "--";
+}
+
 function renderLowStock(rows) {
   dom.lowStockBody.innerHTML = "";
   dom.lowStockCard.hidden = rows.length === 0;
@@ -882,25 +1043,41 @@ function renderLowStock(rows) {
 }
 
 async function loadLowStock(options = {}) {
-  try {
-    const rows = await fetchJSON("/items/low-stock");
-    state.lowStockRows = Array.isArray(rows) ? rows : [];
+  const [lowStockResult, reorderResult] = await Promise.allSettled([
+    fetchJSON("/items/low-stock"),
+    fetchJSON("/items/reorder-suggestions"),
+  ]);
+
+  const lowStockLoaded = lowStockResult.status === "fulfilled";
+  const reorderLoaded = reorderResult.status === "fulfilled";
+
+  if (lowStockLoaded) {
+    state.lowStockRows = Array.isArray(lowStockResult.value) ? lowStockResult.value : [];
     renderLowStock(state.lowStockRows);
     updateLowStockOverview(state.lowStockRows);
-  } catch (error) {
-    console.error("Low stock load failed:", error);
+  } else {
+    console.error("Low stock load failed:", lowStockResult.reason);
     state.lowStockRows = [];
     renderLowStock([]);
     updateLowStockOverview([]);
+  }
 
-    if (!options.silent) {
-      showPopup(
-        "error",
-        "Alerts unavailable",
-        "Could not load the low-stock panel right now.",
-        { autoClose: false },
-      );
-    }
+  if (reorderLoaded) {
+    state.reorderRows = Array.isArray(reorderResult.value) ? reorderResult.value : [];
+    renderReorderPlanner(state.reorderRows);
+  } else {
+    console.error("Reorder planner load failed:", reorderResult.reason);
+    state.reorderRows = [];
+    resetReorderPlanner();
+  }
+
+  if (!lowStockLoaded && !reorderLoaded && !options.silent) {
+    showPopup(
+      "error",
+      "Alerts unavailable",
+      "Could not load the stock planning insights right now.",
+      { autoClose: false },
+    );
   }
 }
 
@@ -990,6 +1167,161 @@ function validateGstDates() {
   return true;
 }
 
+function resetGstAdvancedSummary() {
+  dom.gstFilingPeriod.textContent =
+    dom.gstFromDate.value && dom.gstToDate.value
+      ? `${formatInputDate(dom.gstFromDate.value)} - ${formatInputDate(dom.gstToDate.value)}`
+      : "-";
+  dom.gstTopCollectionMonth.textContent = "-";
+  dom.gstZeroRatedInvoices.textContent = "0";
+  dom.gstDominantRate.textContent = "0.00%";
+  dom.gstCollectedShare.textContent = "0.00%";
+  dom.gstTaxableShare.textContent = "0.00%";
+  dom.gstInvoiceShare.textContent = "0.00%";
+  dom.gstTaxableBar.style.width = "0%";
+  dom.gstCollectedBar.style.width = "0%";
+  dom.gstMonthlySummaryBody.innerHTML =
+    '<tr><td colspan="5" class="text-muted">Load the GST report to view monthly summary.</td></tr>';
+  dom.gstRateSummaryBody.innerHTML =
+    '<tr><td colspan="5" class="text-muted">Load the GST report to view rate-wise breakup.</td></tr>';
+}
+
+function buildGstInsights(rows) {
+  const monthlyMap = new Map();
+  const rateMap = new Map();
+  let taxableTotal = 0;
+  let gstTotal = 0;
+  let grandTotal = 0;
+  let zeroRatedInvoices = 0;
+
+  rows.forEach((row) => {
+    const taxableAmount = Number(row.taxable_amount) || 0;
+    const gstAmount = Number(row.gst_amount) || 0;
+    const invoiceTotal = Number(row.invoice_total) || 0;
+    const gstRate = Math.abs(Number(row.gst_rate) || 0);
+    const monthBucket = getMonthBucket(row.created_at);
+    const monthEntry = monthlyMap.get(monthBucket) || {
+      bucket: monthBucket,
+      label: formatMonthBucket(monthBucket),
+      invoiceCount: 0,
+      taxableTotal: 0,
+      gstTotal: 0,
+      invoiceTotal: 0,
+    };
+    const rateKey = gstRate.toFixed(2);
+    const rateEntry = rateMap.get(rateKey) || {
+      rate: gstRate,
+      invoiceCount: 0,
+      taxableTotal: 0,
+      gstTotal: 0,
+      invoiceTotal: 0,
+    };
+
+    taxableTotal += taxableAmount;
+    gstTotal += gstAmount;
+    grandTotal += invoiceTotal;
+
+    if (Math.abs(gstAmount) < 0.005) {
+      zeroRatedInvoices += 1;
+    }
+
+    monthEntry.invoiceCount += 1;
+    monthEntry.taxableTotal += taxableAmount;
+    monthEntry.gstTotal += gstAmount;
+    monthEntry.invoiceTotal += invoiceTotal;
+    monthlyMap.set(monthBucket, monthEntry);
+
+    rateEntry.invoiceCount += 1;
+    rateEntry.taxableTotal += taxableAmount;
+    rateEntry.gstTotal += gstAmount;
+    rateEntry.invoiceTotal += invoiceTotal;
+    rateMap.set(rateKey, rateEntry);
+  });
+
+  const monthlyRows = Array.from(monthlyMap.values()).sort((left, right) =>
+    left.bucket.localeCompare(right.bucket),
+  );
+  const rateRows = Array.from(rateMap.values()).sort(
+    (left, right) => left.rate - right.rate || right.taxableTotal - left.taxableTotal,
+  );
+  const invoiceCount = rows.length;
+  const averageGst = invoiceCount ? gstTotal / invoiceCount : 0;
+  const effectiveRate = taxableTotal ? (gstTotal / taxableTotal) * 100 : 0;
+  const taxMixBase = Math.abs(taxableTotal) + Math.abs(gstTotal);
+  const taxableShare = taxMixBase ? (Math.abs(taxableTotal) / taxMixBase) * 100 : 0;
+  const gstShare = taxMixBase ? (Math.abs(gstTotal) / taxMixBase) * 100 : 0;
+  const topCollectionMonth = monthlyRows.reduce(
+    (best, row) => (!best || row.gstTotal > best.gstTotal ? row : best),
+    null,
+  );
+  const dominantRate = rateRows.reduce(
+    (best, row) => (!best || row.taxableTotal > best.taxableTotal ? row : best),
+    null,
+  );
+
+  return {
+    invoiceCount,
+    taxableTotal,
+    gstTotal,
+    grandTotal,
+    averageGst,
+    effectiveRate,
+    taxableShare,
+    gstShare,
+    zeroRatedInvoices,
+    monthlyRows,
+    rateRows,
+    topCollectionMonth,
+    dominantRate,
+  };
+}
+
+function renderGstAdvancedSummary(insights) {
+  dom.gstFilingPeriod.textContent = `${formatInputDate(dom.gstFromDate.value)} - ${formatInputDate(dom.gstToDate.value)}`;
+  dom.gstTopCollectionMonth.textContent = insights.topCollectionMonth?.label || "-";
+  dom.gstZeroRatedInvoices.textContent = formatCount(insights.zeroRatedInvoices);
+  dom.gstDominantRate.textContent = insights.dominantRate
+    ? formatPercent(insights.dominantRate.rate)
+    : "0.00%";
+  dom.gstCollectedShare.textContent = formatPercent(insights.gstShare);
+  dom.gstTaxableShare.textContent = formatPercent(insights.taxableShare);
+  dom.gstInvoiceShare.textContent = formatPercent(insights.gstShare);
+  dom.gstTaxableBar.style.width = `${Math.max(0, Math.min(insights.taxableShare, 100))}%`;
+  dom.gstCollectedBar.style.width = `${Math.max(0, Math.min(insights.gstShare, 100))}%`;
+
+  dom.gstMonthlySummaryBody.innerHTML = insights.monthlyRows.length
+    ? insights.monthlyRows
+        .map(
+          (row) => `
+            <tr>
+              <td>${escapeHtml(row.label)}</td>
+              <td>${formatCount(row.invoiceCount)}</td>
+              <td>${formatCurrency(row.taxableTotal)}</td>
+              <td>${formatCurrency(row.gstTotal)}</td>
+              <td>${formatCurrency(row.invoiceTotal)}</td>
+            </tr>
+          `,
+        )
+        .join("")
+    : '<tr><td colspan="5" class="text-muted">No monthly GST summary found.</td></tr>';
+
+  dom.gstRateSummaryBody.innerHTML = insights.rateRows.length
+    ? insights.rateRows
+        .map(
+          (row) => `
+            <tr>
+              <td>${formatPercent(row.rate)}</td>
+              <td>${formatCount(row.invoiceCount)}</td>
+              <td>${formatCurrency(row.taxableTotal)}</td>
+              <td>${formatCurrency(row.gstTotal)}</td>
+              <td>${formatCurrency(row.invoiceTotal)}</td>
+            </tr>
+          `,
+        )
+        .join("")
+    : '<tr><td colspan="5" class="text-muted">No GST rate breakup found.</td></tr>';
+}
+
 function renderGstReport(rows) {
   dom.gstReportBody.innerHTML = "";
 
@@ -1002,21 +1334,16 @@ function renderGstReport(rows) {
     dom.gstReportGrandTotal.textContent = "Rs. 0.00";
     dom.gstAveragePerInvoice.textContent = "0.00";
     dom.gstEffectiveRate.textContent = "0.00%";
+    resetGstAdvancedSummary();
     return;
   }
 
-  let taxableTotal = 0;
-  let gstTotal = 0;
-  let grandTotal = 0;
+  const insights = buildGstInsights(rows);
 
   rows.forEach((row) => {
     const taxableAmount = Number(row.taxable_amount) || 0;
     const gstAmount = Number(row.gst_amount) || 0;
     const invoiceTotal = Number(row.invoice_total) || 0;
-
-    taxableTotal += taxableAmount;
-    gstTotal += gstAmount;
-    grandTotal += invoiceTotal;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -1030,16 +1357,13 @@ function renderGstReport(rows) {
     dom.gstReportBody.appendChild(tr);
   });
 
-  const invoiceCount = rows.length;
-  const averageGst = invoiceCount ? gstTotal / invoiceCount : 0;
-  const effectiveRate = taxableTotal ? (gstTotal / taxableTotal) * 100 : 0;
-
-  dom.gstInvoiceCount.textContent = formatCount(invoiceCount);
-  dom.gstTaxableTotal.textContent = formatCurrency(taxableTotal);
-  dom.gstCollectedTotal.textContent = formatCurrency(gstTotal);
-  dom.gstReportGrandTotal.textContent = formatCurrency(grandTotal);
-  dom.gstAveragePerInvoice.textContent = formatters.money.format(averageGst);
-  dom.gstEffectiveRate.textContent = `${formatNumber(Math.abs(effectiveRate))}%`;
+  dom.gstInvoiceCount.textContent = formatCount(insights.invoiceCount);
+  dom.gstTaxableTotal.textContent = formatCurrency(insights.taxableTotal);
+  dom.gstCollectedTotal.textContent = formatCurrency(insights.gstTotal);
+  dom.gstReportGrandTotal.textContent = formatCurrency(insights.grandTotal);
+  dom.gstAveragePerInvoice.textContent = formatters.money.format(insights.averageGst);
+  dom.gstEffectiveRate.textContent = formatPercent(Math.abs(insights.effectiveRate));
+  renderGstAdvancedSummary(insights);
 }
 
 async function loadSalesReport(options = {}) {

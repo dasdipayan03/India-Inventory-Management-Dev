@@ -810,6 +810,12 @@
       .dashboard-table--gst td:nth-child(2),
       .dashboard-table--gst th:nth-child(3),
       .dashboard-table--gst td:nth-child(3),
+      .dashboard-table--reorder th:first-child,
+      .dashboard-table--reorder td:first-child,
+      .dashboard-table--gst-monthly th:first-child,
+      .dashboard-table--gst-monthly td:first-child,
+      .dashboard-table--gst-rates th:first-child,
+      .dashboard-table--gst-rates td:first-child,
       .dashboard-table--ledger td:first-child,
       .dashboard-table--ledger td:last-child {
         text-align: left;
@@ -820,6 +826,9 @@
       .dashboard-table--sales td:nth-child(2),
       .dashboard-table--gst td:nth-child(2),
       .dashboard-table--gst td:nth-child(3),
+      .dashboard-table--reorder td:first-child,
+      .dashboard-table--gst-monthly td:first-child,
+      .dashboard-table--gst-rates td:first-child,
       .dashboard-table--ledger td:first-child,
       .dashboard-table--ledger td:last-child {
         white-space: normal;
@@ -867,6 +876,14 @@
         background-color: rgba(254, 249, 195, 0.96) !important;
         color: #92400e !important;
         font-weight: 700;
+      }
+
+      #reorderPlanBody tr.reorder-row--urgent td {
+        background-color: rgba(254, 226, 226, 0.76) !important;
+      }
+
+      #reorderPlanBody tr.reorder-row--soon td {
+        background-color: rgba(254, 249, 195, 0.72) !important;
       }
 
       .summary-strip {
@@ -947,6 +964,221 @@
         color: var(--ink-soft);
         font-size: 12px;
         line-height: 1.55;
+      }
+
+      .mini-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .mini-kpi {
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid rgba(191, 219, 254, 0.44);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 250, 255, 0.9));
+      }
+
+      .mini-kpi__label {
+        display: block;
+        color: var(--ink-soft);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .mini-kpi__value {
+        display: block;
+        margin-top: 8px;
+        color: var(--ink-strong);
+        font-size: 20px;
+        line-height: 1.2;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .mini-kpi__meta {
+        display: block;
+        margin-top: 6px;
+        color: var(--ink-soft);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .insight-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 18px;
+      }
+
+      .insight-panel {
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid rgba(191, 219, 254, 0.42);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 251, 255, 0.9));
+        box-shadow: var(--shadow-md);
+      }
+
+      .insight-panel--wide {
+        grid-column: 1 / -1;
+      }
+
+      .insight-panel__head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 14px;
+      }
+
+      .insight-panel__eyebrow {
+        display: block;
+        color: var(--cyan-strong);
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .insight-panel__title {
+        display: block;
+        margin-top: 6px;
+        color: var(--ink-strong);
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+
+      .insight-panel__copy {
+        display: block;
+        margin-top: 6px;
+        color: var(--ink-soft);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .insight-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.12);
+        color: var(--cyan-strong);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .tax-mix {
+        margin-top: 16px;
+        padding: 18px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(59, 130, 246, 0.08));
+        border: 1px solid rgba(125, 211, 252, 0.34);
+      }
+
+      .tax-mix__head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .tax-mix__title {
+        color: var(--ink-strong);
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .tax-mix__copy {
+        color: var(--ink-soft);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .tax-mix__bar {
+        display: flex;
+        width: 100%;
+        height: 14px;
+        margin-top: 14px;
+        border-radius: 999px;
+        overflow: hidden;
+        background: rgba(191, 219, 254, 0.36);
+      }
+
+      .tax-mix__bar span {
+        display: block;
+        height: 100%;
+        min-width: 0;
+      }
+
+      .tax-mix__bar .tax-mix__taxable {
+        background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+      }
+
+      .tax-mix__bar .tax-mix__gst {
+        background: linear-gradient(90deg, #14b8a6, #2dd4bf);
+      }
+
+      .tax-mix__legend {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 12px;
+      }
+
+      .tax-mix__legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--ink-soft);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .table-primary-copy {
+        color: var(--ink-strong);
+        font-weight: 700;
+      }
+
+      .table-secondary-copy {
+        margin-top: 4px;
+        color: var(--ink-soft);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .status-badge-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .status-badge-pill--urgent {
+        background: rgba(254, 226, 226, 0.95);
+        color: #b91c1c;
+      }
+
+      .status-badge-pill--soon {
+        background: rgba(254, 249, 195, 0.96);
+        color: #92400e;
+      }
+
+      .status-badge-pill--buffer {
+        background: rgba(219, 234, 254, 0.95);
+        color: #1d4ed8;
       }
 
       .analytics-card {
@@ -1185,6 +1417,18 @@
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .mini-kpi-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .insight-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .insight-panel--wide {
+          grid-column: auto;
+        }
+
         .section-meta {
           align-items: flex-start;
           flex-direction: column;
@@ -1238,6 +1482,9 @@
 
         .dashboard-table--item-report td:first-child,
         .dashboard-table--low-stock td:first-child,
+        .dashboard-table--reorder td:first-child,
+        .dashboard-table--gst-monthly td:first-child,
+        .dashboard-table--gst-rates td:first-child,
         .dashboard-table--sales td:nth-child(2),
         .dashboard-table--gst td:nth-child(2),
         .dashboard-table--gst td:nth-child(3),
@@ -1307,7 +1554,60 @@
           width: 14%;
         }
 
+        .dashboard-table--reorder th:nth-child(1) {
+          width: 31%;
+        }
+
+        .dashboard-table--reorder th:nth-child(2) {
+          width: 10%;
+        }
+
+        .dashboard-table--reorder th:nth-child(3) {
+          width: 13%;
+        }
+
+        .dashboard-table--reorder th:nth-child(4) {
+          width: 12%;
+        }
+
+        .dashboard-table--reorder th:nth-child(5) {
+          width: 14%;
+        }
+
+        .dashboard-table--reorder th:nth-child(6) {
+          width: 20%;
+        }
+
+        .dashboard-table--gst-monthly th:nth-child(1),
+        .dashboard-table--gst-rates th:nth-child(1) {
+          width: 22%;
+        }
+
+        .dashboard-table--gst-monthly th:nth-child(2),
+        .dashboard-table--gst-rates th:nth-child(2) {
+          width: 12%;
+        }
+
+        .dashboard-table--gst-monthly th:nth-child(3),
+        .dashboard-table--gst-rates th:nth-child(3) {
+          width: 24%;
+        }
+
+        .dashboard-table--gst-monthly th:nth-child(4),
+        .dashboard-table--gst-rates th:nth-child(4) {
+          width: 18%;
+        }
+
+        .dashboard-table--gst-monthly th:nth-child(5),
+        .dashboard-table--gst-rates th:nth-child(5) {
+          width: 24%;
+        }
+
         .report-kpi-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .mini-kpi-grid {
           grid-template-columns: 1fr;
         }
 
@@ -1822,6 +2122,116 @@
               </table>
             </div>
           </section>
+
+          <section
+            id="reorderPlannerCard"
+            class="panel-card panel-card--surface"
+            hidden
+          >
+            <div class="panel-heading">
+              <div>
+                <span class="panel-kicker">Reorder Planner</span>
+                <h5>Suggested replenishment list</h5>
+                <p class="panel-subtitle">
+                  Review fast-moving items, see suggested reorder quantity, and
+                  plan a healthier stock buffer before products run short.
+                </p>
+              </div>
+              <div class="panel-card__icon">
+                <i class="fas fa-clipboard-list"></i>
+              </div>
+            </div>
+
+            <div class="mini-kpi-grid">
+              <article class="mini-kpi">
+                <span class="mini-kpi__label">Candidates</span>
+                <strong class="mini-kpi__value" id="reorderCandidateCount">0</strong>
+                <small class="mini-kpi__meta">
+                  Items that need replenishment to reach the target stock cover.
+                </small>
+              </article>
+              <article class="mini-kpi">
+                <span class="mini-kpi__label">Urgent</span>
+                <strong class="mini-kpi__value" id="reorderUrgentCount">0</strong>
+                <small class="mini-kpi__meta">
+                  High-risk items that may run out first based on recent movement.
+                </small>
+              </article>
+              <article class="mini-kpi">
+                <span class="mini-kpi__label">Suggested Units</span>
+                <strong class="mini-kpi__value" id="reorderSuggestedUnits">0</strong>
+                <small class="mini-kpi__meta">
+                  Total recommended quantity to rebuild the stock buffer.
+                </small>
+              </article>
+              <article class="mini-kpi">
+                <span class="mini-kpi__label">Est. Buy Cost</span>
+                <strong class="mini-kpi__value" id="reorderEstimatedCost">
+                  Rs. 0.00
+                </strong>
+                <small class="mini-kpi__meta">
+                  Approximate buying cost using the latest buying rate on record.
+                </small>
+              </article>
+            </div>
+
+            <div class="summary-strip">
+              <span class="summary-pill">
+                <i class="fa-solid fa-bolt"></i>
+                Fastest mover: <span id="reorderFastestItem">-</span>
+              </span>
+              <span class="summary-pill">
+                <i class="fa-solid fa-bullseye"></i>
+                Coverage target: <span id="reorderTargetDays">21 days</span>
+              </span>
+              <span class="summary-pill">
+                <i class="fa-solid fa-hourglass-half"></i>
+                Avg cover: <span id="reorderAverageCover">0.00 days</span>
+              </span>
+            </div>
+
+            <div class="table-responsive mobile-table-wrap">
+              <table
+                class="table table-sm text-center align-middle dashboard-table dashboard-table--reorder"
+              >
+                <thead>
+                  <tr>
+                    <th>
+                      <span class="table-label-full">Item</span>
+                      <span class="table-label-compact">Item</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">Avail.</span>
+                      <span class="table-label-compact">Avail</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">Run / Day</span>
+                      <span class="table-label-compact">Run</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">Cover Days</span>
+                      <span class="table-label-compact">Cover</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">Reorder Qty</span>
+                      <span class="table-label-compact">Qty</span>
+                    </th>
+                    <th>
+                      <span class="table-label-full">Est. Cost</span>
+                      <span class="table-label-compact">Cost</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="reorderPlanBody">
+                  <tr>
+                    <td colspan="6" class="text-muted">
+                      Reorder suggestions will appear here.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
         <div id="salesReportSection" class="form-section">
           <section class="panel-card panel-card--surface">
@@ -2126,6 +2536,196 @@
                 Avg GST / Invoice: Rs.
                 <span id="gstAveragePerInvoice">0.00</span>
               </span>
+            </div>
+
+            <div class="insight-grid">
+              <article class="insight-panel insight-panel--wide">
+                <div class="insight-panel__head">
+                  <div>
+                    <span class="insight-panel__eyebrow">Filing Snapshot</span>
+                    <strong class="insight-panel__title">
+                      GST summary for the selected period
+                    </strong>
+                    <span class="insight-panel__copy">
+                      Quick filing-ready highlights including period, dominant
+                      rate, zero-GST invoices, and how GST compares with taxable
+                      value.
+                    </span>
+                  </div>
+                  <span class="insight-badge">Advanced Summary</span>
+                </div>
+
+                <div class="mini-kpi-grid">
+                  <article class="mini-kpi">
+                    <span class="mini-kpi__label">Period</span>
+                    <strong class="mini-kpi__value" id="gstFilingPeriod">-</strong>
+                    <small class="mini-kpi__meta">
+                      Active date range for this GST review.
+                    </small>
+                  </article>
+                  <article class="mini-kpi">
+                    <span class="mini-kpi__label">Top Month</span>
+                    <strong class="mini-kpi__value" id="gstTopCollectionMonth">-</strong>
+                    <small class="mini-kpi__meta">
+                      Month that contributed the highest GST collection.
+                    </small>
+                  </article>
+                  <article class="mini-kpi">
+                    <span class="mini-kpi__label">Zero GST Invoices</span>
+                    <strong class="mini-kpi__value" id="gstZeroRatedInvoices">0</strong>
+                    <small class="mini-kpi__meta">
+                      Invoices that carried no GST in the selected date range.
+                    </small>
+                  </article>
+                  <article class="mini-kpi">
+                    <span class="mini-kpi__label">Dominant Rate</span>
+                    <strong class="mini-kpi__value" id="gstDominantRate">0.00%</strong>
+                    <small class="mini-kpi__meta">
+                      GST rate slab contributing the largest taxable value.
+                    </small>
+                  </article>
+                </div>
+
+                <div class="tax-mix">
+                  <div class="tax-mix__head">
+                    <div>
+                      <div class="tax-mix__title">Taxable value vs GST mix</div>
+                      <div class="tax-mix__copy">
+                        See how much of the final invoice value comes from
+                        taxable sales and how much comes from GST collection.
+                      </div>
+                    </div>
+                    <div class="tax-mix__copy">
+                      GST share of billed value:
+                      <strong id="gstCollectedShare">0.00%</strong>
+                    </div>
+                  </div>
+                  <div class="tax-mix__bar" aria-hidden="true">
+                    <span
+                      id="gstTaxableBar"
+                      class="tax-mix__taxable"
+                      style="width: 0%"
+                    ></span>
+                    <span
+                      id="gstCollectedBar"
+                      class="tax-mix__gst"
+                      style="width: 0%"
+                    ></span>
+                  </div>
+                  <div class="tax-mix__legend">
+                    <span>
+                      Taxable share:
+                      <strong id="gstTaxableShare">0.00%</strong>
+                    </span>
+                    <span>
+                      GST share:
+                      <strong id="gstInvoiceShare">0.00%</strong>
+                    </span>
+                  </div>
+                </div>
+              </article>
+
+              <article class="insight-panel">
+                <div class="insight-panel__head">
+                  <div>
+                    <span class="insight-panel__eyebrow">Month-wise View</span>
+                    <strong class="insight-panel__title">Monthly GST summary</strong>
+                    <span class="insight-panel__copy">
+                      Review month-by-month invoice count, taxable value, GST,
+                      and final invoice total for filing prep.
+                    </span>
+                  </div>
+                  <span class="insight-badge">Monthly</span>
+                </div>
+                <div class="table-responsive mobile-table-wrap">
+                  <table
+                    class="table table-sm text-center align-middle dashboard-table dashboard-table--gst-monthly"
+                  >
+                    <thead>
+                      <tr>
+                        <th>
+                          <span class="table-label-full">Month</span>
+                          <span class="table-label-compact">Month</span>
+                        </th>
+                        <th>
+                          <span class="table-label-full">Inv.</span>
+                          <span class="table-label-compact">Inv</span>
+                        </th>
+                        <th>
+                          <span class="table-label-full">Taxable</span>
+                          <span class="table-label-compact">Tax</span>
+                        </th>
+                        <th>
+                          <span class="table-label-full">GST</span>
+                          <span class="table-label-compact">GST</span>
+                        </th>
+                        <th>
+                          <span class="table-label-full">Total</span>
+                          <span class="table-label-compact">Total</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="gstMonthlySummaryBody">
+                      <tr>
+                        <td colspan="5" class="text-muted">
+                          Load the GST report to view monthly summary.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </article>
+
+              <article class="insight-panel">
+                <div class="insight-panel__head">
+                  <div>
+                    <span class="insight-panel__eyebrow">Rate Slabs</span>
+                    <strong class="insight-panel__title">Rate-wise breakup</strong>
+                    <span class="insight-panel__copy">
+                      Identify which GST slabs are contributing most to taxable
+                      value and collection in the selected period.
+                    </span>
+                  </div>
+                  <span class="insight-badge">Rate-wise</span>
+                </div>
+                <div class="table-responsive mobile-table-wrap">
+                  <table
+                    class="table table-sm text-center align-middle dashboard-table dashboard-table--gst-rates"
+                  >
+                    <thead>
+                      <tr>
+                        <th>
+                          <span class="table-label-full">GST Rate</span>
+                          <span class="table-label-compact">Rate</span>
+                        </th>
+                        <th>
+                          <span class="table-label-full">Inv.</span>
+                          <span class="table-label-compact">Inv</span>
+                        </th>
+                        <th>
+                          <span class="table-label-full">Taxable</span>
+                          <span class="table-label-compact">Tax</span>
+                        </th>
+                        <th>
+                          <span class="table-label-full">GST</span>
+                          <span class="table-label-compact">GST</span>
+                        </th>
+                        <th>
+                          <span class="table-label-full">Total</span>
+                          <span class="table-label-compact">Total</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="gstRateSummaryBody">
+                      <tr>
+                        <td colspan="5" class="text-muted">
+                          Load the GST report to view rate-wise breakup.
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </article>
             </div>
           </section>
         </div>

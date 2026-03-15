@@ -10,6 +10,8 @@ const router = express.Router();
 const STOCK_CONFIG = {
   CRITICAL_DAYS: 4,
   WARNING_DAYS: 15,
+  REORDER_TARGET_DAYS: 21,
+  REORDER_LIMIT: 8,
 };
 
 const PDF_THEME = {
@@ -115,6 +117,38 @@ function ensurePdfSpace(doc, heightNeeded, onNewPage) {
 
   doc.addPage();
   onNewPage();
+}
+
+function getLowStockStatus(daysLeft) {
+  if (!Number.isFinite(daysLeft)) {
+    return "";
+  }
+
+  if (daysLeft <= STOCK_CONFIG.CRITICAL_DAYS) {
+    return "LOW";
+  }
+
+  if (daysLeft <= STOCK_CONFIG.WARNING_DAYS) {
+    return "MEDIUM";
+  }
+
+  return "OK";
+}
+
+function getReorderPriority(daysLeft) {
+  if (!Number.isFinite(daysLeft)) {
+    return "WATCH";
+  }
+
+  if (daysLeft <= STOCK_CONFIG.CRITICAL_DAYS) {
+    return "URGENT";
+  }
+
+  if (daysLeft <= STOCK_CONFIG.WARNING_DAYS) {
+    return "SOON";
+  }
+
+  return "BUFFER";
 }
 
 // ✅ Protect all routes
@@ -310,21 +344,114 @@ router.get("/items/low-stock", async (req, res) => {
       [user_id, STOCK_CONFIG.WARNING_DAYS],
     );
 
-    const rowsWithStatus = result.rows.map((r) => {
-      let status = "";
-
-      if (r.days_left <= STOCK_CONFIG.CRITICAL_DAYS) {
-        status = "LOW";
-      } else if (r.days_left <= STOCK_CONFIG.WARNING_DAYS) {
-        status = "MEDIUM";
-      }
-
-      return { ...r, status };
-    });
+    const rowsWithStatus = result.rows.map((r) => ({
+      ...r,
+      status: getLowStockStatus(Number(r.days_left)),
+    }));
 
     res.json(rowsWithStatus);
   } catch (err) {
     console.error("Stock alert error FULL:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// ----------------- REORDER SUGGESTIONS (Replenishment Planner) -----------------
+router.get("/items/reorder-suggestions", async (req, res) => {
+  try {
+    const user_id = getUserId(req);
+
+    const result = await pool.query(
+      `
+      WITH sales_30 AS (
+        SELECT
+          item_id,
+          SUM(quantity) AS sold_30_days
+        FROM sales
+        WHERE user_id = $1
+          AND created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY item_id
+      ),
+      movement AS (
+        SELECT
+          i.name AS item_name,
+          i.quantity AS available_qty,
+          COALESCE(i.buying_rate, 0) AS buying_rate,
+          COALESCE(s.sold_30_days, 0) AS sold_30_days,
+          ROUND(COALESCE(s.sold_30_days, 0) / 30.0, 2) AS daily_run_rate,
+          ROUND(
+            CASE
+              WHEN COALESCE(s.sold_30_days, 0) = 0 THEN NULL
+              ELSE (i.quantity / NULLIF((s.sold_30_days / 30.0), 0))
+            END
+          , 2) AS days_left,
+          CEIL((COALESCE(s.sold_30_days, 0) / 30.0) * $2) AS target_stock_qty,
+          CEIL(
+            GREATEST(
+              ((COALESCE(s.sold_30_days, 0) / 30.0) * $2) - i.quantity,
+              0
+            )
+          ) AS recommended_reorder_qty
+        FROM items i
+        LEFT JOIN sales_30 s
+          ON s.item_id = i.id
+        WHERE i.user_id = $1
+          AND COALESCE(s.sold_30_days, 0) > 0
+      )
+      SELECT
+        item_name,
+        available_qty,
+        buying_rate,
+        sold_30_days,
+        daily_run_rate,
+        days_left,
+        target_stock_qty,
+        recommended_reorder_qty,
+        ROUND((recommended_reorder_qty * buying_rate)::numeric, 2) AS reorder_cost
+      FROM movement
+      WHERE recommended_reorder_qty > 0
+        AND (
+          days_left IS NULL
+          OR days_left < $2
+        )
+      ORDER BY
+        CASE
+          WHEN days_left IS NULL THEN 3
+          WHEN days_left <= $3 THEN 0
+          WHEN days_left <= $4 THEN 1
+          ELSE 2
+        END,
+        sold_30_days DESC,
+        days_left ASC NULLS LAST,
+        item_name ASC
+      LIMIT $5
+      `,
+      [
+        user_id,
+        STOCK_CONFIG.REORDER_TARGET_DAYS,
+        STOCK_CONFIG.CRITICAL_DAYS,
+        STOCK_CONFIG.WARNING_DAYS,
+        STOCK_CONFIG.REORDER_LIMIT,
+      ],
+    );
+
+    const rowsWithPriority = result.rows.map((row) => {
+      const daysLeft = Number(row.days_left);
+      const recommendedReorderQty = Number(row.recommended_reorder_qty) || 0;
+      const buyingRate = Number(row.buying_rate) || 0;
+
+      return {
+        ...row,
+        target_days: STOCK_CONFIG.REORDER_TARGET_DAYS,
+        priority: getReorderPriority(daysLeft),
+        recommended_reorder_qty: recommendedReorderQty,
+        reorder_cost: Number(row.reorder_cost) || recommendedReorderQty * buyingRate,
+      };
+    });
+
+    res.json(rowsWithPriority);
+  } catch (err) {
+    console.error("Reorder suggestions error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -365,11 +492,14 @@ router.get("/items/report/pdf", async (req, res) => {
     );
 
     const doc = new PDFDocument({ size: "A4", margin: 40 });
-    const filename = name && name.trim()
-      ? `stock_report_${safeFilePart(name)}.pdf`
-      : "stock_report.pdf";
+    const filename =
+      name && name.trim()
+        ? `stock_report_${safeFilePart(name)}.pdf`
+        : "stock_report.pdf";
     const reportScope =
-      name && name.trim() ? `Filtered for: ${name.trim()}` : "Full stock catalog";
+      name && name.trim()
+        ? `Filtered for: ${name.trim()}`
+        : "Full stock catalog";
     const stockColumns = [
       { label: "Sl", x: 46, width: 28 },
       { label: "Item Name", x: 78, width: 180 },
@@ -380,10 +510,7 @@ router.get("/items/report/pdf", async (req, res) => {
     ];
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=${filename}`,
-    );
+    res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
 
     doc.pipe(res);
 
@@ -426,7 +553,9 @@ router.get("/items/report/pdf", async (req, res) => {
 
       if (i % 2 === 0) {
         doc.save();
-        doc.rect(40, y - 2, 515, Math.max(itemHeight, 18) + 6).fill(PDF_THEME.rowAlt);
+        doc
+          .rect(40, y - 2, 515, Math.max(itemHeight, 18) + 6)
+          .fill(PDF_THEME.rowAlt);
         doc.restore();
       }
 
@@ -434,7 +563,10 @@ router.get("/items/report/pdf", async (req, res) => {
       doc.text(i + 1, startX, y, { width: 30 });
       doc.text(r.item_name || "", startX + 30, y, { width: 190 });
       doc.text(qty.toFixed(2), startX + 220, y, { width: 70, align: "right" });
-      doc.text(formatCurrency(buy), startX + 290, y, { width: 80, align: "right" });
+      doc.text(formatCurrency(buy), startX + 290, y, {
+        width: 80,
+        align: "right",
+      });
       doc.text(formatCurrency(sell), startX + 370, y, {
         width: 80,
         align: "right",
@@ -468,7 +600,8 @@ router.get("/items/report/pdf", async (req, res) => {
     const summaryY = doc.y + 8;
 
     doc.save();
-    doc.roundedRect(310, summaryY, 245, summaryHeight, 12)
+    doc
+      .roundedRect(310, summaryY, 245, summaryHeight, 12)
       .fillAndStroke("#f8fbff", PDF_THEME.line);
     doc.restore();
 
@@ -592,7 +725,6 @@ router.get("/sales/report/pdf", async (req, res) => {
     drawPdfTableHeader(doc, salesColumns);
 
     // ---- Rows ----
-    // ---- Rows ----
     let grandTotal = 0;
 
     result.rows.forEach((r, i) => {
@@ -612,7 +744,9 @@ router.get("/sales/report/pdf", async (req, res) => {
 
       if (i % 2 === 0) {
         doc.save();
-        doc.rect(40, y - 2, 515, Math.max(itemHeight, 18) + 6).fill(PDF_THEME.rowAlt);
+        doc
+          .rect(40, y - 2, 515, Math.max(itemHeight, 18) + 6)
+          .fill(PDF_THEME.rowAlt);
         doc.restore();
       }
 
@@ -649,7 +783,8 @@ router.get("/sales/report/pdf", async (req, res) => {
 
     const totalY = doc.y + 6;
     doc.save();
-    doc.roundedRect(360, totalY, 195, totalBoxHeight, 12)
+    doc
+      .roundedRect(360, totalY, 195, totalBoxHeight, 12)
       .fillAndStroke("#f8fbff", PDF_THEME.line);
     doc.restore();
 
@@ -733,22 +868,29 @@ router.get("/sales/report/excel", async (req, res) => {
       pattern: "solid",
       fgColor: { argb: "FF17315D" },
     };
-    sheet.getCell("A1").font = { size: 16, bold: true, color: { argb: "FFFFFFFF" } };
+    sheet.getCell("A1").font = {
+      size: 16,
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
 
     sheet.insertRow(2, [shopName]);
     sheet.mergeCells("A2:F2");
     sheet.getCell("A2").alignment = { horizontal: "center" };
-    sheet.getCell("A2").font = { size: 12, bold: true, color: { argb: "FF17315D" } };
+    sheet.getCell("A2").font = {
+      size: 12,
+      bold: true,
+      color: { argb: "FF17315D" },
+    };
     sheet.getCell("A2").fill = {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FFF8FBFF" },
     };
 
-    sheet.insertRow(
-      3,
-      [`From: ${from}   To: ${to}   |   Generated: ${formatIstDate(new Date())}`],
-    );
+    sheet.insertRow(3, [
+      `From: ${from}   To: ${to}   |   Generated: ${formatIstDate(new Date())}`,
+    ]);
     sheet.mergeCells("A3:F3");
     sheet.getCell("A3").alignment = { horizontal: "center" };
     sheet.getCell("A3").font = { italic: true, color: { argb: "FF475569" } };
@@ -1008,27 +1150,47 @@ router.get("/gst/report/pdf", async (req, res) => {
     });
 
     const summaryHeight = 64;
-    ensurePdfSpace(doc, summaryHeight + 12, () => drawPdfTableHeader(doc, gstColumns));
+    ensurePdfSpace(doc, summaryHeight + 12, () =>
+      drawPdfTableHeader(doc, gstColumns),
+    );
 
     const summaryY = doc.y + 6;
     doc.save();
-    doc.roundedRect(304, summaryY, 251, summaryHeight, 14)
+    doc
+      .roundedRect(304, summaryY, 251, summaryHeight, 14)
       .fillAndStroke("#f8fbff", PDF_THEME.line);
     doc.restore();
 
     doc.font("Helvetica-Bold").fontSize(11).fillColor(PDF_THEME.navy);
-    doc.text(`Invoices: ${summary.invoiceCount}`, 320, summaryY + 12, { width: 100 });
-    doc.text(`GST: Rs. ${formatCurrency(summary.gstTotal)}`, 430, summaryY + 12, {
-      width: 108,
-      align: "right",
+    doc.text(`Invoices: ${summary.invoiceCount}`, 320, summaryY + 12, {
+      width: 100,
     });
-    doc.text(`Taxable: Rs. ${formatCurrency(summary.taxableTotal)}`, 320, summaryY + 34, {
-      width: 120,
-    });
-    doc.text(`Total: Rs. ${formatCurrency(summary.grandTotal)}`, 430, summaryY + 34, {
-      width: 108,
-      align: "right",
-    });
+    doc.text(
+      `GST: Rs. ${formatCurrency(summary.gstTotal)}`,
+      430,
+      summaryY + 12,
+      {
+        width: 108,
+        align: "right",
+      },
+    );
+    doc.text(
+      `Taxable: Rs. ${formatCurrency(summary.taxableTotal)}`,
+      320,
+      summaryY + 34,
+      {
+        width: 120,
+      },
+    );
+    doc.text(
+      `Total: Rs. ${formatCurrency(summary.grandTotal)}`,
+      430,
+      summaryY + 34,
+      {
+        width: 108,
+        align: "right",
+      },
+    );
 
     doc.fillColor(PDF_THEME.ink);
     doc.end();
@@ -1096,17 +1258,20 @@ router.get("/gst/report/excel", async (req, res) => {
     sheet.insertRow(2, [shopName]);
     sheet.mergeCells("A2:F2");
     sheet.getCell("A2").alignment = { horizontal: "center" };
-    sheet.getCell("A2").font = { size: 12, bold: true, color: { argb: "FF17315D" } };
+    sheet.getCell("A2").font = {
+      size: 12,
+      bold: true,
+      color: { argb: "FF17315D" },
+    };
     sheet.getCell("A2").fill = {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FFF8FBFF" },
     };
 
-    sheet.insertRow(
-      3,
-      [`Invoice-wise GST from ${from} to ${to}   |   Generated: ${formatIstDate(new Date())}`],
-    );
+    sheet.insertRow(3, [
+      `Invoice-wise GST from ${from} to ${to}   |   Generated: ${formatIstDate(new Date())}`,
+    ]);
     sheet.mergeCells("A3:F3");
     sheet.getCell("A3").alignment = { horizontal: "center" };
     sheet.getCell("A3").font = { italic: true, color: { argb: "FF475569" } };
