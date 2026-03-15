@@ -1021,11 +1021,10 @@
           </a>
           <div>
             <div class="eyebrow">Invoice Studio</div>
-            <h1>Premium invoice page, same invoice workflow.</h1>
+            <h1>SALE ENTRY AND GENERATE INVOICE</h1>
             <p class="sub">
-              Existing invoice features stay intact. The page now has a
-              dashboard-style UI, live GST refresh, autosave draft, and smarter
-              invoice history search.
+              Live GST refresh, autosave draft, and smarter invoice history
+              search.
             </p>
           </div>
         </div>
@@ -1035,11 +1034,10 @@
         <div class="hero-main">
           <div class="glass card">
             <div class="eyebrow">Live Session</div>
-            <h2>Design-rich billing, same trusted PDF export.</h2>
+            <h2>Smart Invoice Builder.</h2>
             <p class="sub">
-              This invoice workspace keeps stock validation, item search,
-              submit, download, and PDF formatting untouched while lifting the
-              visual quality to match the dashboard.
+              View current invoice, draft status, and item progress in one
+              place.
             </p>
             <div class="stats">
               <div class="stat">
@@ -1072,8 +1070,8 @@
                   <div class="eyebrow">Shop Profile</div>
                   <h2>Business and tax setup</h2>
                   <p class="sub">
-                    One-time setup. Keep this folded on mobile and open only
-                    when you need to update shop or GST details.
+                    One-time setup. Open only when you need to update shop
+                    details or GST details for Invoice PDF.
                   </p>
                 </div>
                 <span class="shop-toggle">
@@ -1310,15 +1308,20 @@
         <div class="toolbar">
           <div>
             <div class="eyebrow">Invoice History</div>
-            <h2>Search, open, and download invoices</h2>
+            <h2>Search, open and download invoices</h2>
             <p class="sub">
-              Exact invoice numbers open details. Partial invoice no, customer,
-              contact, or YYYYMMDD date now loads filtered history.
+              Partial invoice no or YYYYMMDD date now loads filtered history.
             </p>
           </div>
-          <div class="mini">
+          <!-- <div class="mini">
             <i class="fa-solid fa-magnifying-glass"></i>
             <span id="searchCountText">Latest list</span>
+          </div> -->
+          <div class="mini">
+            <i class="fa-solid fa-filter"></i>
+            <span id="searchHintText"
+              >Click the search to show all invoices when search is empty.</span
+            >
           </div>
         </div>
 
@@ -1342,15 +1345,15 @@
         </div>
 
         <div class="mini-row" style="margin-top: 14px">
-          <div class="mini">
+          <!-- <div class="mini">
             <i class="fa-solid fa-filter"></i>
             <span id="searchHintText"
               >Showing latest invoices when search is empty.</span
             >
-          </div>
+          </div> -->
           <div class="mini">
             <i class="fa-solid fa-bolt"></i>
-            Click a card to load invoice detail instantly.
+            Click open to load invoice detail instantly.
           </div>
         </div>
 
@@ -2005,7 +2008,8 @@
         };
 
         const renderDetail = (invoice) => {
-          const shopName = dom.shopName.value.trim() || "India Inventory Management";
+          const shopName =
+            dom.shopName.value.trim() || "India Inventory Management";
           const shopAddress = dom.shopAddress.value.trim() || "-";
           const shopGst = dom.gstInput.value.trim() || invoice.gst_no || "-";
           const itemsHtml = invoice.items
