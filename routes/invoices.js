@@ -3,7 +3,12 @@ const express = require("express");
 const router = express.Router();
 const PDFDocument = require("pdfkit");
 const pool = require("../db");
-const { authMiddleware, getUserId, requireAdmin } = require("../middleware/auth");
+const {
+  authMiddleware,
+  getUserId,
+  requireAdmin,
+  requirePermission,
+} = require("../middleware/auth");
 
 /* ---------------------- Helper: pad serial ---------------------- */
 function padSerial(n) {
@@ -38,7 +43,7 @@ async function generateInvoiceNoWithClient(client, userId) {
 }
 
 /* ---------------------- GET: Preview Next Invoice ---------------------- */
-router.get("/invoices/new", authMiddleware, async (req, res) => {
+router.get("/invoices/new", authMiddleware, requirePermission("sale_invoice"), async (req, res) => {
   const userId = getUserId(req);
   const client = await pool.connect();
   try {
@@ -64,7 +69,7 @@ router.get("/invoices/new", authMiddleware, async (req, res) => {
 });
 
 /* ---------------------- POST: SAVE INVOICE (FINAL LOGIC) ---------------------- */
-router.post("/invoices", authMiddleware, async (req, res) => {
+router.post("/invoices", authMiddleware, requirePermission("sale_invoice"), async (req, res) => {
   const userId = getUserId(req);
   const { customer_name, contact, address, gst_no, items } = req.body;
 
@@ -195,7 +200,7 @@ router.post("/invoices", authMiddleware, async (req, res) => {
 });
 
 //---------- invoice search dropdown -----------//
-router.get("/invoices/numbers", authMiddleware, async (req, res) => {
+router.get("/invoices/numbers", authMiddleware, requirePermission("sale_invoice"), async (req, res) => {
   const userId = getUserId(req);
   const { rows } = await pool.query(
     `SELECT invoice_no
@@ -210,7 +215,7 @@ router.get("/invoices/numbers", authMiddleware, async (req, res) => {
 });
 
 /* ---------------------- GET: All Invoices List ---------------------- */
-router.get("/invoices", authMiddleware, async (req, res) => {
+router.get("/invoices", authMiddleware, requirePermission("sale_invoice"), async (req, res) => {
   try {
     const rawQuery = String(req.query.q || "").trim().toLowerCase();
     const limit = Math.min(
@@ -267,7 +272,7 @@ router.get("/invoices", authMiddleware, async (req, res) => {
 });
 
 /* ---------------------- GET: Invoice Details ---------------------- */
-router.get("/invoices/:invoiceNo", authMiddleware, async (req, res) => {
+router.get("/invoices/:invoiceNo", authMiddleware, requirePermission("sale_invoice"), async (req, res) => {
   const userId = getUserId(req);
   const { rows } = await pool.query(
     `
@@ -298,6 +303,7 @@ router.get(
   },
 
   authMiddleware,
+  requirePermission("sale_invoice"),
 
   async (req, res) => {
     const userId = getUserId(req);
@@ -525,7 +531,7 @@ router.post("/shop-info", authMiddleware, requireAdmin, async (req, res) => {
   res.json({ success: true });
 });
 
-router.get("/shop-info", authMiddleware, async (req, res) => {
+router.get("/shop-info", authMiddleware, requirePermission("sale_invoice"), async (req, res) => {
   const userId = getUserId(req);
   const { rows } = await pool.query(
     `SELECT shop_name,shop_address,gst_no,gst_rate FROM settings WHERE user_id=$1`,

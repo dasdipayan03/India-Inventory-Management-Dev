@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS staff_accounts (
   name VARCHAR(80) NOT NULL,
   username VARCHAR(50) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  page_permissions TEXT[] NOT NULL DEFAULT ARRAY['add_stock', 'sale_invoice']::TEXT[],
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),

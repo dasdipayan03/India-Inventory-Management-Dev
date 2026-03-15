@@ -4,6 +4,11 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
 const {
+  DEFAULT_STAFF_PERMISSIONS,
+  STAFF_PAGE_PERMISSIONS,
+  normalizePermissions,
+} = require("../permissions");
+const {
   authMiddleware,
   getUserId,
   requireAdmin,
@@ -75,6 +80,9 @@ function buildStaffSession(staff) {
     username: staff.username,
     ownerName: staff.owner_name,
     ownerEmail: staff.owner_email,
+    permissions: normalizePermissions(
+      staff.page_permissions || DEFAULT_STAFF_PERMISSIONS,
+    ),
   };
 }
 
@@ -92,7 +100,7 @@ function toClientUser(session) {
     permissions:
       session.role === "admin"
         ? ["all"]
-        : ["add_stock", "sale_invoice"],
+        : normalizePermissions(session.permissions || DEFAULT_STAFF_PERMISSIONS),
   };
 }
 
@@ -117,6 +125,7 @@ async function getStaffByUsername(username) {
         s.name,
         s.username,
         s.password_hash,
+        s.page_permissions,
         s.is_active,
         u.name AS owner_name,
         u.email AS owner_email
@@ -350,7 +359,7 @@ router.get("/staff", authMiddleware, requireAdmin, async (req, res) => {
     const ownerId = getUserId(req);
     const result = await pool.query(
       `
-        SELECT id, name, username, is_active, created_at
+        SELECT id, name, username, page_permissions, is_active, created_at
         FROM staff_accounts
         WHERE owner_user_id = $1
         ORDER BY created_at ASC, id ASC
@@ -359,7 +368,13 @@ router.get("/staff", authMiddleware, requireAdmin, async (req, res) => {
     );
 
     return res.json({
-      staff: result.rows,
+      staff: result.rows.map((row) => ({
+        ...row,
+        permissions: normalizePermissions(
+          row.page_permissions || DEFAULT_STAFF_PERMISSIONS,
+        ),
+      })),
+      permissionOptions: STAFF_PAGE_PERMISSIONS,
       limit: 2,
       remaining: Math.max(2 - result.rowCount, 0),
     });
@@ -375,6 +390,9 @@ router.post("/staff", authMiddleware, requireAdmin, async (req, res) => {
     const name = normalizeName(req.body.name);
     const username = normalizeUsername(req.body.username);
     const password = String(req.body.password || "");
+    const permissions = normalizePermissions(
+      req.body.permissions || DEFAULT_STAFF_PERMISSIONS,
+    );
 
     if (!name || !username || !password) {
       return res.status(400).json({ error: "All fields required" });
@@ -391,6 +409,12 @@ router.post("/staff", authMiddleware, requireAdmin, async (req, res) => {
       return res
         .status(400)
         .json({ error: "Password must be at least 6 characters" });
+    }
+
+    if (!permissions.length) {
+      return res
+        .status(400)
+        .json({ error: "Select at least one page access for the staff account" });
     }
 
     const currentStaff = await pool.query(
@@ -421,19 +445,71 @@ router.post("/staff", authMiddleware, requireAdmin, async (req, res) => {
     const password_hash = await bcrypt.hash(password, 12);
     const result = await pool.query(
       `
-        INSERT INTO staff_accounts (owner_user_id, name, username, password_hash)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, name, username, is_active, created_at
+        INSERT INTO staff_accounts (
+          owner_user_id,
+          name,
+          username,
+          password_hash,
+          page_permissions
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id, name, username, page_permissions, is_active, created_at
       `,
-      [ownerId, name, username, password_hash],
+      [ownerId, name, username, password_hash, permissions],
     );
 
     return res.json({
       message: "Staff account created successfully",
-      staff: result.rows[0],
+      staff: {
+        ...result.rows[0],
+        permissions: normalizePermissions(result.rows[0].page_permissions),
+      },
     });
   } catch (error) {
     console.error("Staff create error:", error.message);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.patch("/staff/:staffId/permissions", authMiddleware, requireAdmin, async (req, res) => {
+  try {
+    const ownerId = getUserId(req);
+    const staffId = Number.parseInt(req.params.staffId, 10);
+    const permissions = normalizePermissions(req.body.permissions || []);
+
+    if (!Number.isInteger(staffId) || staffId <= 0) {
+      return res.status(400).json({ error: "Invalid staff account" });
+    }
+
+    if (!permissions.length) {
+      return res
+        .status(400)
+        .json({ error: "Select at least one page access for the staff account" });
+    }
+
+    const result = await pool.query(
+      `
+        UPDATE staff_accounts
+        SET page_permissions = $1, updated_at = NOW()
+        WHERE id = $2 AND owner_user_id = $3
+        RETURNING id, name, username, page_permissions, is_active, created_at
+      `,
+      [permissions, staffId, ownerId],
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: "Staff account not found" });
+    }
+
+    return res.json({
+      message: "Staff page access updated successfully",
+      staff: {
+        ...result.rows[0],
+        permissions: normalizePermissions(result.rows[0].page_permissions),
+      },
+    });
+  } catch (error) {
+    console.error("Staff permission update error:", error.message);
     return res.status(500).json({ error: "Server error" });
   }
 });
@@ -477,6 +553,7 @@ router.get("/me", authMiddleware, async (req, res) => {
             s.owner_user_id,
             s.name,
             s.username,
+            s.page_permissions,
             s.is_active,
             u.name AS owner_name
           FROM staff_accounts s
@@ -501,6 +578,9 @@ router.get("/me", authMiddleware, async (req, res) => {
           name: staff.name,
           username: staff.username,
           ownerName: staff.owner_name,
+          permissions: normalizePermissions(
+            staff.page_permissions || DEFAULT_STAFF_PERMISSIONS,
+          ),
         }),
       );
     }

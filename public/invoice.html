@@ -1778,6 +1778,49 @@
         localStorage.removeItem("user");
       };
 
+      const STAFF_PERMISSION_OPTIONS = [
+        {
+          value: "add_stock",
+          label: "Add New Stock",
+          shortLabel: "Stock Entry",
+        },
+        {
+          value: "sale_invoice",
+          label: "Sale and Invoice",
+          shortLabel: "Invoice",
+        },
+        {
+          value: "stock_report",
+          label: "Stock Report",
+          shortLabel: "Stock Report",
+        },
+        {
+          value: "sales_report",
+          label: "Sales Report",
+          shortLabel: "Sales Report",
+        },
+        {
+          value: "gst_report",
+          label: "GST Report",
+          shortLabel: "GST Report",
+        },
+        {
+          value: "customer_due",
+          label: "Customer Due",
+          shortLabel: "Customer Due",
+        },
+      ];
+      const STAFF_PERMISSION_KEYS = STAFF_PERMISSION_OPTIONS.map(
+        (option) => option.value,
+      );
+      const SECTION_PERMISSION_MAP = {
+        addStockSection: "add_stock",
+        itemReportSection: "stock_report",
+        salesReportSection: "sales_report",
+        gstReportSection: "gst_report",
+        customerDebtSection: "customer_due",
+      };
+
       async function authFetch(url, options = {}) {
         options.headers = options.headers || {};
         options.headers.Authorization = "Bearer " + token;
@@ -1887,8 +1930,75 @@
 
         const isAdminSession = () => sessionUser?.role !== "staff";
 
-        const canAccessDashboardSection = (sectionId) =>
-          isAdminSession() || sectionId === "addStockSection";
+        const normalizeStaffPermissions = (values) => {
+          const list = Array.isArray(values) ? values : [];
+          const normalized = list
+            .map((value) => String(value || "").trim().toLowerCase())
+            .filter((value) => STAFF_PERMISSION_KEYS.includes(value));
+
+          return [...new Set(normalized)];
+        };
+
+        const getPermissionOption = (permission) =>
+          STAFF_PERMISSION_OPTIONS.find((option) => option.value === permission) ||
+          null;
+
+        const getPermissionSummary = (permissions, options = {}) => {
+          const short = Boolean(options.short);
+          const normalized = normalizeStaffPermissions(permissions);
+
+          if (!normalized.length) {
+            return short ? "no assigned pages" : "No assigned pages";
+          }
+
+          if (normalized.length === STAFF_PERMISSION_KEYS.length) {
+            return short ? "all business pages" : "All business pages";
+          }
+
+          const labels = normalized.map((permission) => {
+            const option = getPermissionOption(permission);
+            return option ? option[short ? "shortLabel" : "label"] : permission;
+          });
+
+          if (labels.length > 3) {
+            return `${labels.length} pages`;
+          }
+
+          return labels.join(", ");
+        };
+
+        const getUserPermissions = () => {
+          if (isAdminSession()) {
+            return new Set(["all"]);
+          }
+
+          return new Set(normalizeStaffPermissions(sessionUser?.permissions));
+        };
+
+        const canAccessPermission = (...permissions) => {
+          if (isAdminSession()) {
+            return true;
+          }
+
+          const granted = getUserPermissions();
+          return permissions.some((permission) => granted.has(permission));
+        };
+
+        const canAccessInvoicePage = () => canAccessPermission("sale_invoice");
+
+        const canAccessDashboardSection = (sectionId) => {
+          if (sectionId === "staffAccessSection") {
+            return isAdminSession();
+          }
+
+          const permission = SECTION_PERMISSION_MAP[sectionId];
+          return permission ? canAccessPermission(permission) : isAdminSession();
+        };
+
+        const getFirstAccessibleDashboardSection = () =>
+          dom.dashboardNavButtons
+            .map((button) => button.dataset.navSection)
+            .find((sectionId) => canAccessDashboardSection(sectionId)) || null;
 
         const setShopProfileEditable = (editable) => {
           [dom.shopName, dom.shopAddress, dom.gstInput, dom.gstRateInput].forEach(
@@ -1903,14 +2013,18 @@
           sessionUser = user;
           const isStaff = user?.role === "staff";
           const ownerName = (user?.ownerName || "").trim();
+          const accessSummary = getPermissionSummary(user?.permissions, {
+            short: true,
+          });
 
           dom.sessionRolePill.innerHTML = isStaff
             ? '<i class="fa-solid fa-user-lock"></i> Staff Workspace'
             : '<i class="fa-solid fa-user-shield"></i> Admin Workspace';
           dom.sessionScopePill.innerHTML = isStaff
-            ? `<i class="fa-solid fa-layer-group"></i> ${escapeHtml(ownerName || "Assigned shop")} | Stock + Invoice access`
+            ? `<i class="fa-solid fa-layer-group"></i> ${escapeHtml(ownerName || "Assigned shop")} | ${escapeHtml(accessSummary)}`
             : '<i class="fa-solid fa-layer-group"></i> Full stock, invoice, reports, GST, due, and staff control';
 
+          dom.invoiceNavBtn.hidden = !canAccessInvoicePage();
           dom.dashboardNavButtons.forEach((button) => {
             button.hidden = !canAccessDashboardSection(button.dataset.navSection);
           });
@@ -1932,6 +2046,16 @@
           const user = await res.json();
           localStorage.setItem("user", JSON.stringify(user));
           applySessionAccess(user);
+
+          if (!canAccessInvoicePage()) {
+            const safeSection = getFirstAccessibleDashboardSection();
+            if (safeSection) {
+              localStorage.setItem("activeSection", safeSection);
+            }
+            window.location.replace("index.html");
+            return null;
+          }
+
           return user;
         }
 
@@ -1976,7 +2100,11 @@
         const goToDashboardSection = (sectionId) => {
           const safeSection = canAccessDashboardSection(sectionId)
             ? sectionId
-            : "addStockSection";
+            : getFirstAccessibleDashboardSection();
+          if (!safeSection) {
+            closeSidebar();
+            return;
+          }
           localStorage.setItem("activeSection", safeSection);
           closeSidebar();
           window.location.href = "index.html";

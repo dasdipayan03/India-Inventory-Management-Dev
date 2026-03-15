@@ -20,7 +20,57 @@ const state = {
   sessionUser: null,
 };
 
-const STAFF_ALLOWED_SECTIONS = new Set(["addStockSection"]);
+const STAFF_PERMISSION_OPTIONS = [
+  {
+    value: "add_stock",
+    label: "Add New Stock",
+    shortLabel: "Stock Entry",
+    description: "Create or update stock entries from the main inventory form.",
+  },
+  {
+    value: "sale_invoice",
+    label: "Sale and Invoice",
+    shortLabel: "Invoice",
+    description: "Create sales bills, generate invoices, and open invoice history.",
+  },
+  {
+    value: "stock_report",
+    label: "Stock Report",
+    shortLabel: "Stock Report",
+    description: "Review stock availability, sold quantity, and low stock report.",
+  },
+  {
+    value: "sales_report",
+    label: "Sales Report",
+    shortLabel: "Sales Report",
+    description: "Open sales analytics, export reports, and check date-wise totals.",
+  },
+  {
+    value: "gst_report",
+    label: "GST Report",
+    shortLabel: "GST Report",
+    description: "See GST report data for filing and invoice-wise tax review.",
+  },
+  {
+    value: "customer_due",
+    label: "Customer Due",
+    shortLabel: "Customer Due",
+    description: "Manage due balances, ledger history, and customer collections.",
+  },
+];
+
+const DEFAULT_STAFF_PERMISSIONS = ["add_stock", "sale_invoice"];
+const STAFF_PERMISSION_KEYS = STAFF_PERMISSION_OPTIONS.map(
+  (option) => option.value,
+);
+const SECTION_PERMISSION_MAP = {
+  addStockSection: "add_stock",
+  itemReportSection: "stock_report",
+  salesReportSection: "sales_report",
+  gstReportSection: "gst_report",
+  customerDebtSection: "customer_due",
+};
+const INVOICE_PAGE_PERMISSION = "sale_invoice";
 
 const formatters = {
   whole: new Intl.NumberFormat("en-IN", {
@@ -134,8 +184,84 @@ function isAdminSession() {
   return state.sessionUser?.role !== "staff";
 }
 
+function normalizeStaffPermissions(values) {
+  const list = Array.isArray(values) ? values : [];
+  const normalized = list
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter((value) => STAFF_PERMISSION_KEYS.includes(value));
+
+  return [...new Set(normalized)];
+}
+
+function getUserPermissions() {
+  if (isAdminSession()) {
+    return new Set(["all"]);
+  }
+
+  return new Set(normalizeStaffPermissions(state.sessionUser?.permissions));
+}
+
+function getPermissionOption(permission) {
+  return (
+    STAFF_PERMISSION_OPTIONS.find((option) => option.value === permission) ||
+    null
+  );
+}
+
+function formatPermissionSummary(permissions, options = {}) {
+  const short = Boolean(options.short);
+  const normalized = normalizeStaffPermissions(permissions);
+
+  if (!normalized.length) {
+    return short ? "no assigned pages" : "No assigned pages";
+  }
+
+  if (normalized.length === STAFF_PERMISSION_KEYS.length) {
+    return short ? "all business pages" : "All business pages";
+  }
+
+  const labels = normalized.map((permission) => {
+    const option = getPermissionOption(permission);
+    return option ? option[short ? "shortLabel" : "label"] : permission;
+  });
+
+  if (labels.length > 3) {
+    return `${labels.length} pages`;
+  }
+
+  return labels.join(", ");
+}
+
+function canAccessPermission(...permissions) {
+  if (isAdminSession()) {
+    return true;
+  }
+
+  const granted = getUserPermissions();
+  return permissions.some((permission) => granted.has(permission));
+}
+
+function canAccessInvoicePage() {
+  return canAccessPermission(INVOICE_PAGE_PERMISSION);
+}
+
 function canAccessSection(sectionId) {
-  return isAdminSession() || STAFF_ALLOWED_SECTIONS.has(sectionId);
+  if (sectionId === "staffAccessSection") {
+    return isAdminSession();
+  }
+
+  const permission = SECTION_PERMISSION_MAP[sectionId];
+  return permission ? canAccessPermission(permission) : isAdminSession();
+}
+
+function getAccessibleSectionIds() {
+  return (dom.sectionButtons || [])
+    .map((button) => button.dataset.section)
+    .filter((sectionId) => canAccessSection(sectionId));
+}
+
+function getFirstAccessibleSection() {
+  return getAccessibleSectionIds()[0] || null;
 }
 
 function clearStoredSession() {
@@ -247,6 +373,9 @@ function cacheElements() {
     staffName: document.getElementById("staffName"),
     staffUsername: document.getElementById("staffUsername"),
     staffPassword: document.getElementById("staffPassword"),
+    staffPermissionGrid: document.getElementById("staffPermissionGrid"),
+    selectAllStaffPagesBtn: document.getElementById("selectAllStaffPagesBtn"),
+    clearAllStaffPagesBtn: document.getElementById("clearAllStaffPagesBtn"),
     createStaffBtn: document.getElementById("createStaffBtn"),
     staffList: document.getElementById("staffList"),
     staffLimitValue: document.getElementById("staffLimitValue"),
@@ -484,7 +613,11 @@ function applySessionAccess(user) {
   state.sessionUser = user;
 
   const isStaff = user?.role === "staff";
-  const accessibleSection = isStaff ? "addStockSection" : "addStockSection";
+  const accessibleSection = getFirstAccessibleSection();
+  const ownerName = (user?.ownerName || "").trim();
+  const accessSummary = formatPermissionSummary(user?.permissions, {
+    short: true,
+  });
 
   if (dom.sessionRoleChip) {
     dom.sessionRoleChip.innerHTML = isStaff
@@ -494,6 +627,10 @@ function applySessionAccess(user) {
 
   if (dom.overviewGrid) {
     dom.overviewGrid.hidden = isStaff;
+  }
+
+  if (dom.invoiceBtn) {
+    dom.invoiceBtn.hidden = !canAccessInvoicePage();
   }
 
   dom.sectionButtons.forEach((button) => {
@@ -506,13 +643,12 @@ function applySessionAccess(user) {
   });
 
   const displayName = (user?.name || "").trim() || "Workspace User";
-  const ownerName = (user?.ownerName || "").trim();
   dom.welcomeUser.textContent = `Welcome, ${displayName}`;
   dom.heroSubtitle.textContent = isStaff
-    ? `${ownerName || "Your admin"} assigned you stock intake and sale plus invoice access only.`
+    ? `${ownerName || "Your admin"} assigned access to ${accessSummary}.`
     : "Your dashboard is syncing the latest inventory and sales view.";
 
-  if (isStaff) {
+  if (isStaff && accessibleSection) {
     localStorage.setItem("activeSection", accessibleSection);
   }
 }
@@ -567,7 +703,15 @@ function openSidebar() {
 
 function setActiveSection(sectionId) {
   if (!canAccessSection(sectionId)) {
-    sectionId = "addStockSection";
+    const fallbackSection = getFirstAccessibleSection();
+    if (!fallbackSection) {
+      if (canAccessInvoicePage()) {
+        closeSidebar();
+        window.location.replace("invoice.html");
+      }
+      return;
+    }
+    sectionId = fallbackSection;
   }
 
   const target = document.getElementById(sectionId);
@@ -730,6 +874,10 @@ async function showPreviousBuyingRate(itemName) {
 }
 
 async function loadDashboardOverview(options = {}) {
+  if (!isAdminSession()) {
+    return null;
+  }
+
   try {
     const overview = await fetchJSON("/dashboard/overview");
     const itemCount = Number(overview.catalog?.item_count) || 0;
@@ -1797,7 +1945,7 @@ async function submitDebt() {
 }
 
 async function loadBusinessTrend(year = "all", options = {}) {
-  if (typeof Chart === "undefined" || !dom.businessTrendChart) {
+  if (!isAdminSession() || typeof Chart === "undefined" || !dom.businessTrendChart) {
     return;
   }
 
@@ -1952,7 +2100,7 @@ function initYearFilter() {
 }
 
 async function loadLast13MonthsChart(options = {}) {
-  if (typeof Chart === "undefined" || !dom.last12MonthsChart) {
+  if (!isAdminSession() || typeof Chart === "undefined" || !dom.last12MonthsChart) {
     return;
   }
 
@@ -2335,6 +2483,99 @@ function normalizeStaffUsername(value) {
     .toLowerCase();
 }
 
+function renderStaffPermissionGrid(container, permissions = [], options = {}) {
+  if (!container) {
+    return;
+  }
+
+  const compact = Boolean(options.compact);
+  const inputName = options.inputName || "staffPermissions";
+  const idPrefix = options.idPrefix || inputName;
+  const selected = new Set(normalizeStaffPermissions(permissions));
+
+  container.innerHTML = STAFF_PERMISSION_OPTIONS.map((option, index) => {
+    const inputId = `${idPrefix}-${index}`;
+    const isChecked = selected.has(option.value);
+
+    return `
+      <label class="staff-permission-chip${isChecked ? " is-selected" : ""}" for="${inputId}">
+        <input
+          id="${inputId}"
+          type="checkbox"
+          name="${inputName}"
+          value="${option.value}"
+          ${isChecked ? "checked" : ""}
+        />
+        <div>
+          <strong>${escapeHtml(option.label)}</strong>
+          <span>${escapeHtml(option.description)}</span>
+        </div>
+      </label>
+    `;
+  }).join("");
+
+  if (compact) {
+    container.classList.add("staff-permission-grid--compact");
+  } else {
+    container.classList.remove("staff-permission-grid--compact");
+  }
+
+  const syncSelectionState = () => {
+    container.querySelectorAll(".staff-permission-chip").forEach((chip) => {
+      const input = chip.querySelector('input[type="checkbox"]');
+      chip.classList.toggle("is-selected", Boolean(input?.checked));
+    });
+  };
+
+  container
+    .querySelectorAll('input[type="checkbox"]')
+    .forEach((input) => input.addEventListener("change", syncSelectionState));
+
+  syncSelectionState();
+}
+
+function readStaffPermissionSelection(container) {
+  if (!container) {
+    return [];
+  }
+
+  return normalizeStaffPermissions(
+    Array.from(
+      container.querySelectorAll('input[type="checkbox"]:checked'),
+      (input) => input.value,
+    ),
+  );
+}
+
+function setStaffPermissionSelection(container, permissions) {
+  if (!container) {
+    return;
+  }
+
+  const selected = new Set(normalizeStaffPermissions(permissions));
+  container.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+    input.checked = selected.has(input.value);
+    input
+      .closest(".staff-permission-chip")
+      ?.classList.toggle("is-selected", input.checked);
+  });
+}
+
+function renderStaffPermissionBadges(permissions) {
+  const normalized = normalizeStaffPermissions(permissions);
+
+  if (!normalized.length) {
+    return '<span class="staff-access-badge">No page access</span>';
+  }
+
+  return normalized
+    .map((permission) => {
+      const option = getPermissionOption(permission);
+      return `<span class="staff-access-badge">${escapeHtml(option?.shortLabel || permission)}</span>`;
+    })
+    .join("");
+}
+
 function resetStaffForm() {
   if (!dom.staffName || !dom.staffUsername || !dom.staffPassword) {
     return;
@@ -2343,6 +2584,10 @@ function resetStaffForm() {
   dom.staffName.value = "";
   dom.staffUsername.value = "";
   dom.staffPassword.value = "";
+  setStaffPermissionSelection(
+    dom.staffPermissionGrid,
+    DEFAULT_STAFF_PERMISSIONS,
+  );
 }
 
 function renderStaffList(data = {}) {
@@ -2366,6 +2611,14 @@ function renderStaffList(data = {}) {
     dom.createStaffBtn.disabled = remaining <= 0;
   }
 
+  if (dom.selectAllStaffPagesBtn) {
+    dom.selectAllStaffPagesBtn.disabled = remaining <= 0;
+  }
+
+  if (dom.clearAllStaffPagesBtn) {
+    dom.clearAllStaffPagesBtn.disabled = remaining <= 0;
+  }
+
   if (!staff.length) {
     dom.staffList.innerHTML = `
       <div class="empty-ledger">
@@ -2376,42 +2629,140 @@ function renderStaffList(data = {}) {
   }
 
   dom.staffList.innerHTML = `
-    <table class="table table-sm text-center align-middle dashboard-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Username</th>
-          <th>Created</th>
-          <th>Access</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${staff
-          .map(
-            (member) => `
-              <tr>
-                <td>${escapeHtml(member.name || "-")}</td>
-                <td>${escapeHtml(member.username || "-")}</td>
-                <td>${formatDate(member.created_at)}</td>
-                <td>${member.is_active ? "Stock + Invoice" : "Inactive"}</td>
-                <td>
-                  <button
-                    type="button"
-                    class="btn btn-secondary btn-sm staff-delete-btn"
-                    data-staff-id="${member.id}"
-                  >
-                    <i class="fa-solid fa-trash"></i>
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            `,
-          )
-          .join("")}
-      </tbody>
-    </table>
+    <div class="staff-card-list">
+      ${staff
+        .map((member) => {
+          const permissions = normalizeStaffPermissions(
+            member.permissions || DEFAULT_STAFF_PERMISSIONS,
+          );
+
+          return `
+            <article class="staff-card" data-staff-id="${member.id}">
+              <div class="staff-card__header">
+                <div class="staff-card__meta">
+                  <strong>${escapeHtml(member.name || "-")}</strong>
+                  <span>@${escapeHtml(member.username || "-")} | Created ${formatDate(member.created_at)}</span>
+                </div>
+                <span class="summary-pill">
+                  <i class="fa-solid fa-shield"></i>
+                  ${member.is_active ? "Active" : "Inactive"}
+                </span>
+              </div>
+
+              <div
+                class="staff-access-badges"
+                data-staff-badges="${member.id}"
+              >
+                ${renderStaffPermissionBadges(permissions)}
+              </div>
+
+              <div
+                class="staff-permission-grid"
+                data-permission-editor="${member.id}"
+              ></div>
+
+              <p class="staff-helper-text mt-3">
+                Admin can revise this staff account access at any time. Staff management always stays admin only.
+              </p>
+
+              <div class="staff-card__actions mt-3">
+                <button
+                  type="button"
+                  class="btn btn-info btn-sm staff-save-btn"
+                  data-staff-id="${member.id}"
+                >
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  Save Access
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm staff-delete-btn"
+                  data-staff-id="${member.id}"
+                >
+                  <i class="fa-solid fa-trash"></i>
+                  Remove
+                </button>
+              </div>
+            </article>
+          `;
+        })
+        .join("")}
+    </div>
   `;
+
+  staff.forEach((member) => {
+    const permissions = normalizeStaffPermissions(
+      member.permissions || DEFAULT_STAFF_PERMISSIONS,
+    );
+    const editor = dom.staffList.querySelector(
+      `[data-permission-editor="${member.id}"]`,
+    );
+    const badgeContainer = dom.staffList.querySelector(
+      `[data-staff-badges="${member.id}"]`,
+    );
+
+    renderStaffPermissionGrid(editor, permissions, {
+      compact: true,
+      inputName: `staffPermission-${member.id}`,
+      idPrefix: `staffPermission-${member.id}`,
+    });
+
+    editor?.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+      input.addEventListener("change", () => {
+        if (badgeContainer) {
+          badgeContainer.innerHTML = renderStaffPermissionBadges(
+            readStaffPermissionSelection(editor),
+          );
+        }
+      });
+    });
+  });
+
+  dom.staffList.querySelectorAll(".staff-save-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const staffId = button.dataset.staffId;
+      const editor = dom.staffList.querySelector(
+        `[data-permission-editor="${staffId}"]`,
+      );
+      const permissions = readStaffPermissionSelection(editor);
+
+      if (!permissions.length) {
+        showPopup(
+          "error",
+          "Select page access",
+          "Choose at least one page before saving staff access.",
+          { autoClose: false },
+        );
+        return;
+      }
+
+      await withButtonState(
+        button,
+        '<i class="fa-solid fa-spinner fa-spin"></i> Saving...',
+        async () => {
+          try {
+            await fetchJSON(`/auth/staff/${staffId}/permissions`, {
+              method: "PATCH",
+              body: JSON.stringify({ permissions }),
+            });
+            await loadStaffAccounts({ silent: true });
+            showPopup(
+              "success",
+              "Access updated",
+              "Staff page access has been updated successfully.",
+            );
+          } catch (error) {
+            showPopup(
+              "error",
+              "Update failed",
+              error.message || "Could not update staff page access.",
+              { autoClose: false },
+            );
+          }
+        },
+      );
+    });
+  });
 
   dom.staffList.querySelectorAll(".staff-delete-btn").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -2467,6 +2818,7 @@ async function createStaffAccount() {
   const name = String(dom.staffName?.value || "").replace(/\s+/g, " ").trim();
   const username = normalizeStaffUsername(dom.staffUsername?.value);
   const password = String(dom.staffPassword?.value || "");
+  const permissions = readStaffPermissionSelection(dom.staffPermissionGrid);
 
   dom.staffUsername.value = username;
 
@@ -2475,6 +2827,16 @@ async function createStaffAccount() {
       "error",
       "Missing details",
       "Enter staff name, username, and password before creating the account.",
+      { autoClose: false },
+    );
+    return;
+  }
+
+  if (!permissions.length) {
+    showPopup(
+      "error",
+      "Select page access",
+      "Choose at least one page permission before creating the staff account.",
       { autoClose: false },
     );
     return;
@@ -2507,7 +2869,7 @@ async function createStaffAccount() {
       try {
         await fetchJSON("/auth/staff", {
           method: "POST",
-          body: JSON.stringify({ name, username, password }),
+          body: JSON.stringify({ name, username, password, permissions }),
         });
         resetStaffForm();
         await loadStaffAccounts({ silent: true });
@@ -2763,6 +3125,15 @@ function bindStaffEvents() {
     return;
   }
 
+  renderStaffPermissionGrid(
+    dom.staffPermissionGrid,
+    DEFAULT_STAFF_PERMISSIONS,
+    {
+      inputName: "staffCreatePermission",
+      idPrefix: "staffCreatePermission",
+    },
+  );
+
   [dom.staffName, dom.staffUsername, dom.staffPassword].forEach((input) => {
     input?.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
@@ -2774,6 +3145,14 @@ function bindStaffEvents() {
 
   dom.staffUsername?.addEventListener("blur", () => {
     dom.staffUsername.value = normalizeStaffUsername(dom.staffUsername.value);
+  });
+
+  dom.selectAllStaffPagesBtn?.addEventListener("click", () => {
+    setStaffPermissionSelection(dom.staffPermissionGrid, STAFF_PERMISSION_KEYS);
+  });
+
+  dom.clearAllStaffPagesBtn?.addEventListener("click", () => {
+    setStaffPermissionSelection(dom.staffPermissionGrid, []);
   });
 
   dom.createStaffBtn.addEventListener("click", createStaffAccount);
@@ -2817,9 +3196,22 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   if (validSection) {
     setActiveSection(validSection);
+  } else if (canAccessInvoicePage()) {
+    window.location.replace("invoice.html");
+    return;
+  } else {
+    showPopup(
+      "error",
+      "No workspace access",
+      "This staff account does not have any dashboard page assigned yet.",
+      { autoClose: false },
+    );
+    return;
   }
 
-  await loadItemNames({ silent: true });
+  if (canAccessPermission("add_stock", "sale_invoice", "stock_report")) {
+    await loadItemNames({ silent: true });
+  }
 
   if (isAdminSession()) {
     initYearFilter();

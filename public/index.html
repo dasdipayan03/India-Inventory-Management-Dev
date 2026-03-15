@@ -1248,6 +1248,132 @@
         line-height: 1.7;
       }
 
+      .staff-permission-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .staff-permission-chip {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        min-height: 58px;
+        padding: 14px 15px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(191, 219, 254, 0.56);
+        cursor: pointer;
+        transition:
+          border-color 0.2s ease,
+          box-shadow 0.2s ease,
+          transform 0.2s ease;
+      }
+
+      .staff-permission-chip:hover {
+        transform: translateY(-1px);
+        border-color: rgba(14, 165, 233, 0.42);
+        box-shadow: 0 14px 28px rgba(17, 29, 58, 0.06);
+      }
+
+      .staff-permission-chip.is-selected {
+        border-color: rgba(14, 165, 233, 0.44);
+        background: rgba(224, 242, 254, 0.96);
+        box-shadow: 0 16px 30px rgba(14, 165, 233, 0.12);
+      }
+
+      .staff-permission-chip input {
+        width: 18px;
+        height: 18px;
+        margin-top: 2px;
+        accent-color: var(--cyan-strong);
+        flex-shrink: 0;
+      }
+
+      .staff-permission-chip strong {
+        display: block;
+        color: var(--ink-strong);
+        font-size: 13px;
+      }
+
+      .staff-permission-chip span {
+        display: block;
+        margin-top: 4px;
+        color: var(--ink-soft);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .staff-toggle-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .staff-helper-text {
+        margin: 0;
+        color: var(--ink-soft);
+        font-size: 12px;
+        line-height: 1.65;
+      }
+
+      .staff-card-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .staff-card {
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid rgba(191, 219, 254, 0.48);
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 14px 28px rgba(17, 29, 58, 0.06);
+      }
+
+      .staff-card__header,
+      .staff-card__actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .staff-card__meta strong {
+        display: block;
+        color: var(--ink-strong);
+        font-size: 16px;
+      }
+
+      .staff-card__meta span {
+        display: block;
+        margin-top: 4px;
+        color: var(--ink-soft);
+        font-size: 12px;
+      }
+
+      .staff-access-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 14px 0 16px;
+      }
+
+      .staff-access-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 8px 11px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.1);
+        color: var(--cyan-strong);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .staff-permission-grid--compact {
+        margin-top: 12px;
+      }
+
       .popup-shell {
         position: fixed;
         inset: 0;
@@ -2993,11 +3119,11 @@
                     <div class="panel-heading mb-0">
                       <div>
                         <span class="panel-kicker">Permission Scope</span>
-                        <h5>Staff will get limited workspace access</h5>
+                        <h5>Choose page access for this staff account</h5>
                         <p class="panel-subtitle">
-                          Staff can only open Add New Stock and Sale and
-                          Invoice. Reports, GST, customer dues, and staff
-                          management remain admin only.
+                          Admin can allow one page, multiple pages, or all
+                          business pages. Staff management itself remains admin
+                          only.
                         </p>
                       </div>
                       <div class="panel-card__icon">
@@ -3005,6 +3131,32 @@
                       </div>
                     </div>
                   </div>
+                </div>
+
+                <div class="col-12">
+                  <div class="staff-toggle-row mb-2">
+                    <button
+                      class="btn btn-info"
+                      id="selectAllStaffPagesBtn"
+                      type="button"
+                    >
+                      <i class="fa-solid fa-check-double"></i>
+                      Select All Pages
+                    </button>
+                    <button
+                      class="btn btn-secondary"
+                      id="clearAllStaffPagesBtn"
+                      type="button"
+                    >
+                      <i class="fa-solid fa-eraser"></i>
+                      Clear Selection
+                    </button>
+                  </div>
+                  <div id="staffPermissionGrid" class="staff-permission-grid"></div>
+                  <p class="staff-helper-text mt-2">
+                    Tip: if you want the staff to use only invoice billing, keep
+                    just Sale and Invoice selected.
+                  </p>
                 </div>
 
                 <div class="col-12">
@@ -3026,8 +3178,8 @@
                   <span class="panel-kicker">Access Overview</span>
                   <h4>Current staff accounts</h4>
                   <p class="panel-subtitle">
-                    Review active staff logins and remove them when access is no
-                    longer needed.
+                    Review active staff logins, fine-tune page access, and
+                    remove them when access is no longer needed.
                   </p>
                 </div>
                 <div class="panel-card__icon">
