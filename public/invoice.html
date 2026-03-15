@@ -363,8 +363,7 @@
       .stat span,
       .summary-item span,
       .result-meta span,
-      .field label,
-      thead th {
+      .field label {
         display: block;
         color: var(--muted);
         font-size: 11px;
@@ -555,8 +554,15 @@
       }
 
       thead th {
+        display: table-cell;
         padding: 0 12px 4px;
         text-align: left;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        vertical-align: bottom;
       }
 
       tbody tr {
@@ -568,6 +574,7 @@
         padding: 14px 12px;
         border-top: 1px solid rgba(117, 142, 180, 0.1);
         border-bottom: 1px solid rgba(117, 142, 180, 0.1);
+        vertical-align: top;
       }
 
       tbody td:first-child {
@@ -619,9 +626,14 @@
 
       .stock {
         margin-top: 8px;
+        display: inline-flex;
+        align-items: center;
         color: var(--muted);
         font-size: 12px;
         line-height: 1.45;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.08);
       }
 
       .stock:empty {
