@@ -1,8 +1,17 @@
 # Shop Inventory Management Documentation
 
-Last verified against this repository: `2026-07-14`
+Last verified against the web repository and linked Android wrapper: `2026-07-23`
+
+Verification baseline:
+
+- web repository HEAD: `8484172`
+- Android wrapper build snapshot: `versionName 1.2.40`, `versionCode 43`
+- active Express router declarations: `84`
+- effective PostgreSQL tables: `17`
 
 This is the single merged documentation file for the project. It replaces the earlier split project doc and database schema doc.
+
+Scope note: [`USER_RELATED_DATA_QUERY_GUIDE.md`](./USER_RELATED_DATA_QUERY_GUIDE.md) remains a separate query aid, not the schema source of truth. At this verification baseline it does not yet include `item_serials` or the latest bank/UPI settings fields; use this document, the SQL snapshot, and runtime compatibility code for the complete current model.
 
 ## Table Of Contents
 
@@ -11,6 +20,7 @@ This is the single merged documentation file for the project. It replaces the ea
 - [3. Technology Stack](#3-technology-stack)
   - [Backend](#backend)
   - [Deployment and runtime](#deployment-and-runtime)
+  - [Local setup and verification](#local-setup-and-verification)
   - [Frontend](#frontend)
   - [Data and schema](#data-and-schema)
 - [4. Repository Map](#4-repository-map)
@@ -21,6 +31,7 @@ This is the single merged documentation file for the project. It replaces the ea
 - [6. Frontend Structure](#6-frontend-structure)
   - [Page responsibilities](#page-responsibilities)
   - [Shared frontend module roles](#shared-frontend-module-roles)
+  - [Mobile dropdown and serialized-item UI behavior](#mobile-dropdown-and-serialized-item-ui-behavior)
   - [Service-worker rollback and network behavior](#service-worker-rollback-and-network-behavior)
   - [Frontend storage usage](#frontend-storage-usage)
 - [7. Backend Structure](#7-backend-structure)
@@ -57,6 +68,7 @@ This is the single merged documentation file for the project. It replaces the ea
     - [`public/js/app-core.js` function inventory](#publicjsapp-corejs-function-inventory)
     - [`public/js/app-shell.js` function inventory](#publicjsapp-shelljs-function-inventory)
     - [`public/js/dashboard.js` workflow map](#publicjsdashboardjs-workflow-map)
+    - [`public/invoice.html` inline controller workflow map](#publicinvoicehtml-inline-controller-workflow-map)
     - [Developer support frontend workflow map](#developer-support-frontend-workflow-map)
 - [8. Auth, Session, and Permission Model](#8-auth-session-and-permission-model)
   - [Session model](#session-model)
@@ -65,12 +77,14 @@ This is the single merged documentation file for the project. It replaces the ea
   - [Client bootstrap](#client-bootstrap)
   - [Staff permission model](#staff-permission-model)
 - [9. Security and Runtime Guardrails](#9-security-and-runtime-guardrails)
+  - [Known implementation caveats](#known-implementation-caveats)
 - [10. Main Business Workflows](#10-main-business-workflows)
   - [Owner registration](#owner-registration)
   - [Owner login](#owner-login)
   - [Google owner sign-in](#google-owner-sign-in)
   - [Staff login](#staff-login)
   - [Purchase Entry / Add Stock](#purchase-entry--add-stock)
+  - [Serialized-item lifecycle](#serialized-item-lifecycle)
   - [Supplier ledger and purchase bill views](#supplier-ledger-and-purchase-bill-views)
   - [Product purchase history](#product-purchase-history)
   - [Invoice creation](#invoice-creation)
@@ -91,6 +105,7 @@ This is the single merged documentation file for the project. It replaces the ea
   - [11.7 Ops routes from `routes/ops.js`](#117-ops-routes-from-routesopsjs)
   - [11.8 Health routes from `server.js`](#118-health-routes-from-serverjs)
   - [11.9 Network diagnostic route from `server.js`](#119-network-diagnostic-route-from-serverjs)
+  - [11.10 Conditional debug routes from `server.js`](#1110-conditional-debug-routes-from-serverjs)
 - [12. Database Schema](#12-database-schema)
   - [12.1 Schema source of truth](#121-schema-source-of-truth)
   - [12.2 Ownership model](#122-ownership-model)
@@ -112,6 +127,7 @@ This is the single merged documentation file for the project. It replaces the ea
     - [`expenses`](#expenses)
     - [`invoices`](#invoices)
     - [`invoice_items`](#invoice_items)
+    - [`item_serials`](#item_serials)
     - [`user_invoice_counter`](#user_invoice_counter)
   - [12.6 Full table dictionary](#126-full-table-dictionary)
   - [12.7 Relationship notes and data flow](#127-relationship-notes-and-data-flow)
@@ -122,12 +138,14 @@ This is the single merged documentation file for the project. It replaces the ea
 - [13. Environment Variables](#13-environment-variables)
 - [14. Maintenance Guide](#14-maintenance-guide)
   - [Login, reset password, or session behavior](#if-you-want-to-change-login-reset-password-or-session-behavior)
+  - [Login banners](#if-you-want-to-change-login-banners)
   - [Shared navigation or permission names](#if-you-want-to-change-shared-navigation-or-permission-names)
   - [Dashboard stock, purchase, report, due, or expense features](#if-you-want-to-change-dashboard-stock-purchase-report-due-or-expense-features)
   - [Play Store, Android install, or browser install behavior](#if-you-want-to-change-play-store-android-install-or-browser-install-behavior)
   - [Invoice flow or PDF output](#if-you-want-to-change-invoice-flow-or-pdf-output)
   - [Support chat or developer portal behavior](#if-you-want-to-change-support-chat-or-developer-portal-behavior)
   - [Database schema](#if-you-want-to-change-database-schema)
+  - [Database backup or restore behavior](#if-you-want-to-change-database-backup-or-restore-behavior)
   - [Deployment healthchecks or runtime logging](#if-you-want-to-change-deployment-healthchecks-or-runtime-logging)
   - [Caching, pagination, or queued exports](#if-you-want-to-change-caching-pagination-or-queued-exports)
   - [Owner ops metrics](#if-you-want-to-change-owner-ops-metrics)
@@ -157,15 +175,16 @@ Important current-state notes:
 - [`../public/service-worker.js`](../public/service-worker.js) is currently a rollback worker: it clears old `shop-inventory-runtime-*` / `inventory-runtime-*` caches, unregisters itself, and does not intercept fetches.
 - Database schema truth comes from the SQL files in [`migrations/`](../migrations) plus runtime compatibility patches in [`db.js`](../db.js).
 - The app now includes an owner/staff support chat plus dedicated developer support login and inbox pages backed by [`../routes/support.js`](../routes/support.js).
-- Runtime health and readiness now expose structured JSON payloads through `/health`, `/api/health`, `/healthz`, `/api/healthz`, `/ready`, `/api/ready`, `/readyz`, `/api/readyz`, `/live`, `/api/live`, `/livez`, and `/api/livez`.
+- Runtime health and readiness handlers are registered for `/health`, `/api/health`, `/healthz`, `/api/healthz`, `/ready`, `/api/ready`, `/readyz`, `/api/readyz`, `/live`, `/api/live`, `/livez`, and `/api/livez`. Because the `/api` routers are mounted first, only the non-API aliases are reliable public probes in the current route order; see [Section 11.8](#118-health-routes-from-serverjs).
 - [`server.js`](../server.js) also serves `/network-check` and `/network-check.html`, a no-store first-party diagnostic page for checking whether a client can reach `/live`, `/health`, and `/api/live` without relying on CDN assets or service-worker cached navigation.
 - Owner-only ops endpoints now expose in-process metrics, DB overview, response-cache stats, export-queue stats, and background-job status through [`../routes/ops.js`](../routes/ops.js).
 - PDF/Excel export requests can run asynchronously when the frontend adds `_async_export=1`; jobs are stored in the in-memory export queue and downloaded through [`../routes/exports.js`](../routes/exports.js).
 - Frequently read JSON endpoints now use short owner-scoped response caching and pagination metadata helpers where list size can grow.
 - Structured runtime logs now redact password, token, authorization, cookie, and access-key fields before emitting JSON.
 - Deployment healthcheck and start-command defaults are now pinned in [`../railway.json`](../railway.json), and lifecycle/request logging is centralized through [`../utils/runtime-log.js`](../utils/runtime-log.js).
-- The standalone Add New Stock page has been retired. Its old HTML is preserved inertly inside a `<template>` in [`../public/index.html`](../public/index.html), and related frontend/backend code is commented for reference. Stock intake now happens through Purchase Entry.
+- The standalone Add New Stock page and `POST /api/items` handler are absent from the active code. Stock intake now happens through Purchase Entry; only an obsolete `add_stock` permission comment and a dead `addStockSection` sidebar check remain as cleanup candidates.
 - Purchase Entry is now the canonical "Purchase Entry / Add Stock" workflow. It includes supplier autocomplete, bill-wise supplier search, product-wise purchase history, supplier detail autofill, default profit margin handling, and stock updates from saved purchase bills.
+- Purchase rows optionally capture one serial/SN per whole-number unit through manual entry or camera barcode/QR scanning. Saved serials are owner-unique, linked to their purchase/item records, and move from `in_stock` to `sold` during invoice creation.
 - Supplier ledger detail rows are shown newest-to-oldest, matching Bill View ordering.
 - Supplier Ledger "View All" always clears the current supplier search and loads the full supplier balance summary.
 - Purchase Desk now has owner-only 3-dot delete actions for supplier ledgers, purchase bills, and purchase bill items. These actions are hidden from staff and protected by `requireOwner` on the backend.
@@ -176,6 +195,10 @@ Important current-state notes:
 - Login page Android install now points to the Play Store listing (`india.inventory.management`) instead of the old GitHub APK release link. `site.webmanifest` remains available for browser/PWA install prompts.
 - The Android wrapper project at `C:\Users\Dipayan\AndroidStudioProjects\IndiaInventoryManagement` is the native shell used for Play Store releases. Because the web service worker is currently rolled back, browser/PWA/WebView traffic should go directly to the network instead of using the previous app-shell cache layer.
 - Sale and Invoice now includes customer autocomplete in the Billing details card. The inline invoice controller calls `/api/invoices/customers`, then fills customer name, contact, and address when an existing customer is selected.
+- Invoice rows expose a `Sale %` pricing helper. Selecting an inventory item loads its current buying rate, changing Sale % recalculates the selling rate, changing the rate recalculates Sale %, and both helper values remain draft-only rather than becoming invoice API/schema fields.
+- Invoice serial inputs can search or scan in-stock serials through `/api/item-serials`; a selected serial supplies its saved sale rate and is validated again transactionally by the backend.
+- Long dashboard and invoice dropdowns use mobile scroll guards, click-based selection, and delayed blur hiding so a swipe/scroll does not accidentally select or close an entry.
+- The login-page banner carousel is generated from numbered files under `public/images/`, supports keyboard/touch/autoplay behavior, and currently has nine images.
 - Invoice shop profile now stores bank account and UPI payment details. Invoice PDFs print saved payment rows and generate a UPI QR block when `upi_id` is available.
 - The API layer now applies DB-pool backpressure protection before mounted `/api` route handlers when the PostgreSQL waiting queue reaches `DB_POOL_WAITING_REJECT_THRESHOLD`.
 
@@ -191,9 +214,10 @@ Main business modules:
 - owner/staff support chat with a developer inbox
 - developer support account registration and login
 - purchase entry that also adds/updates stock through supplier bills
+- optional serial/SN capture on purchase rows and serialized-unit lookup during billing
 - purchase defaults, supplier ledger, supplier repayment tracking, and owner-only purchase deletion with stock rollback
 - product-wise purchase history from saved purchase item rows
-- sales invoice creation with PDF generation
+- sales invoice creation with Sale % assistance, serial selection/scanning, and PDF generation
 - invoice history, due settlement, and payment collection
 - invoice customer lookup/autofill from existing saved invoices
 - shop profile bank/UPI payment details printed on invoice PDFs
@@ -206,19 +230,19 @@ Main business modules:
 
 Current feature and benefit map:
 
-| Module                     | Current capability                                                                                                                                                     | User benefit                                                                   |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Purchase Entry / Add Stock | Supplier bill entry creates purchase rows and updates item stock/rates                                                                                                 | Inventory stays in sync with purchase bills without duplicate stock-entry work |
-| Supplier Ledger            | Supplier-wise purchases, paid/due totals, repayment capture, newest-first bill history, and owner-only supplier/bill/item deletion                                     | Owners can track and clean purchase ledger data safely                         |
-| Sale Entry / Invoice       | Invoice creation, item lookup, GST/total calculation, customer autocomplete, history, settlement, shop payment details, UPI QR, and PDF                                | Faster billing and cleaner customer-facing documents                           |
-| Stock View / Report        | Item quantity, buying/selling rates, sold quantity, low-stock, reorder, and slow-moving views                                                                          | Owners can see current inventory health and reorder needs                      |
-| Sales View / Report        | Date-wise sales, net-profit card, trend charts, PDF, and Excel                                                                                                         | Sales performance can be reviewed by period                                    |
-| GST Report                 | GST row report, monthly comparison, PDF, and Excel                                                                                                                     | Tax data is ready for checking and filing                                      |
-| Customer Due               | Customer ledger entries with optional address, name/number autocomplete, address-aware due summary, newest-first timeline, PDF, and owner-only delete actions          | Collections become easier to track, share, and correct                         |
-| Expenses                   | Expense entry, suggestions, report, and summary                                                                                                                        | Real net profit is clearer because costs are recorded                          |
-| Staff Access               | Owner-managed page permissions for staff accounts                                                                                                                      | Staff can work only in the modules they are assigned                           |
-| Support Chat               | Owner/staff support thread plus developer inbox                                                                                                                        | Support conversations stay tied to the right owner workspace                   |
-| Mobile / Android Access    | Responsive web UI, Play Store wrapper, Android Google transfer, PWA manifest, service-worker rollback cleanup, WebView access, and `/network-check` diagnostics | Users can work from phones through browser, installed PWA, or Play Store app   |
+| Module                     | Current capability                                                                                                                                              | User benefit                                                                 |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Purchase Entry / Add Stock | Supplier bill entry creates purchase rows, updates item stock/rates, and optionally registers one serial/SN per whole-number unit                               | Inventory and serialized units stay in sync with purchase bills              |
+| Supplier Ledger            | Supplier-wise purchases, paid/due totals, repayment capture, newest-first bill history, and owner-only supplier/bill/item deletion                              | Owners can track and clean purchase ledger data safely                       |
+| Sale Entry / Invoice       | Invoice creation, Sale %/rate assistance, item and in-stock serial lookup/scan, GST calculation, customer autocomplete, settlement, UPI QR, and PDF             | Faster billing with unit-level serialized-stock control                      |
+| Stock View / Report        | Item quantity, buying/selling rates, sold quantity, low-stock, reorder, and slow-moving views                                                                   | Owners can see current inventory health and reorder needs                    |
+| Sales View / Report        | Date-wise sales, net-profit card, trend charts, PDF, and Excel                                                                                                  | Sales performance can be reviewed by period                                  |
+| GST Report                 | GST row report, monthly comparison, PDF, and Excel                                                                                                              | Tax data is ready for checking and filing                                    |
+| Customer Due               | Customer ledger entries with optional address, name/number autocomplete, address-aware due summary, newest-first timeline, PDF, and owner-only delete actions   | Collections become easier to track, share, and correct                       |
+| Expenses                   | Expense entry, suggestions, report, and summary                                                                                                                 | Real net profit is clearer because costs are recorded                        |
+| Staff Access               | Owner-managed page permissions for staff accounts                                                                                                               | Staff can work only in the modules they are assigned                         |
+| Support Chat               | Owner/staff support thread plus developer inbox                                                                                                                 | Support conversations stay tied to the right owner workspace                 |
+| Mobile / Android Access    | Responsive web UI, Play Store wrapper, Android Google transfer, PWA manifest, service-worker rollback cleanup, WebView access, and `/network-check` diagnostics | Users can work from phones through browser, installed PWA, or Play Store app |
 
 The system is owner-centric:
 
@@ -238,6 +262,7 @@ The system is owner-centric:
 - `bcrypt` for password hashing
 - `helmet`, `cors`, `cookie-parser`, `compression`, `express-rate-limit`
 - optional `MAIL_RELAY_URL` / `MAIL_RELAY_KEY` reset-email relay, called with Node `fetch`
+- `nodemailer` is installed but not imported by the current code; password-reset delivery uses the HTTP relay above
 - `pdfkit` for PDF generation
 - `exceljs` for Excel export
 - native `fetch` from Node 18+ for Google OAuth calls and internal queued-export downloads
@@ -256,6 +281,44 @@ The system is owner-centric:
   - restart policy: `ON_FAILURE`
   - max restart retries: `10`
 
+### Local setup and verification
+
+Prerequisites:
+
+- Node.js 18 or newer
+- PostgreSQL and a database the application can own
+- `psql` or an equivalent SQL client for first-time schema installation
+
+The repository does not load `.env` files and does not include `.env.example`; set variables in the shell, process manager, or deployment platform. For a fresh local database, apply the full SQL snapshot before starting the app. The startup compatibility patch begins with `ALTER TABLE` statements and cannot bootstrap an empty database by itself.
+
+PowerShell example:
+
+```powershell
+npm ci
+$env:DATABASE_URL = 'postgresql://USER:PASSWORD@localhost:5432/inventory_db'
+$env:JWT_SECRET = '<long-random-secret>'
+$env:PORT = '4000'
+$env:BASE_URL = 'http://localhost:4000'
+psql $env:DATABASE_URL -f .\migrations\full_updated_schema.sql
+npm start
+```
+
+Use port `4000` when opening the app on a `localhost` hostname: [`public/js/app-core.js`](../public/js/app-core.js) intentionally maps localhost API calls to `http://localhost:4000/api`. Using `http://127.0.0.1:8080` keeps same-origin `/api` behavior and can use the server's default port instead.
+
+Basic runtime checks:
+
+```powershell
+Invoke-RestMethod http://localhost:4000/live
+Invoke-RestMethod http://localhost:4000/health
+```
+
+- `/live` proves the HTTP process is responding.
+- `/health` returns `200` only after PostgreSQL initialization and compatibility patching complete; it returns `503` while not ready.
+- the HTTP listener starts before `pool.readyPromise` settles, so liveness can succeed before readiness.
+- only `npm start` is defined. There is no repository test, lint, frontend build, or migration-runner script; browser workflows and inline HTML controllers require manual or separately configured E2E verification.
+- PostgreSQL is the durable store. Response-cache entries, rate-limit counters, metrics, Android OAuth callback state, and queued export buffers are process-local and disappear on restart.
+- no backup/restore/PITR automation exists in this repository. Configure provider/operator backups separately and test restores; PDF/Excel exports are not database backups.
+
 ### Frontend
 
 - static HTML pages in [`public/`](../public)
@@ -273,70 +336,72 @@ The system is owner-centric:
 
 - SQL schema snapshots in [`migrations/full_updated_schema.sql`](../migrations/full_updated_schema.sql)
 - startup compatibility patching in [`db.js`](../db.js)
+- the repository currently has one transactional full-schema snapshot, no migration ledger/runner, and no incremental migration history
 - future incremental SQL migrations belong in [`migrations/`](../migrations) when schema changes need to be tracked separately
 
 ## 4. Repository Map
 
-| Path                                  | Purpose                                                                                                                                                     |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`../server.js`](../server.js)        | app bootstrap, middleware, request logging, DB backpressure guard, health/readiness routes, network diagnostics, HTML serving, and service-worker bootstrap |
-| [`../db.js`](../db.js)                | PostgreSQL pool setup, timeout tuning, readiness state, and schema compatibility patches                                                                    |
-| [`../railway.json`](../railway.json)  | Railway deployment config: start command, healthcheck path, timeout, restart policy                                                                         |
-| [`../middleware/`](../middleware)     | auth and access control middleware                                                                                                                          |
-| [`../routes/`](../routes)             | route files grouped by business domain                                                                                                                      |
-| [`../repositories/`](../repositories) | small DB reader modules used by operational endpoints                                                                                                       |
-| [`../public/`](../public)             | HTML pages, frontend JS, images, PWA manifest, and service worker                                                                                           |
-| [`../utils/`](../utils)               | shared backend helpers such as advisory locking, caching, export jobs, metrics, and structured logging                                                      |
-| [`../migrations/`](../migrations)     | SQL schema and migration history                                                                                                                            |
-| [`../docs/`](.)                       | project documentation, including this merged file and the detailed flow chart                                                                               |
+| Path                                  | Purpose                                                                                                                                              |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`../server.js`](../server.js)        | app bootstrap, middleware, request logging, maintenance mode, login-banner injection, health/readiness routes, network diagnostics, and HTML serving |
+| [`../db.js`](../db.js)                | PostgreSQL pool setup, timeout tuning, readiness state, and schema compatibility patches                                                             |
+| [`../railway.json`](../railway.json)  | Railway deployment config: start command, healthcheck path, timeout, restart policy                                                                  |
+| [`../middleware/`](../middleware)     | auth and access control middleware                                                                                                                   |
+| [`../routes/`](../routes)             | route files grouped by business domain                                                                                                               |
+| [`../repositories/`](../repositories) | small DB reader modules used by operational endpoints                                                                                                |
+| [`../public/`](../public)             | HTML pages, frontend JS, images, PWA manifest, and service worker                                                                                    |
+| [`../utils/`](../utils)               | shared backend helpers such as advisory locking, caching, export jobs, metrics, and structured logging                                               |
+| [`../migrations/`](../migrations)     | current transactional full-schema snapshot; no versioned migration runner/history exists                                                             |
+| [`../docs/`](.)                       | project documentation, including this merged file and the detailed flow chart                                                                        |
 
 ### Key backend files
 
-| File                                                                     | Role                                                                                                                                                                                  |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`../server.js`](../server.js)                                           | Express entrypoint, request logging, CSP nonce injection, service-worker bootstrap injection, CORS policy, DB-pool backpressure guard, health/debug/diagnostic routes, static serving |
-| [`../db.js`](../db.js)                                                   | DB connection pool, readiness state, SSL selection, startup schema patching, pool timeout/query timeout tuning                                                                        |
-| [`../middleware/auth.js`](../middleware/auth.js)                         | JWT verification, role resolution, permission checks                                                                                                                                  |
-| [`../middleware/cache.js`](../middleware/cache.js)                       | owner-scoped short TTL JSON response cache middleware                                                                                                                                 |
-| [`../middleware/export-queue.js`](../middleware/export-queue.js)         | async export middleware for queued PDF/Excel downloads                                                                                                                                |
-| [`../routes/auth.js`](../routes/auth.js)                                 | register/login/logout, Google OAuth, forgot/reset password, staff management, `/me`                                                                                                   |
-| [`../routes/support.js`](../routes/support.js)                           | developer auth, owner/staff support chat, developer inbox, conversation status updates                                                                                                |
-| [`../routes/exports.js`](../routes/exports.js)                           | export job status and authenticated download endpoints                                                                                                                                |
-| [`../routes/ops.js`](../routes/ops.js)                                   | owner-only monitoring metrics and background cleanup endpoints                                                                                                                        |
-| [`../routes/inventory.js`](../routes/inventory.js)                       | stock defaults, shared item lookup, stock reports, sales reports, GST compare/export, dashboard overview, customer dues, owner-only due deletes                                       |
-| [`../routes/business.js`](../routes/business.js)                         | suppliers, purchases that restock inventory, product purchase history, purchase repayment, owner-only purchase deletes, expenses                                                      |
-| [`../routes/invoices.js`](../routes/invoices.js)                         | invoice numbering, invoice save, customer suggestions, history, payment settlement, PDF, shop info                                                                                    |
-| [`../repositories/ops-repository.js`](../repositories/ops-repository.js) | database overview query used by ops metrics                                                                                                                                           |
-| [`../utils/background-jobs.js`](../utils/background-jobs.js)             | periodic cache/export cleanup and heartbeat logging                                                                                                                                   |
-| [`../utils/cache.js`](../utils/cache.js)                                 | in-memory TTL cache plus owner-cache invalidation helpers                                                                                                                             |
-| [`../utils/concurrency.js`](../utils/concurrency.js)                     | normalization helpers and owner-scoped advisory locks                                                                                                                                 |
-| [`../utils/export-queue.js`](../utils/export-queue.js)                   | in-memory export queue implementation and filename parsing                                                                                                                            |
-| [`../utils/monitoring.js`](../utils/monitoring.js)                       | request, cache, export, memory, and DB-pool metric snapshots                                                                                                                          |
-| [`../utils/pagination.js`](../utils/pagination.js)                       | shared query pagination parser, response headers, and metadata builder                                                                                                                |
-| [`../utils/runtime-log.js`](../utils/runtime-log.js)                     | structured JSON log serializer used by server and DB lifecycle logging                                                                                                                |
-| [`../railway.json`](../railway.json)                                     | Railway config-as-code for runtime start and healthcheck defaults                                                                                                                     |
+| File                                                                     | Role                                                                                                                                                                            |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`../server.js`](../server.js)                                           | Express entrypoint, maintenance responses, login-banner injection, request logging, CSP nonce/bootstrap injection, CORS, backpressure, health/diagnostic routes, static serving |
+| [`../db.js`](../db.js)                                                   | DB connection pool, readiness state, SSL selection, startup schema patching, pool timeout/query timeout tuning                                                                  |
+| [`../middleware/auth.js`](../middleware/auth.js)                         | JWT verification, role resolution, permission checks                                                                                                                            |
+| [`../middleware/cache.js`](../middleware/cache.js)                       | owner-scoped short TTL JSON response cache middleware                                                                                                                           |
+| [`../middleware/export-queue.js`](../middleware/export-queue.js)         | async export middleware for queued PDF/Excel downloads                                                                                                                          |
+| [`../routes/auth.js`](../routes/auth.js)                                 | register/login/logout, Google OAuth, forgot/reset password, staff management, `/me`                                                                                             |
+| [`../routes/support.js`](../routes/support.js)                           | developer auth, owner/staff support chat, developer inbox, conversation status updates                                                                                          |
+| [`../routes/exports.js`](../routes/exports.js)                           | export job status and authenticated download endpoints                                                                                                                          |
+| [`../routes/ops.js`](../routes/ops.js)                                   | owner-only monitoring metrics and background cleanup endpoints                                                                                                                  |
+| [`../routes/inventory.js`](../routes/inventory.js)                       | stock defaults, item/serial lookup, stock and sales reports, GST compare/export, dashboard overview, customer dues, owner-only due deletes                                      |
+| [`../routes/business.js`](../routes/business.js)                         | suppliers, purchases that restock inventory/create serial units, product history, repayments, guarded purchase deletes, expenses                                                |
+| [`../routes/invoices.js`](../routes/invoices.js)                         | invoice numbering/save, serialized stock sale, customer suggestions, history, payment settlement, PDF, shop info                                                                |
+| [`../repositories/ops-repository.js`](../repositories/ops-repository.js) | database overview query used by ops metrics                                                                                                                                     |
+| [`../utils/background-jobs.js`](../utils/background-jobs.js)             | periodic cache/export cleanup and heartbeat logging                                                                                                                             |
+| [`../utils/cache.js`](../utils/cache.js)                                 | in-memory TTL cache plus owner-cache invalidation helpers                                                                                                                       |
+| [`../utils/concurrency.js`](../utils/concurrency.js)                     | normalization helpers and owner-scoped advisory locks                                                                                                                           |
+| [`../utils/export-queue.js`](../utils/export-queue.js)                   | in-memory export queue implementation and filename parsing                                                                                                                      |
+| [`../utils/monitoring.js`](../utils/monitoring.js)                       | request, cache, export, memory, and DB-pool metric snapshots                                                                                                                    |
+| [`../utils/pagination.js`](../utils/pagination.js)                       | shared query pagination parser, response headers, and metadata builder                                                                                                          |
+| [`../utils/runtime-log.js`](../utils/runtime-log.js)                     | structured JSON log serializer used by server and DB lifecycle logging                                                                                                          |
+| [`../railway.json`](../railway.json)                                     | Railway config-as-code for runtime start and healthcheck defaults                                                                                                               |
 
 ### Key frontend files
 
-| File                                                                                 | Role                                                                                                                                                |
-| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`../public/login.html`](../public/login.html)                                       | landing page, owner login/register, Google sign-in/onboarding, staff login, forgot password, Play Store install link                                |
-| [`../public/privacy-policy.html`](../public/privacy-policy.html)                     | public privacy policy page                                                                                                                          |
-| [`../public/account-deletion.html`](../public/account-deletion.html)                 | public account deletion instruction page                                                                                                            |
-| [`../public/developer-login.html`](../public/developer-login.html)                   | developer account login/register page for the support inbox                                                                                         |
-| [`../public/developer-support.html`](../public/developer-support.html)               | developer support queue and threaded reply workspace                                                                                                |
-| [`../public/index.html`](../public/index.html)                                       | main dashboard shell with Purchase Entry / Add Stock, supplier ledger, product purchase history, reports, due, expense, support, and staff sections |
-| [`../public/invoice.html`](../public/invoice.html)                                   | sale and invoice workspace, customer autocomplete, invoice history, PDF actions, shop profile                                                       |
-| [`../public/site.webmanifest`](../public/site.webmanifest)                           | browser/PWA install metadata: app name, start URL, standalone display mode, colors, and icon                                                        |
-| [`../public/reset.html`](../public/reset.html)                                       | reset password page                                                                                                                                 |
-| [`../public/js/developer-login.js`](../public/js/developer-login.js)                 | developer login/register controller                                                                                                                 |
-| [`../public/js/developer-support.js`](../public/js/developer-support.js)             | developer inbox queue, thread, reply, and status update controller                                                                                  |
-| [`../public/js/dashboard.js`](../public/js/dashboard.js)                             | main dashboard logic and report UI orchestration                                                                                                    |
-| [`../public/js/app-core.js`](../public/js/app-core.js)                               | shared constants, permission descriptions, app bootstrap helpers                                                                                    |
-| [`../public/js/app-shell.js`](../public/js/app-shell.js)                             | reusable sidebar shell and page navigation                                                                                                          |
-| [`../public/js/permission-contract.js`](../public/js/permission-contract.js)         | single permission vocabulary shared by backend and frontend                                                                                         |
-| [`../public/js/service-worker-register.js`](../public/js/service-worker-register.js) | cleanup helper that unregisters old first-party service workers and deletes old runtime caches                                                       |
-| [`../public/service-worker.js`](../public/service-worker.js)                         | rollback worker that clears old runtime caches, unregisters itself, and does not intercept fetches                                                   |
+| File                                                                                 | Role                                                                                                                           |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| [`../public/login.html`](../public/login.html)                                       | landing page, server-injected banner carousel, owner/staff auth, Google onboarding, forgot password, Play Store install link   |
+| [`../public/privacy-policy.html`](../public/privacy-policy.html)                     | public privacy policy page                                                                                                     |
+| [`../public/account-deletion.html`](../public/account-deletion.html)                 | public account deletion instruction page                                                                                       |
+| [`../public/developer-login.html`](../public/developer-login.html)                   | developer account login/register page for the support inbox                                                                    |
+| [`../public/developer-support.html`](../public/developer-support.html)               | developer support queue and threaded reply workspace                                                                           |
+| [`../public/index.html`](../public/index.html)                                       | dashboard shell with serialized Purchase Entry, supplier/product history, reports, dues, expenses, support, and staff sections |
+| [`../public/invoice.html`](../public/invoice.html)                                   | sale workspace with Sale % helper, serial search/scan, customer autocomplete, history, PDF actions, and shop profile           |
+| [`../public/images/`](../public/images)                                              | app logo plus numbered login carousel banners (`login_page_banner_1` through `_10` naming convention)                          |
+| [`../public/site.webmanifest`](../public/site.webmanifest)                           | browser/PWA install metadata: app name, start URL, standalone display mode, colors, and icon                                   |
+| [`../public/reset.html`](../public/reset.html)                                       | reset password page                                                                                                            |
+| [`../public/js/developer-login.js`](../public/js/developer-login.js)                 | developer login/register controller                                                                                            |
+| [`../public/js/developer-support.js`](../public/js/developer-support.js)             | developer inbox queue, thread, reply, and status update controller                                                             |
+| [`../public/js/dashboard.js`](../public/js/dashboard.js)                             | dashboard orchestration, purchase serial capture/scanning, mobile dropdown guards, reports, ledgers, support, and staff UI     |
+| [`../public/js/app-core.js`](../public/js/app-core.js)                               | shared constants, permission descriptions, app bootstrap helpers                                                               |
+| [`../public/js/app-shell.js`](../public/js/app-shell.js)                             | reusable sidebar shell and page navigation                                                                                     |
+| [`../public/js/permission-contract.js`](../public/js/permission-contract.js)         | single permission vocabulary shared by backend and frontend                                                                    |
+| [`../public/js/service-worker-register.js`](../public/js/service-worker-register.js) | cleanup helper that unregisters old first-party service workers and deletes old runtime caches                                 |
+| [`../public/service-worker.js`](../public/service-worker.js)                         | rollback worker that clears old runtime caches, unregisters itself, and does not intercept fetches                             |
 
 ## 5. High-Level Architecture
 
@@ -359,7 +424,7 @@ flowchart LR
   RuntimeLog["Runtime logger<br/>utils/runtime-log.js"]
   DeployCfg["Railway config<br/>railway.json"]
   DB["PostgreSQL"]
-  Schema["migrations/*.sql + db.js compatibility patch"]
+  Schema["full_updated_schema.sql snapshot + db.js compatibility patch"]
 
   Browser --> SharedJS
   Browser -->|"GET HTML pages"| Server
@@ -393,16 +458,23 @@ flowchart LR
 ### Request flow in practice
 
 1. Browser requests `login.html`, `developer-login.html`, `developer-support.html`, `index.html`, `invoice.html`, or `reset.html`.
-2. [`server.js`](../server.js) serves those pages through `sendHtmlTemplate(...)`, injecting preconnect hints, service-worker registration, and `__CSP_NONCE__` replacements.
+2. [`server.js`](../server.js) serves those pages through `sendHtmlTemplate(...)`, injecting login banners on `login.html`, preconnect hints, service-worker cleanup registration, and `__CSP_NONCE__` replacements.
 3. [`../public/js/service-worker-register.js`](../public/js/service-worker-register.js) cleans up older first-party service-worker registrations and old runtime caches on secure origins.
 4. [`../public/service-worker.js`](../public/service-worker.js) is kept as a rollback worker for already-installed clients: it clears old caches, unregisters itself, and does not intercept navigations, assets, APIs, or diagnostics.
 5. Frontend scripts call `/api/...` endpoints with `credentials: "include"`.
 6. [`middleware/auth.js`](../middleware/auth.js) resolves the current owner/staff session or developer support session as needed.
 7. The matching route file runs business logic and queries PostgreSQL.
-8. Health endpoints can report readiness or liveness without crossing the authenticated route stack.
+8. Non-API health endpoints report readiness or liveness without crossing the `/api` router stack. The registered `/api/*` aliases currently traverse the support readiness gate and broad inventory/business auth middleware before they can reach the health handlers.
 9. `/network-check` can be opened from a browser or mobile network to test first-party reachability to `/live`, `/health`, and `/api/live`.
 10. PDF and Excel exports are generated directly inside route handlers for normal requests, or queued through `/api/exports/:jobId` when `_async_export=1` is present.
 11. Owner-only ops endpoints expose in-process metrics, DB-pool state, response cache stats, export queue stats, and background-job cleanup state.
+
+Current Express route-order consequence:
+
+- use `/health` (or `/ready`) for public readiness and `/live` for public liveness
+- unauthenticated `/api/health`, `/api/live`, and their API aliases currently return `401` after the DB gate instead of acting as public probes
+- an unknown unauthenticated `/api/*` path can also return `401` before the intended JSON `404`
+- business requests pass the inventory router's broad auth guard and then the business guard; invoice requests pass both before their route-level guard, so staff-session DB lookup may repeat when `STAFF_SESSION_CACHE_TTL_MS=0`
 
 ## 6. Frontend Structure
 
@@ -410,12 +482,12 @@ flowchart LR
 
 | Page                                                                   | What it does                                                                                                                  |
 | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| [`../public/login.html`](../public/login.html)                         | auth entrypoint for owner/staff, Google sign-in start/onboarding, forgot password entry, existing-session redirect            |
+| [`../public/login.html`](../public/login.html)                         | server-injected banner carousel, owner/staff auth, Google onboarding, forgot password, existing-session redirect              |
 | [`../public/developer-login.html`](../public/developer-login.html)     | developer account login/register screen for the support inbox                                                                 |
 | [`../public/developer-support.html`](../public/developer-support.html) | developer queue and threaded support reply workspace                                                                          |
-| [`../public/index.html`](../public/index.html)                         | multi-section dashboard for stock, purchases, product purchase history, reports, dues, expenses, and staff owner controls     |
-| [`../public/invoice.html`](../public/invoice.html)                     | invoice builder, customer autofill, draft restore, payment summary, shop payment profile, invoice lookup, invoice PDF actions |
-| [`../public/reset.html`](../public/reset.html)                         | password reset submission using email + token from URL hash                                                                   |
+| [`../public/index.html`](../public/index.html)                         | dashboard for serialized purchases, supplier/product history, stock/sales/GST, dues, expenses, support, and staff controls    |
+| [`../public/invoice.html`](../public/invoice.html)                     | invoice builder with Sale %, serial select/scan, draft restore, customer autofill, settlement, shop profile, history, and PDF |
+| [`../public/reset.html`](../public/reset.html)                         | password reset using hash-based email/token values with query-string compatibility fallback, followed by history scrubbing    |
 | [`../public/privacy-policy.html`](../public/privacy-policy.html)       | public privacy policy content linked from the login page                                                                      |
 | [`../public/account-deletion.html`](../public/account-deletion.html)   | public account deletion guidance linked from the login page                                                                   |
 
@@ -459,13 +531,15 @@ flowchart LR
 - [`../public/js/dashboard.js`](../public/js/dashboard.js)
   - drives most dashboard features
   - loads and submits purchase, supplier ledger, report, due, expense, support, and staff data
-  - handles Purchase Entry / Add Stock row logic, supplier autocomplete, bill-wise supplier search dropdowns, product purchase history, owner-only ledger delete menus, popups, section switching, and report export actions
+  - handles Purchase Entry / Add Stock row logic, optional serial slots and camera scanning, supplier/item dropdowns, product purchase history, owner-only delete menus, popups, section switching, and exports
+  - uses scroll-gesture tracking and delayed hide behavior for long item dropdowns on touch devices
   - refreshes the session once after a `403` so stale staff permission state can recover before showing an access-denied popup
   - requests queued exports by adding `_async_export=1`, polls job status, then downloads through `/api/exports/:jobId/download`
 
 - [`../public/invoice.html`](../public/invoice.html)
   - contains the inline invoice page controller
-  - manages invoice draft storage, line item autocomplete, payment preview, invoice search, and PDF actions
+  - manages invoice draft storage, line item autocomplete, Sale %/rate synchronization, serial search/scan, payment preview, invoice search, and PDF actions
+  - persists `sale_profit_percent` and the current `buying_rate` only inside the local draft; the final `POST /api/invoices` payload deliberately sends description, quantity, rate, and serial numbers instead
   - loads customer suggestions from `/api/invoices/customers` and fills billing name, contact, and address from selected historical invoices
   - saves shop, GST, bank account, IFSC, and UPI details through `/api/shop-info`
   - uses the same queued-export pattern for invoice PDF downloads when the backend returns `202`
@@ -479,6 +553,28 @@ flowchart LR
   - loads the developer inbox queue and threaded conversation state
   - sends replies, changes conversation status, and refreshes queue counters
   - escapes requester and message content before writing HTML into the inbox UI
+
+### Mobile dropdown and serialized-item UI behavior
+
+Long suggestion lists are intentionally scrollable on phones:
+
+- shared dashboard item dropdowns call `setupScrollableDropdown(...)`, track pointer/mouse/touch movement, suppress the click produced by a swipe, and use `scheduleDropdownHide(...)` so input blur cannot close a list while it is being scrolled
+- invoice item and serial dropdowns mark active pointer/scroll interaction, switch selection from `pointerdown` to `click`, and defer blur hiding while the list is active
+- `public/index.html` and `public/invoice.html` set `overscroll-behavior: contain`, momentum scrolling, `touch-action: pan-y`, and viewport-bounded list heights
+
+Serialized purchase UI:
+
+- a purchase row can add one serial/SN slot per whole-number quantity
+- serials can be typed manually or scanned with `BarcodeDetector` and an environment-facing camera
+- camera scan requires a secure context (`HTTPS` or localhost), camera permission, and browser `BarcodeDetector` support; manual entry remains the fallback
+- duplicate serials and quantity/count mismatch are rejected before submit and again by the backend
+
+Serialized invoice UI:
+
+- item rows call `GET /api/item-serials` for in-stock suggestions or exact scanned lookup
+- selecting/scanning serials synchronizes their saved `sale_rate`; mixed saved rates require an explicit custom line rate or separate rows
+- a serialized invoice line must have a positive whole-number quantity equal to its serial count
+- invoice history/detail renders serials linked to saved invoice items
 
 ### Service-worker rollback and network behavior
 
@@ -510,9 +606,10 @@ Current frontend storage behavior:
 - `localStorage`:
   - `activeSection` for dashboard section persistence
   - sidebar refresh uses `activeSection` so the same dashboard module opens again after reload
-  - `defaultProfitPercent` cache
-  - invoice draft storage on `invoice.html`
+  - legacy `defaultProfitPercent` migration fallback only; `/api/stock-defaults` is authoritative, and a successful server read/write deletes the local key
+  - `invoice_page_draft_v4` on `invoice.html`, including customer/payment state, item rate, draft-only Sale %, draft-only buying-rate reference, and serial inputs
   - cleanup of old `token`/`user` keys during logout or invalid session handling
+- there is no application use of IndexedDB or `sessionStorage`
 - Cache Storage:
   - old service-worker runtime caches are deleted by the cleanup helper and rollback worker
   - no API JSON, auth-sensitive responses, reports, invoices, payments, stock mutations, health checks, or network diagnostics should be stored there
@@ -538,6 +635,7 @@ Current frontend storage behavior:
 - mounting [`../routes/exports.js`](../routes/exports.js) for export job status/download and [`../routes/ops.js`](../routes/ops.js) for owner-only metrics
 - serving HTML pages through nonce-aware template injection
 - injecting CDN preconnect hints and `/js/service-worker-register.js` into HTML pages before nonce replacement
+- discovering up to 10 numbered `login_page_banner_N` image files, adding file-version query strings, and injecting the generated slides into `login.html`
 - caching HTML templates in memory while still sending HTML with `Cache-Control: no-store`
 - serving `/service-worker.js` with `Cache-Control: no-cache` and `Service-Worker-Allowed: /` so already-installed clients can receive the rollback worker and clear old runtime caches
 - serving `/privacy-policy(.html)` and `/account-deletion(.html)` in addition to the app pages
@@ -561,6 +659,7 @@ Current frontend storage behavior:
   - `NODE_ENV !== "production"`
   - `ENABLE_DEBUG_ROUTES === "true"`
 - rejecting non-health `/api` requests with `503` and `Retry-After: 3` when `pool.waitingCount` reaches `DB_POOL_WAITING_REJECT_THRESHOLD`
+- when `MAINTENANCE_MODE` is enabled, returning no-store `503` HTML or JSON with a configurable message and `Retry-After`, while allowing health paths through
 - configuring server shutdown behavior with:
   - `keepAliveTimeout`
   - `headersTimeout`
@@ -587,9 +686,11 @@ Compatibility patching currently ensures:
 - invoice payment profile columns on `settings`: `bank_name`, `account_holder_name`, `account_number`, `ifsc_code`, and `upi_id`
 - `sales.cost_price`
 - `sales.gst_amount`
+- `debts.customer_address`
 - invoice payment columns on `invoices`
 - `debts.invoice_id`
 - creation of `suppliers`, `purchases`, `purchase_items`, `expenses`
+- creation and indexing of `item_serials`, plus `sale_rate` addition/backfill from purchase/item selling rates
 - creation of `developer_admins`, `support_conversations`, and `support_messages`
 - supporting indexes for those newer tables
 - duplicate/invalid developer admin rows are reconciled before enforcing the normalized email unique index
@@ -626,11 +727,12 @@ Important behavior:
 - supports `Authorization: Bearer ...` as a fallback
 - reads the developer support session from the `developer_support_token` cookie for developer-only routes
 - verifies the JWT using `JWT_SECRET`
-- resolves active staff permissions from the database with a short in-memory cache
+- resolves active staff permissions from the database, with an optional in-memory cache controlled by `STAFF_SESSION_CACHE_TTL_MS`
 - verifies active developer inbox sessions through `developerAuthMiddleware`
 - uses a staff-session cache with:
-  - TTL: `15` seconds
-  - max entries: `200`
+  - TTL: `0` ms by default, which disables caching and reloads active staff state from PostgreSQL on every auth pass
+  - configurable TTL: `STAFF_SESSION_CACHE_TTL_MS`
+  - max entries: `200` when enabled
 - invalidates cached staff session data when staff login, permission updates, or staff deletion occurs
 - exposes helpers:
   - `authMiddleware`
@@ -703,6 +805,7 @@ Important scope note:
 | `buildAllowedOrigins()`                       | builds the final CORS allowlist from `CORS_ALLOWED_ORIGINS`, `BASE_URL`, or localhost defaults  |
 | `nonceDirective(_req, res)`                   | returns the CSP nonce directive used by `helmet`                                                |
 | `normalizePathname(value)`                    | strips query strings and trailing slashes from incoming paths                                   |
+| `escapeHtml(value)`                           | escapes dynamic values used in server-rendered maintenance and Android-return HTML              |
 | `getRequestPath(req)`                         | derives a canonical path string from the Express request                                        |
 | `isHealthRoutePath(pathname)`                 | identifies readiness/liveness routes for special logging rules                                  |
 | `roundTo(value, decimals)`                    | rounds numeric values used in health and timing payloads                                        |
@@ -713,6 +816,9 @@ Important scope note:
 | `getHtmlTemplate(fileName)`                   | reads and caches HTML templates from `public/`                                                  |
 | `applyHtmlCacheHeaders(res)`                  | forces HTML responses to bypass browser/proxy caching                                           |
 | `injectPerformanceBootstrap(html)`            | adds CDN preconnect hints and service-worker registration to served HTML if not already present |
+| `getLoginBannerFiles()`                       | discovers, versions, sorts, and caps numbered login-banner image files                          |
+| `buildLoginBannerSlides()`                    | renders responsive login carousel slide markup from the discovered images                       |
+| `injectLoginBanners(html)`                    | replaces the login-page banner placeholder with generated slide markup                          |
 | `setStaticAssetCacheHeaders(res, filePath)`   | applies cache rules for HTML, service worker, images, fonts, and other static assets            |
 | `sendHtmlTemplate(res, fileName, statusCode)` | injects performance bootstrap tags plus the CSP nonce into cached HTML and sends it             |
 | `sendMaintenancePage(req, res)`               | renders no-store HTML or JSON maintenance responses when maintenance mode is enabled            |
@@ -740,6 +846,7 @@ Important scope note:
 
 | Function                                      | Purpose                                                                               |
 | --------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `readNonNegativeInt(value, fallback)`         | parses the optional staff-session cache TTL, including the disabled value `0`         |
 | `normalizeSessionRole(value)`                 | constrains raw JWT role values to supported session roles                             |
 | `getStaffSessionCacheKey(staffId)`            | normalizes a staff ID into a safe cache key                                           |
 | `getCachedStaffSession(staffId)`              | returns a non-expired cached staff session if available                               |
@@ -801,6 +908,9 @@ Route handlers in this file cover registration, owner login, Google OAuth login/
 | `normalizeGoogleOAuthClient(value)`                             | distinguishes web Google OAuth from Android wrapper OAuth              |
 | `signGoogleOAuthState(client)`                                  | signs the Google OAuth state token                                     |
 | `readGoogleOAuthState(state)`                                   | validates a Google OAuth state token and returns client mode           |
+| `pruneAndroidGoogleCallbackResults()`                           | removes expired entries from the process-local Android callback map    |
+| `rememberAndroidGoogleCallbackResult(state, transferToken)`     | stores a short-lived Android transfer result for callback recovery     |
+| `readAndroidGoogleCallbackResult(state)`                        | consumes a matching Android callback transfer result                   |
 | `signAndroidGoogleTransfer(payload)`                            | signs short-lived Android deep-link transfer data                      |
 | `verifyAndroidGoogleTransfer(token)`                            | validates the Android transfer token                                   |
 | `signGoogleOnboarding(profile)`                                 | signs short-lived first-time Google onboarding profile data            |
@@ -810,6 +920,12 @@ Route handlers in this file cover registration, owner login, Google OAuth login/
 | `getGoogleOAuthConfig(req)`                                     | reads Google client settings and callback URL                          |
 | `buildLoginRedirectUrl(req, params)`                            | creates login-page redirects with Google result/error flags            |
 | `buildAndroidGoogleDeepLink(req, transferToken)`                | creates the Android wrapper deep-link URL                              |
+| `buildAndroidGoogleOpenUrl(req, transferToken)`                 | creates the first-party browser fallback URL for Android return        |
+| `escapeHtml(value)`                                             | escapes values interpolated into Android return pages                  |
+| `scriptJson(value)`                                             | safely serializes values embedded in an inline return-page script      |
+| `buildAndroidGoogleIntentLink(req, transferToken)`              | builds the Android intent URL with a browser fallback                  |
+| `sendAndroidGoogleReturnPage(req, res, transferToken)`          | renders the transient page that launches the Android deep link         |
+| `renderAndroidGoogleOpenPage(req, res, transferToken)`          | renders the manual Android-open fallback page                          |
 | `exchangeGoogleCodeForTokens(code, config)`                     | exchanges OAuth code for Google tokens                                 |
 | `fetchGoogleUserProfile(accessToken)`                           | loads and validates Google user profile data                           |
 | `normalizeSessionRole(value)`                                   | normalizes session roles before client-facing serialization            |
@@ -824,7 +940,7 @@ Route handlers in this file cover registration, owner login, Google OAuth login/
 
 #### `routes/inventory.js` function inventory
 
-Route handlers in this file cover stock defaults for Purchase Entry, shared item lookup, item reporting, low-stock analysis, reorder planning, slow-moving stock analysis, sales reports, GST reports, customer dues, dashboard cards, and trend APIs. The retired standalone `POST /api/items` stock-entry route is preserved only as commented reference code; live stock intake is handled by `POST /api/purchases` in [`../routes/business.js`](../routes/business.js).
+Route handlers in this file cover stock defaults for Purchase Entry, shared item and in-stock serial lookup, item reporting, low-stock analysis, reorder planning, slow-moving stock analysis, sales/GST reports, customer dues, dashboard cards, and trend APIs. There is no active or commented `POST /api/items` handler; live stock intake is handled by `POST /api/purchases` in [`../routes/business.js`](../routes/business.js).
 
 | Function                                                        | Purpose                                                                         |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -862,6 +978,9 @@ Route handlers in this file cover supplier lookup, purchase entry, product-wise 
 | `toIstDateRange(from, to)`                                          | returns an inclusive IST date-range object for reports               |
 | `buildPaymentSnapshot(subtotal, paidInput, fallbackMode)`           | computes purchase payment status, paid amount, and due amount        |
 | `buildPurchasePaymentStatus(amountPaid, amountDue)`                 | recalculates saved purchase status after a bill item delete          |
+| `normalizeSerialNumber(value)`                                      | trims and normalizes one purchase serial/SN for display              |
+| `normalizeSerialNumberKey(value)`                                   | creates the case-insensitive owner-unique serial lookup key          |
+| `parseSerialNumbers(value)`                                         | parses, normalizes, and deduplicates serial input collections        |
 | `applyPurchaseStockReversal(client, userId, purchaseItems)`         | rolls back item stock for deleted purchase bills or bill items       |
 | `deletePurchaseBillsWithStockRollback(client, userId, purchaseIds)` | deletes purchase bills after locking rows and reversing stock safely |
 | `findOrCreateSupplier(client, userId, payload)`                     | performs locked supplier lookup/create/update inside a transaction   |
@@ -877,6 +996,9 @@ Route handlers in this file cover invoice preview, invoice creation, customer au
 | `parseNonZeroNumber(value)`                                                        | validates invoice quantity inputs that may be positive or negative but not zero |
 | `parseNonNegativeNumber(value)`                                                    | validates invoice payment inputs that may be zero                               |
 | `normalizeMobileNumber(value)`                                                     | canonicalizes customer contact numbers                                          |
+| `normalizeSerialNumber(value)`                                                     | trims and normalizes one invoice serial/SN                                      |
+| `normalizeSerialNumberKey(value)`                                                  | creates the normalized serial lookup/lock key                                   |
+| `parseSerialNumbers(value)`                                                        | parses and deduplicates invoice serial input                                    |
 | `normalizeInvoicePaymentMode(value)`                                               | constrains invoice payment modes to supported values                            |
 | `appendQrBits(bits, value, length)`                                                | writes QR bit segments for the built-in UPI QR encoder                          |
 | `getQrDataCodewordCount(version)`                                                  | returns QR data capacity metadata for a QR version                              |
@@ -987,6 +1109,7 @@ Route handlers in this file are owner-only and cover monitoring metrics plus bac
 | `getMemoryUsageMb()`                 | reports current process memory usage                                 |
 | `normalizeRoutePath(pathname)`       | redacts numeric, phone, and UUID route segments for grouping         |
 | `getRouteStatsKey(method, pathname)` | builds a normalized metric key per route                             |
+| `incrementBucket(bucket, key)`       | increments one in-memory monitoring counter                          |
 | `markHttpRequestStarted()`           | increments active request count                                      |
 | `markHttpRequestFinished()`          | decrements active request count                                      |
 | `recordHttpRequest(details)`         | records status, duration, slow-request, and per-route counters       |
@@ -994,12 +1117,15 @@ Route handlers in this file are owner-only and cover monitoring metrics plus bac
 
 #### `utils/background-jobs.js` function inventory
 
-| Function                       | Purpose                                                 |
-| ------------------------------ | ------------------------------------------------------- |
-| `runCleanup()`                 | prunes expired response-cache entries and export jobs   |
-| `startBackgroundJobs(options)` | starts cleanup and heartbeat timers                     |
-| `stopBackgroundJobs()`         | stops cleanup and heartbeat timers during shutdown      |
-| `getBackgroundJobStatus(pool)` | returns job state plus cache, export, and DB-pool stats |
+| Function                           | Purpose                                                 |
+| ---------------------------------- | ------------------------------------------------------- |
+| `readPositiveInt(value, fallback)` | parses cleanup and heartbeat interval configuration     |
+| `getMemoryUsageMb()`               | creates the memory snapshot used in heartbeat data      |
+| `getPoolStats(pool)`               | normalizes DB-pool counts for heartbeat/status payloads |
+| `runCleanup()`                     | prunes expired response-cache entries and export jobs   |
+| `startBackgroundJobs(options)`     | starts cleanup and heartbeat timers                     |
+| `stopBackgroundJobs()`             | stops cleanup and heartbeat timers during shutdown      |
+| `getBackgroundJobStatus(pool)`     | returns job state plus cache, export, and DB-pool stats |
 
 #### `utils/pagination.js` function inventory
 
@@ -1013,6 +1139,7 @@ Route handlers in this file are owner-only and cover monitoring metrics plus bac
 
 | Function                       | Purpose                                                     |
 | ------------------------------ | ----------------------------------------------------------- |
+| `isSensitiveKey(key)`          | detects log keys that must be redacted                      |
 | `normalizeError(error)`        | converts native `Error` objects into JSON-safe log metadata |
 | `sanitizeValue(value, depth)`  | recursively sanitizes log metadata and limits deep nesting  |
 | `logEvent(level, event, meta)` | writes structured JSON logs to `stdout` or `stderr`         |
@@ -1080,7 +1207,9 @@ The rollback worker also listens for `install`, `activate`, and `fetch`. It clea
 
 - session/bootstrap: `hideElement`, `showElement`, `markDashboardReady`, `authHeaders`, `handleSessionExpiry`, `checkAuth`
 - formatting/search helpers: `formatCount`, `formatNumber`, `formatCurrency`, `formatDate`, `normalizeSearchKey`, `buildStringSearchIndex`, `getSearchMatches`, `debounce`
+- touch-safe dropdown helpers: `setupScrollableDropdown`, `scheduleDropdownHide`, `renderDropdown`, `renderItemNameDropdown`, `setupFilterInput`
 - shared purchase pricing defaults: `normalizeProfitPercentValue`, `applySharedProfitPercent`, `saveProfitPercentDefault`, `queueProfitPercentSave`, `loadProfitPercentDefault`
+- serialized purchase capture: `normalizeSerialEntry`, `parseSerialNumbersInput`, `findDuplicateSerialNumber`, `stopSerialCameraScanner`, `ensureSerialScannerModal`, `createSerialBarcodeDetector`, `startSerialCameraScan`
 - purchase and stock-intake workflow: `purchaseRows`, `getPurchaseDefaultProfitPercent`, `refreshPurchaseAutoRates`, `updatePurchaseSummary`, `addPurchaseItemRow`, `loadSupplierSuggestions`, `renderSupplierDropdown`, `loadPurchaseSearchSuggestions`, `renderPurchaseSearchDropdown`, `loadProductPurchaseHistory`, `renderProductPurchaseHistory`, `loadPurchaseReport`, `openPurchaseDetail`, `submitPurchaseRepayment`, `searchSupplierLedger`, `showAllSupplierSummary`, `deleteSupplierLedger`, `deletePurchaseBill`, `deletePurchaseItem`, `refreshPurchaseViewsAfterDelete`, `submitPurchase`
 - expense workflow: `renderExpenseReport`, `loadExpenseReport`, `submitExpense`
 - report/export workflow: `renderItemReport`, `loadItemReport`, `loadLowStock`, `renderReorderPlanner`, `renderSlowMovingPlanner`, `renderSalesReport`, `loadSalesReport`, `loadGstReport`, `downloadItemReportPDF`, `downloadSalesPDF`, `downloadSalesExcel`, `downloadGstPDF`, `downloadGstExcel`
@@ -1089,6 +1218,21 @@ The rollback worker also listens for `install`, `activate`, and `fetch`. It clea
 - dashboard analytics: `loadDashboardOverview`, `loadBusinessTrend`, `renderBusinessTrend`, `loadLast13MonthsChart`, `renderLast13MonthsChart`, `loadSalesNetProfitCard`
 - staff/owner workflow: `renderStaffPermissionGrid`, `readStaffPermissionSelection`, `setStaffPermissionSelection`, `renderStaffList`, `loadStaffAccounts`, `createStaffAccount`
 - event wiring: `bindPopupEvents`, `bindPurchaseEvents`, `bindReportEvents`, `bindCustomerDueEvents`, `bindExpenseEvents`, `bindSupportEvents`, `bindStaffEvents`
+
+#### `public/invoice.html` inline controller workflow map
+
+[`../public/invoice.html`](../public/invoice.html) contains a large page-local controller. Its main named workflow groups are:
+
+- session and permissions: `loadSession`, `applySessionAccess`, `redirectAwayFromInvoiceIfNeeded`, `canAccessInvoicePage`, `logoutAndRedirect`
+- confirmation and downloads: `showPopup`, `downloadInvoice`, queued export polling helpers, `setBusy`, `withButtonState`
+- draft and totals: `rowData`, `getCurrentPaymentSnapshot`, `updatePaymentPreview`, `buildDraft`, `saveDraft`, `queueDraft`, `restoreDraft`, `recalcTotals`
+- serialized item capture: `normalizeSerialEntry`, `parseSerialNumbersInput`, `findDuplicateSerialNumber`, `stopSerialCameraScanner`, `ensureSerialScannerModal`, `createSerialBarcodeDetector`, `startSerialCameraScan`
+- dropdown/search: `setupScrollableDropdown`, `scheduleDropdownHide`, `renderDropdown`, `loadCustomerSuggestions`, `renderCustomerDropdown`, `renderInvoiceSuggestionDropdown`, `loadItemNames`, `loadInvoiceSuggestions`
+- invoice line controller: `addItemRow(...)` owns item lookup, quantity/serial slot rendering, serial-specific rate synchronization, buying-rate tracking, Sale % to rate calculation, rate to Sale % calculation, total/GST calculation, and line validation
+- invoice history and settlement: `renderDetail`, `renderList`, `loadExact`, `receiveInvoicePayment`, `performSearch`
+- save path: `loadShopInfo`, `saveShopProfile`, `payload`, `preCheck`, `submitInvoice`, `resetInvoice`
+
+Important payload boundary: `rowData(...)` contains `sale_profit_percent` and `buying_rate` so a draft can restore the pricing helper, but `payload()` strips those helper properties before `POST /api/invoices`. Only the final `rate` and selected `serial_numbers` affect saved invoice/business rows.
 
 #### Developer support frontend workflow map
 
@@ -1130,7 +1274,7 @@ Current Google sign-in behavior:
 - New Google owners receive a short-lived `google_onboarding` cookie and are redirected to `login.html?google_onboarding=1`.
 - `GET /api/auth/google/onboarding` lets the login page read the pending Google email/name without exposing the full token.
 - `POST /api/auth/google/complete-profile` requires shop name and 10-digit mobile number, creates the owner and `settings` row, clears onboarding, and sets the normal `token` cookie.
-- Android wrapper mode uses `client=android`, signs a 5-minute transfer token, and redirects to the `indiainventory://google-auth` deep link. `/api/auth/google/android-transfer` converts that transfer back into the web cookie flow when needed.
+- Android wrapper mode uses `client=android`, signs a 5-minute transfer token, and targets the `indiainventory://google-auth` deep link. `/api/auth/google/android-open` renders an intent/manual-open fallback page, while `/api/auth/google/android-transfer` converts the transfer back into the web cookie flow.
 
 ### Developer support session model
 
@@ -1145,6 +1289,7 @@ Current Google sign-in behavior:
 
 - `login.html` checks `/api/auth/me` to detect an active session.
 - `login.html` also handles Google return flags, opens the first-time Google profile modal, and removes `google_onboarding` / `google_error` query parameters from browser history.
+- `reset.html` prefers the generated URL-hash email/token form, accepts query parameters as a compatibility fallback, and then removes both forms from browser history.
 - `index.html` and `invoice.html` use cookie-based requests with `credentials: "include"`.
 - Dashboard and invoice fetch helpers handle one stale-permission case by refreshing `/api/auth/me` after a `403`, reapplying section access, and retrying/redirecting only when the refreshed permissions still do not allow the action.
 - Frontend code no longer depends on a token response body to stay logged in.
@@ -1159,7 +1304,7 @@ Important rules:
 - max 2 staff accounts per owner is enforced in application logic
 - owners always have all permissions
 - staff page permissions come from `staff_accounts.page_permissions`
-- active staff session data is cached briefly in memory to reduce repeated DB lookups
+- active staff session data can be cached in memory when `STAFF_SESSION_CACHE_TTL_MS` is greater than `0`; the default `0` disables the cache and reloads staff state on each auth pass
 - frontend uses the same permission contract to hide or show sections
 - backend uses `requirePermission(...)` to enforce actual access control
 - destructive ledger and purchase cleanup actions use owner-only `requireOwner` routes, so staff cannot delete customer ledgers, supplier ledgers, purchase bills, or purchase bill items even if they have page access
@@ -1184,8 +1329,9 @@ Current hardening that is visible in the codebase:
 - `script-src-attr 'none'` and `style-src-attr 'none'`
 - `x-powered-by` disabled
 - `helmet.frameguard`, `helmet.noSniff`, and `helmet.referrerPolicy`
+- request-body limits default to `1mb` JSON and `200kb` URL-encoded data
 - CORS allowlist instead of open production fallback
-- global rate limit of `500` requests per `15` minutes
+- API-wide rate limit of `500` requests per `15` minutes
 - health/readiness/liveness routes are exempt from the API rate limiter
 - login limiter in [`../routes/auth.js`](../routes/auth.js):
   - `10` attempts per `15` minutes
@@ -1211,6 +1357,7 @@ Current hardening that is visible in the codebase:
 - list endpoints using pagination emit `X-Total-Count`, `X-Limit`, `X-Offset`, and `X-Has-More`
 - every response gets an `X-Request-Id` header
 - health endpoints emit `Cache-Control: no-store`
+- maintenance mode emits no-store `503` responses with `Retry-After` while leaving health paths available
 - runtime emits structured JSON logs for:
   - app bootstrap
   - DB initialization
@@ -1221,6 +1368,25 @@ Current hardening that is visible in the codebase:
 - structured logs redact password, token, authorization, cookie, and access-key fields before serialization
 - graceful shutdown uses explicit server timeouts and closes the PostgreSQL pool before exit
 - PostgreSQL pool diagnostics include statement timeout, query timeout, idle-in-transaction timeout, and pool waiting counts in startup/ops data
+
+### Known implementation caveats
+
+These are current code facts and follow-up items, not security guarantees:
+
+- **JWT role separation:** `authMiddleware` special-cases only `staff` and rewrites any other valid token as an owner session. Developer-support tokens use the same `JWT_SECRET`; if one is manually supplied as a Bearer token, it can be misclassified as an owner ID. The main middleware should explicitly allow only owner/admin/staff token purposes.
+- **Developer registration:** `DEVELOPER_REGISTRATION_KEY` has a built-in fallback. Production must set a private value; a future hardening change should fail closed when it is absent.
+- **OAuth state binding:** the Google callback accepts a valid signed state or a matching cookie rather than requiring both, so browser-to-login binding is weaker than a strict state-cookie check.
+- **Shared signing secret:** owner/staff sessions, developer sessions, OAuth state, onboarding, and Android transfer tokens share one secret and do not enforce issuer/audience/purpose claims.
+- **Session revocation:** staff and developer accounts are checked against PostgreSQL, but a normal owner JWT is accepted for its one-day lifetime without a fresh owner-status lookup.
+- **Route ordering:** broad middleware mounted on the inventory/business routers intercepts later `/api` routes. API health aliases are not public, unknown API paths can return `401`, and business/invoice calls may repeat authentication. Use non-API health probes until the route scopes/order are fixed.
+- **CSRF model:** state-changing endpoints do not use an explicit CSRF token and rely mainly on `SameSite=Lax` cookies plus origin/CORS behavior.
+- **Single-process state:** the rate limiter, response cache, metrics, Android callback map, and export queue are memory-local; they reset on restart and are not coordinated across replicas.
+- **External request timeouts:** Google token/profile calls and the password-reset mail relay use `fetch` without explicit timeouts.
+- **Process recovery:** `unhandledRejection` and `uncaughtException` are logged but do not terminate the process, so the deployment restart policy may not activate after a fatal runtime state.
+- **Database transport and tenancy:** enabled PostgreSQL SSL uses `rejectUnauthorized: false`, and the database has no row-level security/composite tenant constraints; owner separation relies on application queries.
+- **Developer logout defect:** `logoutDeveloper()` calls undefined `clearStoredDeveloperToken()` before redirecting. The server cookie is cleared, but the resulting `ReferenceError` can prevent the expected client redirect.
+- **Reset compatibility URL:** generated reset links use a hash, but `reset.html` also accepts a query-string token; query tokens can appear in the initial request URL and intermediary logs.
+- **PWA/privacy metadata:** `site.webmanifest` declares the 1254x1254 `app_logo.png` as `512x512`, and the privacy page does not yet explicitly describe stored serial numbers, bank/UPI profile data, or optional camera-based serial scanning.
 
 ## 10. Main Business Workflows
 
@@ -1278,19 +1444,48 @@ index.html purchase section
   -> GET /api/suppliers while typing supplier name
   -> selecting a supplier fills name, mobile number, and address
   -> item rows use /api/items/names autocomplete and /api/items/info where prior item pricing is needed
+  -> optional whole-number item quantities create matching manual/camera serial slots
   -> POST /api/purchases
   -> supplier record is found or created
   -> purchases header is saved
   -> purchase_items rows are saved
   -> items stock quantity and rates are updated
+  -> optional item_serials rows are saved with purchase/item links and status in_stock
   -> supplier due remains tracked through purchase payment fields
 ```
 
 Important implementation notes:
 
-- `POST /api/items` is no longer an active route. The old handler remains commented in [`../routes/inventory.js`](../routes/inventory.js) for future reference.
-- the old Add New Stock HTML remains inert inside `#retiredAddStockSectionTemplate` so it does not render, bind events, or affect active sections
+- `POST /api/items` is absent; there is no preserved retired handler or retired HTML template
+- only a commented `add_stock` permission entry in [`../routes/inventory.js`](../routes/inventory.js) and a dead `addStockSection` check in [`../public/js/app-shell.js`](../public/js/app-shell.js) remain as cleanup candidates
 - default profit percent still lives in `settings.default_profit_percent`, but access is now tied to `purchase_entry`
+
+### Serialized-item lifecycle
+
+```text
+Purchase Entry
+  -> one optional serial/SN per whole-number purchased unit
+  -> frontend rejects duplicate/count mismatch
+  -> POST /api/purchases normalizes and owner-locks every serial key
+  -> owner-unique item_serials rows are inserted with purchase, purchase_item, item, and sale_rate
+  -> status starts as in_stock
+
+Invoice Entry
+  -> GET /api/item-serials searches up to 25 in-stock units
+  -> user selects, types, or camera-scans one serial per sold unit
+  -> POST /api/invoices locks and verifies owner, item name, status, uniqueness, and quantity/count
+  -> stock and sales rows are written atomically
+  -> serial status becomes sold and invoice, invoice_item, sale, and sold_at are recorded
+```
+
+Important rules:
+
+- serial normalization is case-insensitive for owner-level uniqueness, while `serial_no` preserves display text
+- serialized purchase and invoice quantities must be positive whole numbers and equal the serial count
+- a sold serial cannot be selected again
+- serialized returns are not supported by the serial path; negative return-style invoice lines use non-serial stock handling
+- purchase/bill/item deletion is rejected if any linked serial is already sold; this is stricter than the aggregate stock-quantity check
+- deleting unsold purchase data cascades its linked serial rows through the schema
 
 ### Supplier ledger and purchase bill views
 
@@ -1313,6 +1508,7 @@ Important delete behavior:
 - purchase item delete recalculates the parent bill subtotal, paid amount, due amount, and payment status
 - purchase item delete is blocked for the last remaining item; delete the full bill instead
 - all purchase delete paths roll back stock by matching normalized purchase item names to `items.name`
+- all purchase delete paths stop if a linked `item_serials` row has status `sold`
 - deletes fail safely if the current stock quantity is lower than the quantity being reversed
 - these delete actions are owner-only; staff users can view assigned purchase pages but cannot see or call the delete controls
 
@@ -1334,6 +1530,9 @@ invoice.html
   -> GET /api/invoices/new
   -> GET /api/invoices/customers while typing customer name
   -> selecting a customer fills customer name, contact number, and address
+  -> selecting an item loads buying rate and current selling rate
+  -> Sale % can calculate the line rate, or a rate edit recalculates Sale %
+  -> optional serial search/scan calls GET /api/item-serials and fills serial-specific rates
   -> user adds customer info and item rows
   -> optional payment mode / amount paid decides paid, partial, due, or return status
   -> POST /api/invoices
@@ -1341,9 +1540,12 @@ invoice.html
   -> invoices row inserted
   -> invoice_items rows inserted
   -> sales rows inserted
+  -> selected item_serials rows marked sold and linked to invoice/invoice_items/sales
   -> items quantity reduced, or increased for return lines
   -> optional PDF download action includes saved shop bank/UPI rows and generated UPI QR when available
 ```
+
+`Sale %` and its buying-rate reference are browser-side pricing/draft helpers only. The final API payload saves the resulting line `rate` plus any `serial_numbers`; no Sale % or buying-rate column is added to `invoice_items`.
 
 ### Invoice due settlement
 
@@ -1437,28 +1639,52 @@ developer-login.html
 
 ## 11. API Route Map
 
-Most endpoints below are mounted under either `/api/auth` or `/api`; health and diagnostic routes also exist at non-API paths for deployment probes and mobile-network troubleshooting.
+Most endpoints below are mounted under either `/api/auth` or `/api`; health and diagnostic routes also exist at non-API paths for deployment probes and mobile-network troubleshooting. The seven route files declare 84 live router endpoints: auth 17, inventory 27, business 14, invoices 11, support 10, exports 2, and ops 3.
+
+Access legend:
+
+- `Public`: no session; global API rate limiting still applies
+- `Session`: owner or active staff cookie/Bearer JWT
+- `Owner`: `Session` plus `requireOwner`
+- permission names such as `purchase_entry`: active session plus `requirePermission(...)`; owners automatically pass
+- `Developer`: active `developer_support_token` or developer Bearer JWT
+
+Domain guard summary:
+
+| Domain                                        | Effective access                                                                         |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| auth start/login/register/reset/Google routes | Public, with endpoint-specific login/reset limiters and temporary cookies                |
+| staff list/create/update/delete               | Owner                                                                                    |
+| inventory lookup/report/debt routes           | Session plus the relevant page permission; dashboard overview and debt deletes are Owner |
+| purchases/suppliers                           | `purchase_entry`; destructive supplier/purchase/item deletes are Owner                   |
+| expenses                                      | `expense_tracking`                                                                       |
+| invoices and shop-info read                   | `sale_invoice`; shop-info write is Owner                                                 |
+| owner/staff support thread                    | Session                                                                                  |
+| developer inbox                               | Developer                                                                                |
+| exports                                       | Session and owner-workspace job ownership                                                |
+| ops                                           | Owner                                                                                    |
 
 ### 11.1 Auth routes from `routes/auth.js`
 
-| Method   | Path                                   | Purpose                                  |
-| -------- | -------------------------------------- | ---------------------------------------- |
-| `GET`    | `/api/auth/google/start`               | start Google OAuth login                 |
-| `GET`    | `/api/auth/google/callback`            | finish Google OAuth callback             |
-| `GET`    | `/api/auth/google/android-transfer`    | convert Android Google transfer token    |
-| `GET`    | `/api/auth/google/onboarding`          | read pending first-time Google profile   |
-| `POST`   | `/api/auth/google/complete-profile`    | finish first-time Google owner setup     |
-| `POST`   | `/api/auth/register`                   | create owner account                     |
-| `POST`   | `/api/auth/login`                      | owner login by email or mobile           |
-| `POST`   | `/api/auth/staff/login`                | staff login by username                  |
-| `POST`   | `/api/auth/logout`                     | clear session cookie                     |
-| `POST`   | `/api/auth/forgot-password`            | create reset token and send reset email  |
-| `POST`   | `/api/auth/reset-password`             | validate reset token and update password |
-| `GET`    | `/api/auth/staff`                      | list staff accounts for current owner    |
-| `POST`   | `/api/auth/staff`                      | create a staff account                   |
-| `PATCH`  | `/api/auth/staff/:staffId/permissions` | update page permissions                  |
-| `DELETE` | `/api/auth/staff/:staffId`             | deactivate/remove a staff account        |
-| `GET`    | `/api/auth/me`                         | return normalized current session        |
+| Method   | Path                                   | Purpose                                         |
+| -------- | -------------------------------------- | ----------------------------------------------- |
+| `GET`    | `/api/auth/google/start`               | start Google OAuth login                        |
+| `GET`    | `/api/auth/google/callback`            | finish Google OAuth callback                    |
+| `GET`    | `/api/auth/google/android-open`        | render Android intent/manual-open fallback page |
+| `GET`    | `/api/auth/google/android-transfer`    | convert Android Google transfer token           |
+| `GET`    | `/api/auth/google/onboarding`          | read pending first-time Google profile          |
+| `POST`   | `/api/auth/google/complete-profile`    | finish first-time Google owner setup            |
+| `POST`   | `/api/auth/register`                   | create owner account                            |
+| `POST`   | `/api/auth/login`                      | owner login by email or mobile                  |
+| `POST`   | `/api/auth/staff/login`                | staff login by username                         |
+| `POST`   | `/api/auth/logout`                     | clear session cookie                            |
+| `POST`   | `/api/auth/forgot-password`            | create reset token and send reset email         |
+| `POST`   | `/api/auth/reset-password`             | validate reset token and update password        |
+| `GET`    | `/api/auth/staff`                      | list staff accounts for current owner           |
+| `POST`   | `/api/auth/staff`                      | create a staff account                          |
+| `PATCH`  | `/api/auth/staff/:staffId/permissions` | update page permissions                         |
+| `DELETE` | `/api/auth/staff/:staffId`             | permanently delete a staff account row          |
+| `GET`    | `/api/auth/me`                         | return normalized current session               |
 
 ### 11.2 Inventory routes from `routes/inventory.js`
 
@@ -1468,6 +1694,7 @@ Most endpoints below are mounted under either `/api/auth` or `/api`; health and 
 | `PUT`    | `/api/stock-defaults`            | save Purchase Entry default profit percent                     |
 | `GET`    | `/api/items/names`               | item name autocomplete for purchase, invoice, and stock report |
 | `GET`    | `/api/items/info`                | item detail lookup by name for purchase and invoice flows      |
+| `GET`    | `/api/item-serials`              | search up to 25 in-stock serials by item/query or exact serial |
 | `GET`    | `/api/items/report`              | stock report rows                                              |
 | `GET`    | `/api/items/low-stock`           | low stock list                                                 |
 | `GET`    | `/api/items/reorder-suggestions` | reorder planner                                                |
@@ -1493,17 +1720,17 @@ Most endpoints below are mounted under either `/api/auth` or `/api`; health and 
 
 Retired inventory route note:
 
-- `POST /api/items` used to power the standalone Add New Stock form. It is commented out in [`../routes/inventory.js`](../routes/inventory.js). Active stock creation/update now happens through `POST /api/purchases`.
+- `POST /api/items` is not defined. Active stock creation/update happens through `POST /api/purchases`; the only old backend trace is a commented `add_stock` permission name near shared item lookup.
 
 ### 11.3 Business routes from `routes/business.js`
 
 | Method   | Path                                   | Purpose                                                                |
 | -------- | -------------------------------------- | ---------------------------------------------------------------------- |
 | `GET`    | `/api/suppliers`                       | supplier search and quick lookup                                       |
-| `POST`   | `/api/purchases`                       | save purchase and restock inventory                                    |
+| `POST`   | `/api/purchases`                       | save purchase, restock inventory, and register optional serial units   |
 | `GET`    | `/api/purchases/report`                | purchase report list                                                   |
 | `GET`    | `/api/purchases/product-history`       | product-wise purchase item history                                     |
-| `GET`    | `/api/purchases/:purchaseId`           | purchase detail with line items                                        |
+| `GET`    | `/api/purchases/:purchaseId`           | purchase detail with line items and linked serials                     |
 | `DELETE` | `/api/purchases/:purchaseId`           | owner-only purchase bill delete with stock rollback                    |
 | `DELETE` | `/api/purchase-items/:itemId`          | owner-only bill item delete with stock rollback and bill recalculation |
 | `POST`   | `/api/purchases/:purchaseId/repayment` | record supplier repayment                                              |
@@ -1516,19 +1743,19 @@ Retired inventory route note:
 
 ### 11.4 Invoice routes from `routes/invoices.js`
 
-| Method | Path                               | Purpose                                     |
-| ------ | ---------------------------------- | ------------------------------------------- |
-| `GET`  | `/api/invoices/new`                | preview next invoice number                 |
-| `POST` | `/api/invoices`                    | create invoice and update stock/sales       |
-| `GET`  | `/api/invoices/customers`          | customer autocomplete for billing           |
-| `GET`  | `/api/invoices/suggestions`        | invoice search dropdown suggestions         |
-| `GET`  | `/api/invoices/numbers`            | invoice number list                         |
-| `GET`  | `/api/invoices`                    | invoice history list                        |
-| `GET`  | `/api/invoices/:invoiceNo`         | full invoice detail                         |
-| `POST` | `/api/invoices/:invoiceNo/payment` | receive invoice due payment                 |
-| `GET`  | `/api/invoices/:invoiceNo/pdf`     | invoice PDF download                        |
-| `POST` | `/api/shop-info`                   | save owner shop, GST, bank, and UPI profile |
-| `GET`  | `/api/shop-info`                   | load shop, GST, bank, and UPI profile       |
+| Method | Path                               | Purpose                                                        |
+| ------ | ---------------------------------- | -------------------------------------------------------------- |
+| `GET`  | `/api/invoices/new`                | preview next invoice number                                    |
+| `POST` | `/api/invoices`                    | atomically create invoice and update stock/sales/serial status |
+| `GET`  | `/api/invoices/customers`          | customer autocomplete for billing                              |
+| `GET`  | `/api/invoices/suggestions`        | invoice search dropdown suggestions                            |
+| `GET`  | `/api/invoices/numbers`            | invoice number list                                            |
+| `GET`  | `/api/invoices`                    | invoice history list                                           |
+| `GET`  | `/api/invoices/:invoiceNo`         | full invoice, line, serial, and settlement detail              |
+| `POST` | `/api/invoices/:invoiceNo/payment` | receive invoice due payment                                    |
+| `GET`  | `/api/invoices/:invoiceNo/pdf`     | invoice PDF download                                           |
+| `POST` | `/api/shop-info`                   | save owner shop, GST, bank, and UPI profile                    |
+| `GET`  | `/api/shop-info`                   | load shop, GST, bank, and UPI profile                          |
 
 ### 11.5 Support routes from `routes/support.js`
 
@@ -1564,16 +1791,30 @@ All ops routes require an owner session.
 
 ### 11.8 Health routes from `server.js`
 
-| Method | Path group                                                                                             | Purpose                          |
-| ------ | ------------------------------------------------------------------------------------------------------ | -------------------------------- |
-| `GET`  | `/health`, `/api/health`, `/healthz`, `/api/healthz`, `/ready`, `/api/ready`, `/readyz`, `/api/readyz` | readiness with DB state          |
-| `GET`  | `/live`, `/api/live`, `/livez`, `/api/livez`                                                           | liveness without DB-ready gating |
+| Method | Path group                                                                            | Current behavior                                                                                                                                                                                            |
+| ------ | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/health`, `/healthz`, `/ready`, `/readyz`                                            | public readiness with DB state; `200` ready or `503` not ready                                                                                                                                              |
+| `GET`  | `/live`, `/livez`                                                                     | public process liveness without DB-ready gating                                                                                                                                                             |
+| `GET`  | `/api/health`, `/api/healthz`, `/api/ready`, `/api/readyz`, `/api/live`, `/api/livez` | handlers are registered, but current router order first crosses the support DB gate and broad API auth guards; unauthenticated calls return `401` after DB readiness rather than the intended probe payload |
+
+Railway correctly uses non-API `/health`. Do not configure a platform or load-balancer probe to an `/api/*` health alias until the route registration/guard scopes are corrected.
 
 ### 11.9 Network diagnostic route from `server.js`
 
 | Method | Path group                              | Purpose                                                                          |
 | ------ | --------------------------------------- | -------------------------------------------------------------------------------- |
 | `GET`  | `/network-check`, `/network-check.html` | no-store browser diagnostic page that checks `/live`, `/health`, and `/api/live` |
+
+The `/api/live` row in this diagnostic currently also reveals the API-route-order problem: an unauthenticated browser can see `401` there even while `/live` and `/health` prove the service is healthy.
+
+### 11.10 Conditional debug routes from `server.js`
+
+These non-API routes are registered only when `NODE_ENV` is not `production` and `ENABLE_DEBUG_ROUTES=true`. They have no session guard, so enable them only in a controlled development environment; maintenance mode can still intercept them.
+
+| Method | Path         | Purpose                                                                                                    |
+| ------ | ------------ | ---------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/debug-env` | report selected runtime configuration as set/missing indicators without returning configured secret values |
+| `GET`  | `/debug-db`  | run `SELECT NOW()` to test direct database connectivity                                                    |
 
 ## 12. Database Schema
 
@@ -1585,13 +1826,21 @@ Primary schema references:
 - runtime compatibility patching in [`../db.js`](../db.js)
 - any future incremental migration files added under [`../migrations/`](../migrations)
 
+Current migration boundary:
+
+- `full_updated_schema.sql` is the only SQL migration file and is a transactional full snapshot, not a versioned history
+- there is no package script, migration runner, or migration ledger table
+- [`../db.js`](../db.js) applies a sequence of individually autocommitted compatibility statements; failure can leave a partial patch
+- startup compatibility cannot initialize an empty database because it begins by altering existing core tables, and `IF NOT EXISTS` does not repair a drifted existing definition
+- install the full snapshot for a fresh database, then let startup compatibility handle supported older deployments
+
 ### 12.2 Ownership model
 
 This app uses an owner-scoped model:
 
 - `users` is the root business owner table
 - `staff_accounts.owner_user_id` points back to the owner
-- almost every business record stores `user_id`
+- almost every business record, including `item_serials`, stores `user_id`
 - backend code uses `getUserId(req)` so staff always operate in owner scope
 
 That means:
@@ -1606,7 +1855,7 @@ That means:
 erDiagram
   users ||--o{ staff_accounts : owns
   users ||--o{ support_conversations : opens
-  users ||--|| settings : configures
+  users ||--o| settings : configures
   users ||--o{ items : owns
   users ||--o{ sales : records
   users ||--o{ debts : tracks
@@ -1614,36 +1863,44 @@ erDiagram
   users ||--o{ purchases : creates
   users ||--o{ expenses : logs
   users ||--o{ invoices : creates
+  users ||--o{ item_serials : owns
   users ||--o{ user_invoice_counter : increments
 
   items ||--o{ sales : sold_as
   suppliers ||--o{ purchases : supplies
   purchases ||--o{ purchase_items : contains
   invoices ||--o{ invoice_items : contains
+  items ||--o{ item_serials : identifies
+  purchases o|--o{ item_serials : sources
+  purchase_items o|--o{ item_serials : contains_units
+  invoices o|--o{ item_serials : sells
+  invoice_items o|--o{ item_serials : assigns
+  sales o|--o{ item_serials : records
   invoices o|--o{ debts : linked_settlements
   support_conversations ||--o{ support_messages : contains
 ```
 
 ### 12.4 Table summary
 
-| Table                   | Purpose                                            | Main feature area      |
-| ----------------------- | -------------------------------------------------- | ---------------------- |
-| `users`                 | owner accounts                                     | auth                   |
-| `staff_accounts`        | staff credentials and page permissions             | auth/staff             |
-| `developer_admins`      | developer support login accounts                   | developer support auth |
-| `support_conversations` | per-requester support thread headers               | support                |
-| `support_messages`      | threaded support chat messages                     | support                |
-| `settings`              | shop profile, GST/profit defaults, payment profile | invoice/settings/stock |
-| `items`                 | current stock master                               | inventory              |
-| `sales`                 | item-level sales movement history                  | sales/reporting        |
-| `debts`                 | customer due ledger and invoice settlement log     | dues                   |
-| `suppliers`             | supplier master data                               | purchases              |
-| `purchases`             | purchase header records                            | purchases              |
-| `purchase_items`        | purchase line items                                | purchases              |
-| `expenses`              | expense ledger                                     | finance                |
-| `invoices`              | invoice header records                             | billing                |
-| `invoice_items`         | invoice line items                                 | billing                |
-| `user_invoice_counter`  | per-user daily invoice serial counter              | billing                |
+| Table                   | Purpose                                             | Main feature area      |
+| ----------------------- | --------------------------------------------------- | ---------------------- |
+| `users`                 | owner accounts                                      | auth                   |
+| `staff_accounts`        | staff credentials and page permissions              | auth/staff             |
+| `developer_admins`      | developer support login accounts                    | developer support auth |
+| `support_conversations` | per-requester support thread headers                | support                |
+| `support_messages`      | threaded support chat messages                      | support                |
+| `settings`              | shop profile, GST/profit defaults, payment profile  | invoice/settings/stock |
+| `items`                 | current stock master                                | inventory              |
+| `sales`                 | item-level sales movement history                   | sales/reporting        |
+| `debts`                 | customer due ledger and invoice settlement log      | dues                   |
+| `suppliers`             | supplier master data                                | purchases              |
+| `purchases`             | purchase header records                             | purchases              |
+| `purchase_items`        | purchase line items                                 | purchases              |
+| `expenses`              | expense ledger                                      | finance                |
+| `invoices`              | invoice header records                              | billing                |
+| `invoice_items`         | invoice line items                                  | billing                |
+| `item_serials`          | owner-unique serialized units from purchase to sale | inventory/billing      |
+| `user_invoice_counter`  | per-user daily invoice serial counter               | billing                |
 
 ### 12.5 Detailed table guide
 
@@ -1777,7 +2034,7 @@ Notes:
 
 Purpose:
 
-- one settings row per owner
+- stores at most one settings row per owner; local password registration can leave it absent until a settings endpoint upserts it
 - shared business defaults and invoice header details
 
 Key columns:
@@ -1837,12 +2094,13 @@ Key columns:
 - `cost_price`
 - `selling_price`
 - `total_price`
+- `gst_amount`
 - `created_at`
 
 Notes:
 
-- `cost_price` was added in the finance migration and backfilled from `items.buying_rate` where possible
-- there is no direct `invoice_id` foreign key here; invoice linkage is indirect through the invoice creation flow
+- `cost_price` is ensured and backfilled from `items.buying_rate` where possible by the [`../db.js`](../db.js) startup compatibility patch
+- there is no direct `invoice_id` foreign key here; for serialized sales, `item_serials.sale_id` plus its invoice links provide a unit-level bridge
 
 #### `debts`
 
@@ -1950,6 +2208,7 @@ Notes:
 - `/api/purchases/product-history` joins purchase items to purchases and suppliers by product name
 - owner-only item delete removes one line, reverses stock by normalized item name, and recalculates the parent purchase totals
 - deleting the last item row is blocked; the full bill delete path should be used instead
+- optional `item_serials.purchase_item_id` rows preserve the individual units captured for this line
 
 #### `expenses`
 
@@ -2015,6 +2274,44 @@ Key columns:
 - `rate`
 - `amount`
 
+Notes:
+
+- serialized invoice lines are linked through `item_serials.invoice_item_id`
+
+#### `item_serials`
+
+Purpose:
+
+- stores one owner-unique serial/SN unit created by a purchase
+- links the physical unit to its item, purchase lineage, and eventual invoice/sale lineage
+- provides the `in_stock` lookup used by invoice serial autocomplete/scanning
+
+Key columns:
+
+- `id`
+- `user_id`
+- `item_id`
+- `purchase_id`
+- `purchase_item_id`
+- `invoice_id`
+- `invoice_item_id`
+- `sale_id`
+- `serial_no`
+- `serial_no_norm`
+- `sale_rate`
+- `status`
+- `created_at`
+- `sold_at`
+
+Notes:
+
+- `(user_id, serial_no_norm)` is unique, so case/whitespace-normalized serials cannot be reused inside one owner workspace
+- `status` is constrained to `in_stock` or `sold`
+- purchase save records `sale_rate`; runtime compatibility backfills older rows from purchase-line or item selling rates
+- invoice save locks matching rows, verifies owner/item/status, marks them sold, and sets invoice/invoice-item/sale links atomically
+- purchase deletion is blocked when a linked serial is already sold
+- purchase and item lineage use cascading deletes; invoice, invoice-item, and sale links use `ON DELETE SET NULL`
+
 #### `user_invoice_counter`
 
 Purpose:
@@ -2061,6 +2358,7 @@ Constraints, indexes, and triggers:
 - primary key on `id`
 - unique key on `email`
 - `mobile_number` must match a 10-digit numeric pattern when present
+- schema index `idx_users_email` also covers direct email lookup
 - runtime compatibility ensures `idx_users_email_lookup` on `LOWER(email)`
 - runtime compatibility ensures `idx_users_google_sub_unique` for non-empty Google subject values
 - trigger `update_users_timestamp` calls shared `update_timestamp()` before update
@@ -2214,6 +2512,7 @@ Constraints, indexes, and triggers:
 | `cost_price`    | `NUMERIC(10,2)` | no   | `0`      | stored cost basis for margin reporting                                |
 | `selling_price` | `NUMERIC(10,2)` | no   | none     | unit selling rate                                                     |
 | `total_price`   | `NUMERIC(12,2)` | no   | none     | line total                                                            |
+| `gst_amount`    | `NUMERIC(12,2)` | no   | `0`      | line-level GST amount written during invoice creation                 |
 | `created_at`    | `TIMESTAMPTZ`   | yes  | `NOW()`  | sale timestamp                                                        |
 
 Constraints, indexes, and triggers:
@@ -2390,6 +2689,34 @@ Constraints, indexes, and triggers:
 - index `idx_invoice_items_invoice`
 - no update trigger exists because rows are line snapshots tied to an invoice header
 
+#### `item_serials`
+
+| Column             | Type            | Null | Default      | Details                                                      |
+| ------------------ | --------------- | ---- | ------------ | ------------------------------------------------------------ |
+| `id`               | `SERIAL`        | no   | sequence     | primary key                                                  |
+| `user_id`          | `INT`           | no   | none         | foreign key to `users.id` with `ON DELETE CASCADE`           |
+| `item_id`          | `INT`           | no   | none         | foreign key to `items.id` with `ON DELETE CASCADE`           |
+| `purchase_id`      | `INT`           | yes  | none         | source purchase; `ON DELETE CASCADE`                         |
+| `purchase_item_id` | `INT`           | yes  | none         | source purchase line; `ON DELETE CASCADE`                    |
+| `invoice_id`       | `INT`           | yes  | none         | selling invoice; `ON DELETE SET NULL`                        |
+| `invoice_item_id`  | `INT`           | yes  | none         | selling invoice line; `ON DELETE SET NULL`                   |
+| `sale_id`          | `INT`           | yes  | none         | generated sales movement; `ON DELETE SET NULL`               |
+| `serial_no`        | `VARCHAR(160)`  | no   | none         | preserved display serial/SN                                  |
+| `serial_no_norm`   | `VARCHAR(160)`  | no   | none         | normalized owner-level lookup and uniqueness key             |
+| `sale_rate`        | `NUMERIC(12,2)` | no   | `0`          | per-unit selling-rate snapshot used by invoice serial lookup |
+| `status`           | `VARCHAR(20)`   | no   | `'in_stock'` | constrained to `in_stock` or `sold`                          |
+| `created_at`       | `TIMESTAMPTZ`   | yes  | `NOW()`      | purchase-unit creation timestamp                             |
+| `sold_at`          | `TIMESTAMPTZ`   | yes  | none         | timestamp set when the serial is sold                        |
+
+Constraints, indexes, and triggers:
+
+- primary key on `id`
+- foreign keys to `users`, `items`, `purchases`, `purchase_items`, `invoices`, `invoice_items`, and `sales`
+- check `item_serials_status_check` allows only `in_stock` and `sold`
+- unique index `idx_item_serials_user_serial_unique` on `(user_id, serial_no_norm)`
+- indexes `idx_item_serials_user_item_status`, `idx_item_serials_purchase_item`, and `idx_item_serials_invoice_item`
+- no update trigger; status/link/timestamp transitions are explicit in invoice transactions
+
 #### `user_invoice_counter`
 
 | Column       | Type          | Null | Default | Details                                            |
@@ -2426,13 +2753,22 @@ Constraints, indexes, and triggers:
 - `settings.user_id -> users.id`
 - `invoices.user_id -> users.id`
 - `invoice_items.invoice_id -> invoices.id`
+- `item_serials.user_id -> users.id`
+- `item_serials.item_id -> items.id`
+- `item_serials.purchase_id -> purchases.id`
+- `item_serials.purchase_item_id -> purchase_items.id`
+- `item_serials.invoice_id -> invoices.id`
+- `item_serials.invoice_item_id -> invoice_items.id`
+- `item_serials.sale_id -> sales.id`
 - `user_invoice_counter.user_id -> users.id`
 
 #### Important indirect relationships
 
 - `sales` rows are created during invoice save, but the schema does not store `invoice_id` inside `sales`
 - `purchase_items` affect `items`, but the schema does not store `item_id` inside `purchase_items`
+- `item_serials` is the durable bridge from a purchased unit to its item, source purchase line, selling invoice line, and generated sale row
 - invoice collections are recorded through `debts` rows with `invoice_id`
+- `support_conversations.requester_actor_id` is polymorphic by `requester_role`; it is not a direct foreign key to either `users` or `staff_accounts`
 - `support_messages.sender_actor_id` is polymorphic by `sender_type` and `sender_role`; it records the sender but is not a direct foreign key
 
 #### Main business data flows
@@ -2440,27 +2776,31 @@ Constraints, indexes, and triggers:
 Invoice save:
 
 1. next invoice number is generated through `user_invoice_counter`
-2. `invoices` header row is inserted
-3. `invoice_items` rows are inserted
-4. `items.quantity` is adjusted
-5. `sales` rows are inserted
-6. if the invoice is partial or due, due-related tracking continues through invoice payment fields and settlement rows
+2. submitted serials are normalized, de-duplicated, locked, and checked for owner, item, and `in_stock` status
+3. `invoices` header row is inserted
+4. `invoice_items` rows are inserted
+5. `items.quantity` is adjusted and `sales` rows are inserted
+6. selected `item_serials` rows are marked `sold` and linked to the invoice, invoice line, sale, and `sold_at`
+7. if the invoice is partial or due, due-related tracking continues through invoice payment fields and settlement rows
 
 Purchase save:
 
 1. supplier is found or created in `suppliers`
-2. `purchases` header is inserted
-3. `purchase_items` rows are inserted
-4. `items` stock and rate snapshot are updated
+2. submitted serials are normalized and rejected when duplicated in the request or already present for that owner
+3. `purchases` header is inserted
+4. `purchase_items` rows are inserted
+5. `items` stock and rate snapshot are updated
+6. one `item_serials` row is inserted per serialized unit with its source purchase links and `sale_rate`
 
 Purchase or supplier ledger delete:
 
 1. owner-only route locks the purchase/supplier scope
 2. linked `purchase_items` rows are loaded and grouped by normalized item name
-3. `items.quantity` is reduced by the purchased quantity being removed
-4. delete is rejected if stock would go below zero, which protects already-sold stock
-5. the purchase bill is deleted, or the bill item is deleted and the purchase totals are recalculated
-6. supplier ledger delete applies the same bill-delete flow to all purchases for that supplier and keeps the supplier row
+3. delete is rejected when any linked serial has already been sold
+4. `items.quantity` is reduced by the purchased quantity being removed
+5. delete is rejected if stock would go below zero, which also protects already-sold non-serialized stock
+6. the purchase bill is deleted, or the bill item is deleted and the purchase totals are recalculated; unsold linked serial rows cascade with their source line
+7. supplier ledger delete applies the same bill-delete flow to all purchases for that supplier and keeps the supplier row
 
 Invoice collection:
 
@@ -2481,6 +2821,7 @@ Customer ledger delete:
 
 Important index coverage includes:
 
+- owner email lookup, including normalized `LOWER(email)` lookup
 - item lookup by normalized name
 - supplier lookup by normalized name and mobile
 - purchase report by `user_id, purchase_date`
@@ -2491,6 +2832,7 @@ Important index coverage includes:
 - invoice history by `user_id, date`
 - invoice number, customer name, and contact lookup
 - invoice items by `invoice_id`
+- serialized stock by `(user_id, item_id, status)`, with owner-wide normalized serial uniqueness and source/sale-line lookup indexes
 - debt settlement lookup by `invoice_id`
 - staff lookup by normalized username
 - Google owner lookup by non-empty `google_sub`
@@ -2515,51 +2857,69 @@ Timestamp trigger coverage from [`../migrations/full_updated_schema.sql`](../mig
 
 Runtime compatibility patching in [`../db.js`](../db.js) exists so older databases can be brought closer to current expectations even before a full migration pass is run.
 
+Compatibility limits:
+
+- startup statements run individually rather than as one migration transaction, so a failure can leave a partially patched database
+- `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` do not validate every type, constraint, or default when an object already exists
+- the compatibility layer assumes the core tables already exist and cannot bootstrap an empty database by itself
+- there is no migration ledger or automatic migration command in `package.json`; schema rollout order and verification are operator-managed
+
+Data-integrity boundaries to keep in mind:
+
+- owner `email` uniqueness is case-sensitive in PostgreSQL; the `LOWER(email)` lookup index is not unique, while normalized staff usernames are globally unique rather than owner-scoped
+- many payment/status combinations, nonnegative monetary rules, and cross-table owner matches are enforced by application transactions instead of database constraints or row-level security
+- `reset_token_expires` is a timezone-less `TIMESTAMP`; most operational timestamps use `TIMESTAMPTZ`
+- application SQL does not set an explicit schema/search path
+
 ## 13. Environment Variables
 
-| Variable                                    | Required                                        | Purpose                                                                                  |
-| ------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                              | yes                                             | PostgreSQL connection string                                                             |
-| `DB_SSL`                                    | optional                                        | force SSL on or off; otherwise auto-detected from `DATABASE_URL`                         |
-| `PG_POOL_MAX`                               | optional                                        | maximum PostgreSQL pool size                                                             |
-| `PG_CONNECTION_TIMEOUT_MS`                  | optional                                        | DB connect timeout in milliseconds                                                       |
-| `PG_IDLE_TIMEOUT_MS`                        | optional                                        | DB idle timeout in milliseconds                                                          |
-| `PG_KEEP_ALIVE_DELAY_MS`                    | optional                                        | initial keep-alive delay for DB connections                                              |
-| `PG_MAX_USES`                               | optional                                        | recycle DB connections after this many uses                                              |
-| `PG_STATEMENT_TIMEOUT_MS`                   | optional                                        | PostgreSQL statement timeout in milliseconds; `0` disables it                            |
-| `PG_QUERY_TIMEOUT_MS`                       | optional                                        | client query timeout in milliseconds; `0` disables it                                    |
-| `PG_IDLE_IN_TRANSACTION_SESSION_TIMEOUT_MS` | optional                                        | idle-in-transaction timeout in milliseconds; defaults to `30000`                         |
-| `PG_APPLICATION_NAME`                       | optional                                        | PostgreSQL application name; defaults to `shop-inventory-api`                            |
-| `JWT_SECRET`                                | yes                                             | signing key for session JWTs                                                             |
-| `PORT`                                      | optional                                        | HTTP port; defaults to `8080`                                                            |
-| `NODE_ENV`                                  | optional                                        | production/development behavior                                                          |
-| `CORS_ALLOWED_ORIGINS`                      | recommended                                     | comma-separated allowlist for cross-origin requests                                      |
-| `BASE_URL`                                  | recommended, effectively required in production | public app base URL, also used in reset links                                            |
-| `MAIL_RELAY_URL`                            | optional                                        | outbound mail relay endpoint                                                             |
-| `MAIL_RELAY_KEY`                            | optional                                        | credential for mail relay                                                                |
-| `GOOGLE_CLIENT_ID`                          | optional                                        | enables Google OAuth owner login when paired with client secret                          |
-| `GOOGLE_CLIENT_SECRET`                      | optional                                        | Google OAuth client secret                                                               |
-| `GOOGLE_REDIRECT_URI`                       | optional                                        | explicit OAuth callback URL; otherwise derived from `BASE_URL`                           |
-| `DEVELOPER_REGISTRATION_KEY`                | recommended                                     | private setup key used by `/api/developer-auth/register`                                 |
-| `SUPPORT_ADMIN_BOOTSTRAP`                   | optional                                        | when truthy, enables startup bootstrap/update of a developer admin                       |
-| `SUPPORT_ADMIN_EMAIL`                       | optional                                        | email address for the bootstrap developer admin                                          |
-| `SUPPORT_ADMIN_PASSWORD_HASH`               | optional                                        | pre-hashed bcrypt password for the bootstrap developer admin                             |
-| `SUPPORT_ADMIN_PASSWORD`                    | optional                                        | plain-text bootstrap password, hashed at startup if no hash is supplied                  |
-| `SUPPORT_ADMIN_NAME`                        | optional                                        | display name for the bootstrap developer admin                                           |
-| `JSON_BODY_LIMIT`                           | optional                                        | JSON request body size limit for Express                                                 |
-| `URLENCODED_BODY_LIMIT`                     | optional                                        | URL-encoded request body size limit for Express                                          |
-| `ENABLE_DEBUG_ROUTES`                       | optional                                        | enable `/debug-env` and `/debug-db` in non-production                                    |
-| `ENABLE_REQUEST_LOGS`                       | optional                                        | log every request instead of only slow/error requests                                    |
-| `REQUEST_LOG_SLOW_MS`                       | optional                                        | mark requests slower than this threshold for logging                                     |
-| `DB_POOL_WAITING_REJECT_THRESHOLD`          | optional                                        | reject non-health API requests when DB pool waiting count reaches this; defaults to `20` |
-| `API_RATE_LIMIT_MAX`                        | optional                                        | `/api` request limit per 15-minute window; defaults to `500`                             |
-| `RESPONSE_CACHE_MAX_ENTRIES`                | optional                                        | max in-memory JSON response cache entries; defaults to `600`                             |
-| `EXPORT_QUEUE_TIMEOUT_MS`                   | optional                                        | internal export fetch timeout; defaults to `110000` ms                                   |
-| `EXPORT_QUEUE_MAX_JOBS`                     | optional                                        | max in-memory queued export jobs; defaults to `80`                                       |
-| `EXPORT_QUEUE_CONCURRENCY`                  | optional                                        | export worker concurrency; defaults to `1`                                               |
-| `EXPORT_QUEUE_TTL_MS`                       | optional                                        | completed/failed export retention; defaults to `600000` ms                               |
-| `BACKGROUND_CLEANUP_INTERVAL_MS`            | optional                                        | cache/export cleanup interval; defaults to `60000` ms                                    |
-| `MONITOR_HEARTBEAT_INTERVAL_MS`             | optional                                        | monitor heartbeat log interval; defaults to `300000` ms                                  |
+| Variable                                    | Required                                        | Purpose                                                                                       |
+| ------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                              | yes                                             | PostgreSQL connection string                                                                  |
+| `DB_SSL`                                    | optional                                        | force SSL on or off; otherwise auto-detected from `DATABASE_URL`                              |
+| `PG_POOL_MAX`                               | optional                                        | maximum PostgreSQL pool size                                                                  |
+| `PG_CONNECTION_TIMEOUT_MS`                  | optional                                        | DB connect timeout in milliseconds                                                            |
+| `PG_IDLE_TIMEOUT_MS`                        | optional                                        | DB idle timeout in milliseconds                                                               |
+| `PG_KEEP_ALIVE_DELAY_MS`                    | optional                                        | initial keep-alive delay for DB connections                                                   |
+| `PG_MAX_USES`                               | optional                                        | recycle DB connections after this many uses                                                   |
+| `PG_STATEMENT_TIMEOUT_MS`                   | optional                                        | PostgreSQL statement timeout in milliseconds; `0` disables it                                 |
+| `PG_QUERY_TIMEOUT_MS`                       | optional                                        | client query timeout in milliseconds; `0` disables it                                         |
+| `PG_IDLE_IN_TRANSACTION_SESSION_TIMEOUT_MS` | optional                                        | idle-in-transaction timeout in milliseconds; defaults to `30000`                              |
+| `PG_APPLICATION_NAME`                       | optional                                        | PostgreSQL application name; defaults to `shop-inventory-api`                                 |
+| `JWT_SECRET`                                | yes                                             | signing key for session JWTs                                                                  |
+| `STAFF_SESSION_CACHE_TTL_MS`                | optional                                        | staff auth cache TTL in milliseconds; default `0` disables it; cache is capped at 200 entries |
+| `PORT`                                      | optional                                        | HTTP port; defaults to `8080`                                                                 |
+| `NODE_ENV`                                  | optional                                        | production/development behavior                                                               |
+| `MAINTENANCE_MODE`                          | optional                                        | enable maintenance responses with `1`, `true`, `yes`, or `on`; health paths remain exempt     |
+| `MAINTENANCE_MESSAGE`                       | optional                                        | user-facing maintenance text; defaults to `Sorry for the inconvenience.`                      |
+| `MAINTENANCE_RETRY_AFTER_SECONDS`           | optional                                        | positive `Retry-After` value for maintenance responses; defaults to `3600`                    |
+| `CORS_ALLOWED_ORIGINS`                      | recommended                                     | comma-separated allowlist for cross-origin requests                                           |
+| `BASE_URL`                                  | recommended, effectively required in production | public app base URL, also used in reset links                                                 |
+| `MAIL_RELAY_URL`                            | optional                                        | outbound mail relay endpoint                                                                  |
+| `MAIL_RELAY_KEY`                            | optional                                        | credential for mail relay                                                                     |
+| `GOOGLE_CLIENT_ID`                          | optional                                        | enables Google OAuth owner login when paired with client secret                               |
+| `GOOGLE_CLIENT_SECRET`                      | optional                                        | Google OAuth client secret                                                                    |
+| `GOOGLE_REDIRECT_URI`                       | optional                                        | explicit OAuth callback URL; otherwise derived from `BASE_URL`                                |
+| `DEVELOPER_REGISTRATION_KEY`                | required for safe production setup              | private setup key used by `/api/developer-auth/register`; do not rely on the code fallback    |
+| `SUPPORT_ADMIN_BOOTSTRAP`                   | optional                                        | when truthy, enables startup bootstrap/update of a developer admin                            |
+| `SUPPORT_ADMIN_EMAIL`                       | optional                                        | email address for the bootstrap developer admin                                               |
+| `SUPPORT_ADMIN_PASSWORD_HASH`               | optional                                        | pre-hashed bcrypt password for the bootstrap developer admin                                  |
+| `SUPPORT_ADMIN_PASSWORD`                    | optional                                        | plain-text bootstrap password, hashed at startup if no hash is supplied                       |
+| `SUPPORT_ADMIN_NAME`                        | optional                                        | display name for the bootstrap developer admin                                                |
+| `JSON_BODY_LIMIT`                           | optional                                        | JSON request body size limit for Express; defaults to `1mb`                                   |
+| `URLENCODED_BODY_LIMIT`                     | optional                                        | URL-encoded request body size limit for Express; defaults to `200kb`                          |
+| `ENABLE_DEBUG_ROUTES`                       | optional                                        | enable `/debug-env` and `/debug-db` in non-production                                         |
+| `ENABLE_REQUEST_LOGS`                       | optional                                        | log every request instead of only slow/error requests                                         |
+| `REQUEST_LOG_SLOW_MS`                       | optional                                        | mark requests slower than this threshold for logging; defaults to `1500` ms                   |
+| `DB_POOL_WAITING_REJECT_THRESHOLD`          | optional                                        | reject non-health API requests when DB pool waiting count reaches this; defaults to `20`      |
+| `API_RATE_LIMIT_MAX`                        | optional                                        | `/api` request limit per 15-minute window; defaults to `500`                                  |
+| `RESPONSE_CACHE_MAX_ENTRIES`                | optional                                        | max in-memory JSON response cache entries; defaults to `600`                                  |
+| `EXPORT_QUEUE_TIMEOUT_MS`                   | optional                                        | internal export fetch timeout; defaults to `110000` ms                                        |
+| `EXPORT_QUEUE_MAX_JOBS`                     | optional                                        | max in-memory queued export jobs; defaults to `80`                                            |
+| `EXPORT_QUEUE_CONCURRENCY`                  | optional                                        | export worker concurrency; defaults to `1`                                                    |
+| `EXPORT_QUEUE_TTL_MS`                       | optional                                        | completed/failed export retention; defaults to `600000` ms                                    |
+| `BACKGROUND_CLEANUP_INTERVAL_MS`            | optional                                        | cache/export cleanup interval; defaults to `60000` ms                                         |
+| `MONITOR_HEARTBEAT_INTERVAL_MS`             | optional                                        | monitor heartbeat log interval; defaults to `300000` ms                                       |
 
 ## 14. Maintenance Guide
 
@@ -2573,6 +2933,13 @@ Edit:
 - [`../public/reset.html`](../public/reset.html)
 
 For Google sign-in specifically, update [`../routes/auth.js`](../routes/auth.js), [`../public/login.html`](../public/login.html), and the `GOOGLE_*` environment variables together. Keep the state/onboarding cookies short-lived and cookie-only.
+
+### If you want to change login banners
+
+- Add or replace `public/images/login_page_banner_1` through `login_page_banner_10` using `.png`, `.jpg`, `.jpeg`, or `.webp`.
+- [`../server.js`](../server.js) discovers matching files, sorts them numerically, HTML-escapes the generated markup, and replaces the `<!-- LOGIN_BANNER_SLIDES -->` placeholder when serving [`../public/login.html`](../public/login.html).
+- The current repository contains nine banner images; the carousel supports at most ten and includes autoplay, keyboard, touch-swipe, and reduced-motion behavior.
+- Restart the Node process after changing banners because rendered HTML templates are cached in process memory.
 
 ### If you want to change shared navigation or permission names
 
@@ -2601,6 +2968,9 @@ For purchase-specific search/autofill behavior:
 - Supplier Ledger View All should continue to clear the current search input and call `GET /api/suppliers/summary` without a search query
 - product purchase history lives in [`../public/index.html`](../public/index.html), [`../public/js/dashboard.js`](../public/js/dashboard.js), and `GET /api/purchases/product-history`
 - standalone Add New Stock UI is retired; stock changes should continue to go through `POST /api/purchases`
+- serialized purchase rows allow one serial per whole-number unit; manual entry always works, while camera scanning depends on `BarcodeDetector`, `getUserMedia`, browser support, and a secure context or localhost
+- serial changes must keep [`../public/js/dashboard.js`](../public/js/dashboard.js), `POST /api/purchases`, `GET /api/item-serials`, and the `item_serials` schema/compatibility code aligned
+- mobile autocomplete/dropdown handlers deliberately distinguish scrolling/swiping from tapping and delay blur-based hiding; regression-test touch scrolling before simplifying those guards
 - owner-only 3-dot delete actions are rendered from [`../public/js/dashboard.js`](../public/js/dashboard.js) and protected again in [`../routes/inventory.js`](../routes/inventory.js) / [`../routes/business.js`](../routes/business.js) with `requireOwner`
 - purchase/supplier delete behavior must preserve stock rollback checks; customer debt delete behavior must preserve linked invoice balance resync
 
@@ -2615,6 +2985,8 @@ Edit:
 
 The web app can be updated through normal Railway deployment when only web code changes. A Play Store AAB update is only needed when native Android wrapper behavior, signing/version metadata, permissions, target SDK, or native app assets change. The current rollback worker uses `ROLLBACK_VERSION` and deletes old runtime caches on install/activation.
 
+The rollback worker intentionally provides no offline app shell or fetch interception. Also keep manifest metadata honest: `site.webmanifest` currently labels the 1254x1254 `app_logo.png` as `512x512`, which should be corrected or replaced with a true 512px asset.
+
 ### If you want to change invoice flow or PDF output
 
 Edit:
@@ -2624,6 +2996,8 @@ Edit:
 - [`../middleware/auth.js`](../middleware/auth.js) if auth behavior also changes
 
 For Billing details customer autocomplete, update [`../public/invoice.html`](../public/invoice.html) and `GET /api/invoices/customers` in [`../routes/invoices.js`](../routes/invoices.js). For invoice bank/UPI profile and PDF payment details, update [`../public/invoice.html`](../public/invoice.html), `POST/GET /api/shop-info`, the `settings` table columns, and the invoice PDF helpers in [`../routes/invoices.js`](../routes/invoices.js) together.
+
+Serialized invoice lines query `GET /api/item-serials`, enforce one in-stock serial per positive whole-number unit, and submit `serial_numbers`. The UI's per-line Sale % helper derives rate from buying rate, but `sale_profit_percent` and `buying_rate` are draft-only fields: the persisted request contains the calculated `rate` and serial list, not those helper values. Preserve that boundary when changing invoice payloads.
 
 ### If you want to change support chat or developer portal behavior
 
@@ -2637,14 +3011,27 @@ Edit:
 - [`../public/js/developer-login.js`](../public/js/developer-login.js)
 - [`../public/js/developer-support.js`](../public/js/developer-support.js)
 
+Known maintenance item: `logoutDeveloper()` currently invokes an undefined `clearStoredDeveloperToken()` after the server logout request. Fix or remove that call so the redirect is reliable.
+
 ### If you want to change database schema
 
 Edit:
 
 - [`../migrations/full_updated_schema.sql`](../migrations/full_updated_schema.sql) for the latest full snapshot
-- add a new incremental SQL file in [`../migrations/`](../migrations)
+- create a reviewed incremental SQL change when upgrading an existing database, then apply and record it through the deployment/provider workflow
 - update compatibility logic in [`../db.js`](../db.js) if old databases also need startup patching
 - update this document after the schema change
+
+There is currently only one transactional full-schema snapshot, no migration history/ledger, and no migration runner in `package.json`. `db.js` compatibility statements are startup patches, not a substitute for controlled migrations, and they cannot initialize an empty database. Validate the resulting schema after every rollout, especially `item_serials`, constraints, and indexes.
+
+### If you want to change database backup or restore behavior
+
+The repository contains no backup scheduler, restore command, retention policy, or point-in-time-recovery configuration. PDF/Excel exports are business reports, not database backups.
+
+- Configure automated backups and retention in the PostgreSQL hosting platform.
+- Before a risky migration, take a provider snapshot or `pg_dump` using an approved secret-handling workflow.
+- Test restores into an isolated database and verify all 17 tables, foreign keys, indexes, triggers, owner counts, serial statuses, and invoice totals before promoting it.
+- Never restore directly over production as a first test, and never commit connection strings or dump files containing customer data.
 
 ### If you want to change deployment healthchecks or runtime logging
 
@@ -2658,6 +3045,8 @@ Edit:
 - [`../railway.json`](../railway.json)
 
 For carrier, DNS, SSL, or weak-network debugging, start with `/network-check` and the liveness route `/live`. If those routes fail on one network but not another, investigate the deployed domain/DNS/SSL path before changing business API code.
+
+Railway is configured to probe `/health`. Keep deployment probes on the non-API `/health`, `/ready`, or `/live` paths: because broad `/api` router middleware is mounted first, the `/api/*` aliases currently cross DB/auth gates and can return `401` to an unauthenticated probe. Maintenance mode exempts health path names and returns no-store `503` plus `Retry-After` elsewhere.
 
 ### If you want to change caching, pagination, or queued exports
 
@@ -2688,11 +3077,11 @@ Edit:
 ```mermaid
 flowchart TB
   subgraph Frontend["Frontend pages and shared modules"]
-    Login["public/login.html<br/>register | owner login | staff login | forgot password | Play Store install"]
+    Login["public/login.html<br/>server-injected banner carousel | register | owner/staff login | forgot password | Play Store install"]
     DevLogin["public/developer-login.html<br/>developer login | developer register"]
     DevSupport["public/developer-support.html<br/>developer inbox | replies | status updates"]
-    Dashboard["public/index.html<br/>Purchase Entry/Add Stock | supplier ledger | product history | reports | dues | expenses | staff"]
-    Invoice["public/invoice.html<br/>invoice builder | customer autofill | shop payment profile | history | payment collection | PDF"]
+    Dashboard["public/index.html<br/>Purchase Entry/Add Stock | serial entry/scan | supplier ledger | product history | reports | dues | expenses | staff"]
+    Invoice["public/invoice.html<br/>invoice builder | Sale % helper | serial lookup/scan | customer autofill | payment profile | history | collection | PDF"]
     Reset["public/reset.html<br/>password reset"]
     Privacy["public/privacy-policy.html<br/>privacy policy"]
     AccountDeletion["public/account-deletion.html<br/>account deletion instructions"]
@@ -2708,7 +3097,7 @@ flowchart TB
   end
 
   subgraph Server["Express backend"]
-    Entry["server.js<br/>health routes | network-check | request IDs | CORS | CSP nonce | worker-src | helmet | compression | HTML/service-worker cleanup bootstrap | background jobs"]
+    Entry["server.js<br/>login-banner injection | maintenance mode | health routes | network-check | request IDs | CORS/CSP/helmet | compression | cleanup bootstrap | background jobs"]
     AuthMW["middleware/auth.js<br/>cookie-first JWT auth | staff permission reload | developer support auth"]
     CacheMW["middleware/cache.js<br/>owner-scoped short TTL JSON cache"]
     ExportMW["middleware/export-queue.js<br/>async PDF/Excel queue trigger"]
@@ -2716,13 +3105,13 @@ flowchart TB
     SupportAPI["routes/support.js<br/>developer auth | support thread | developer inbox"]
     ExportAPI["routes/exports.js<br/>export job status | download"]
     OpsAPI["routes/ops.js<br/>owner metrics | background cleanup"]
-    InventoryAPI["routes/inventory.js<br/>stock | reports | GST compare/export | debts | due deletes | overview"]
-    BusinessAPI["routes/business.js<br/>suppliers | purchases | product history | repayments | purchase deletes | expenses"]
-    InvoiceAPI["routes/invoices.js<br/>invoice save | customer lookup | history | settlement | PDF payment details | shop info"]
+    InventoryAPI["routes/inventory.js<br/>stock | in-stock serial lookup | reports | GST compare/export | debts | due deletes | overview"]
+    BusinessAPI["routes/business.js<br/>suppliers | purchases + serial intake | product history | repayments | guarded purchase deletes | expenses"]
+    InvoiceAPI["routes/invoices.js<br/>invoice save + serial sale transition | customer lookup | history | settlement | PDF payment details | shop info"]
     Concurrency["utils/concurrency.js<br/>normalizers | advisory locks"]
     RuntimeHelpers["utils/cache.js | export-queue.js | monitoring.js | background-jobs.js | pagination.js"]
     OpsRepo["repositories/ops-repository.js<br/>database overview"]
-    DBFile["db.js<br/>pool | timeout tuning | readiness state | SSL selection | schema compatibility patch"]
+    DBFile["db.js<br/>pool | timeout tuning | readiness state | SSL selection | non-transactional compatibility patches"]
     RuntimeLog["utils/runtime-log.js<br/>structured lifecycle and request logging"]
     DeployCfg["railway.json<br/>start command | healthcheck | restart policy"]
   end
@@ -2743,6 +3132,7 @@ flowchart TB
     Expenses["expenses"]
     Invoices["invoices"]
     InvoiceItems["invoice_items"]
+    ItemSerials["item_serials<br/>purchased-unit to sold-unit bridge"]
     Counter["user_invoice_counter"]
   end
 
@@ -2821,6 +3211,7 @@ flowchart TB
   DBFile --> Expenses
   DBFile --> Invoices
   DBFile --> InvoiceItems
+  DBFile --> ItemSerials
   DBFile --> Counter
 
   Users --> Staff
@@ -2833,11 +3224,18 @@ flowchart TB
   Users --> Purchases
   Users --> Expenses
   Users --> Invoices
+  Users --> ItemSerials
   Users --> Counter
   Suppliers --> Purchases
   Purchases --> PurchaseItems
+  Purchases --> ItemSerials
+  PurchaseItems --> ItemSerials
   Items --> Sales
+  Items --> ItemSerials
   Invoices --> InvoiceItems
+  Invoices --> ItemSerials
+  InvoiceItems --> ItemSerials
+  Sales --> ItemSerials
   Invoices -. optional settlement link .-> Debts
   Developers -. sender reference only .-> SupportMessages
   SupportThreads --> SupportMessages
@@ -2853,21 +3251,24 @@ Android project location:
 C:\Users\Dipayan\AndroidStudioProjects\IndiaInventoryManagement
 ```
 
-Current Android build snapshot from `app/build.gradle.kts`:
+Current Android build snapshot from `app/build.gradle.kts`, verified 2026-07-23:
 
-| Setting                   | Current value                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------------- |
-| Android namespace         | `com.india.inventory`                                                                 |
-| Play Store application ID | `india.inventory.management`                                                          |
-| Version                   | `1.2.36` / `versionCode 39`                                                           |
-| Minimum SDK               | `24`                                                                                  |
-| Target SDK                | `36`                                                                                  |
-| Compile SDK               | `36`                                                                                  |
-| Main web URL              | `https://india-inventory-management-production.up.railway.app` by default             |
-| Debug URL override        | `inventoryWebAppUrlMainDebug` or legacy `inventoryWebAppUrlDebug` Gradle property     |
-| Release URL override      | `inventoryWebAppUrlMainRelease` or legacy `inventoryWebAppUrlRelease` Gradle property |
-| Release build behavior    | minify + shrink resources + non-debuggable                                            |
-| Release signing           | reads `keystore.properties` when present                                              |
+| Setting                   | Current value                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Android namespace         | `com.india.inventory`                                                                                  |
+| Play Store application ID | `india.inventory.management`                                                                           |
+| Version                   | `1.2.40` / `versionCode 43`                                                                            |
+| Minimum SDK               | `24`                                                                                                   |
+| Target SDK                | `36`                                                                                                   |
+| Compile SDK               | `36`                                                                                                   |
+| Main web URL              | `https://india-inventory-management-production.up.railway.app` by default                              |
+| Debug URL override        | `inventoryWebAppUrlMainDebug` or legacy `inventoryWebAppUrlDebug` Gradle property                      |
+| Release URL override      | `inventoryWebAppUrlMainRelease` or legacy `inventoryWebAppUrlRelease` Gradle property                  |
+| Debug WebView policy      | mixed content compatibility mode and third-party cookies enabled                                       |
+| Release WebView policy    | mixed content blocked and third-party cookies disabled                                                 |
+| Release build behavior    | minify + shrink resources + non-debuggable                                                             |
+| Release signing           | reads `keystore.properties` when present                                                               |
+| App update strategy       | Play Core optional/flexible update flow active; legacy custom manifest/APK updater disabled at startup |
 
 Important Android files:
 
@@ -2951,9 +3352,9 @@ MainActivity responsibility map:
 
 | Area                    | Native behavior                                                                                                                                                                                                          |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| WebView setup           | enables JavaScript, DOM storage, database storage, geolocation, multiple windows, safe browsing, hardware rendering, and normal WebView loading                                                                            |
+| WebView setup           | enables JavaScript, DOM storage, database storage, geolocation, multiple windows, safe browsing, hardware rendering, and normal WebView loading                                                                          |
 | URL trust               | only trusted web hosts from enabled `AppSite` values stay inside the WebView; external or special schemes open through Android intents                                                                                   |
-| Low-network behavior    | relies on direct network loads plus native retry/reachability probing; the web service-worker app-shell cache is currently rolled back                                                                                    |
+| Low-network behavior    | relies on direct network loads plus native retry/reachability probing; the web service-worker app-shell cache is currently rolled back                                                                                   |
 | Offline UI              | shows native offline screen with retry, saved page action, downloads action, last sync text, and last captured preview                                                                                                   |
 | Pull refresh            | reloads the current page or home page only when network is available                                                                                                                                                     |
 | Connectivity            | registers `ConnectivityManager.NetworkCallback`, retries pending loads when connectivity returns, and shows offline state when all active networks are lost                                                              |
@@ -2965,7 +3366,7 @@ MainActivity responsibility map:
 | Downloads               | supports regular URLs through `DownloadManager`, `blob:` downloads through injected JavaScript, `data:` downloads, authenticated cookies, bearer token fallback, notifications, share actions, and downloads app opening |
 | File chooser            | supports web file inputs with Android document picker and optional camera capture                                                                                                                                        |
 | Permissions             | requests camera, location, and notification permissions through activity result launchers                                                                                                                                |
-| App updates             | uses Play Core optional updates and legacy manifest/APK download helpers, with APK install permission handling when needed                                                                                               |
+| App updates             | actively checks Play Core for an optional flexible update on start/resume; legacy custom manifest/APK download helpers remain in the file but `disableAppUpdateFeatures()` disables that path at startup                 |
 
 WebView and web-app cache boundary:
 
@@ -3043,15 +3444,20 @@ $env:Path="$env:JAVA_HOME\bin;$env:Path"
 This codebase is organized around a single owner-scoped business workspace:
 
 - frontend pages are static HTML with shared vanilla JS modules
-- Express route files are grouped by business domain
-- PostgreSQL stores all operational data for inventory, purchase-backed stock intake, invoices, dues, expenses, and staff control
+- Express route files expose 84 live router declarations grouped by business domain
+- PostgreSQL uses 17 application tables for inventory, purchase-backed stock intake, serialized units, invoices, dues, expenses, support, and staff control
 - authentication is cookie-based for owner, staff, Google owner login, and developer support flows, with staff permissions enforced on both frontend and backend
-- destructive ledger cleanup is owner-only: customer ledger deletes sync invoice balances, while purchase/supplier deletes reverse stock before removing purchase data
+- serialized purchase units are stored in `item_serials`; invoice creation locks in-stock serials, marks them sold, and links their purchase, invoice, and sale records
+- invoice rows provide a Sale % rate helper in the UI, but only the calculated rate and `serial_numbers` cross the API boundary
+- destructive ledger cleanup is owner-only: customer ledger deletes sync invoice balances, while purchase/supplier deletes reject sold serials and reverse stock before removing purchase data
 - the support system adds owner/staff requester threads plus a dedicated developer inbox backed by `developer_admins`, `support_conversations`, and `support_messages`
-- runtime behavior now includes structured lifecycle/request logging, request metrics, DB-pool backpressure protection, background cleanup, queued export jobs, and readiness/liveness health endpoints
-- `/network-check` provides a first-party diagnostic page for mobile/carrier reachability checks against `/live`, `/health`, and `/api/live`
+- runtime behavior includes structured lifecycle/request logging, request metrics, DB-pool backpressure protection, maintenance mode, background cleanup, queued export jobs, and health endpoints
+- non-API `/health`, `/ready`, and `/live` are the reliable public probes; current router order causes their `/api/*` aliases to cross DB/auth middleware
+- `/network-check` provides a first-party diagnostic page for mobile/carrier reachability checks, while `/api/live` may currently report `401` without a session
+- login HTML receives up to ten numerically named banner slides from `public/images`; nine are present at this baseline
 - deployment defaults for Railway are codified in [`../railway.json`](../railway.json)
 - Android users can install through the Play Store link on `login.html`, while `site.webmanifest` keeps browser/PWA install metadata available
 - browser/PWA/WebView clients now use direct network loading again; the service-worker rollback path clears old app-shell caches and unregisters older workers
-- the Android wrapper lives at `C:\Users\Dipayan\AndroidStudioProjects\IndiaInventoryManagement` and must be released through Play Store only when native WebView, signing, SDK, version, permission, or native asset behavior changes
-- this document now contains both a reusable function catalogue and a schema-level table dictionary in addition to the higher-level architecture notes
+- the Android wrapper at `C:\Users\Dipayan\AndroidStudioProjects\IndiaInventoryManagement` is currently `1.2.40` (`versionCode 43`) and needs a Play Store release only when native WebView, signing, SDK, version, permission, or asset behavior changes
+- the repository has no automated test/lint/build pipeline beyond `npm start`, no migration runner/history, and no database backup implementation; those operational gaps and current security caveats are explicitly recorded above
+- this document contains local setup, route/access maps, workflow/function maps, environment and maintenance guidance, architecture diagrams, and a schema-level table dictionary
