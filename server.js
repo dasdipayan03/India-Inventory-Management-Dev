@@ -66,6 +66,10 @@ const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || "1mb";
 const URLENCODED_BODY_LIMIT = process.env.URLENCODED_BODY_LIMIT || "200kb";
 const STATIC_ASSET_CACHE_MS =
   process.env.NODE_ENV === "production" ? ONE_DAY_MS : 0;
+const CACHE_REPAIR_BOOTSTRAP_VERSION =
+  process.env.APP_CACHE_VERSION ||
+  process.env.RAILWAY_GIT_COMMIT_SHA ||
+  "2026-08-04-auto-cache-repair-1";
 const PROCESS_STARTED_AT = Date.now();
 const PORT = process.env.PORT || 8080;
 const ENABLE_REQUEST_LOGS = process.env.ENABLE_REQUEST_LOGS === "true";
@@ -295,10 +299,14 @@ function injectPerformanceBootstrap(html) {
     return html;
   }
 
+  const repairVersion = escapeHtml(CACHE_REPAIR_BOOTSTRAP_VERSION);
+  const repairSrc = `/js/service-worker-register.js?v=${encodeURIComponent(
+    CACHE_REPAIR_BOOTSTRAP_VERSION,
+  )}`;
   const bootstrapTags = [
     '<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />',
     '<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />',
-    '<script src="/js/service-worker-register.js" defer></script>',
+    `<script src="${repairSrc}" defer data-cache-repair-version="${repairVersion}"></script>`,
   ].join("\n    ");
 
   return html.replace("</head>", `    ${bootstrapTags}\n  </head>`);
@@ -496,6 +504,18 @@ function sendMaintenancePage(req, res) {
     </main>
   </body>
 </html>`);
+}
+
+function sendCacheRepairResponse(res) {
+  res.set("Cache-Control", "no-store, max-age=0, must-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Clear-Site-Data", '"cache"');
+  res.json({
+    success: true,
+    cache: "clear-requested",
+    version: CACHE_REPAIR_BOOTSTRAP_VERSION,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 function sendNetworkCheckPage(req, res) {
@@ -1042,6 +1062,10 @@ app.get(["/privacy-policy", "/privacy-policy.html"], (req, res) => {
 
 app.get(["/account-deletion", "/account-deletion.html"], (req, res) => {
   sendHtmlTemplate(res, "account-deletion.html");
+});
+
+app.get("/cache-repair", (req, res) => {
+  sendCacheRepairResponse(res);
 });
 
 app.get(["/network-check", "/network-check.html"], (req, res) => {
