@@ -1256,6 +1256,185 @@
           white-space: normal;
         }
       }
+
+      /* Premium access layout overrides. Kept at the end so existing form behavior stays unchanged. */
+      .login-page {
+        width: min(calc(100% - 32px), 1240px);
+        margin: 20px auto 36px;
+      }
+
+      .showcase-shell {
+        padding: 18px;
+        border-radius: 36px;
+        background:
+          radial-gradient(circle at 3% 4%, rgba(22, 151, 208, 0.18), transparent 25%),
+          radial-gradient(circle at 97% 96%, rgba(36, 179, 107, 0.15), transparent 28%),
+          linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(235, 247, 253, 0.9));
+      }
+
+      .topbar {
+        padding: 15px 20px;
+        background: rgba(255, 255, 255, 0.72);
+      }
+
+      .landing-main {
+        grid-template-columns: minmax(0, 1.45fr) minmax(340px, 0.8fr);
+        align-items: stretch;
+        gap: 18px;
+      }
+
+      .feature-slider-card,
+      .access-panel-section {
+        min-height: 100%;
+      }
+
+      .feature-slider-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: clamp(24px, 3vw, 38px);
+        background:
+          linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(237, 248, 252, 0.88)),
+          rgba(255, 255, 255, 0.8);
+      }
+
+      .slider-head {
+        gap: 10px;
+        margin-bottom: 22px;
+      }
+
+      .slider-head h1 {
+        max-width: 700px;
+        font-size: clamp(30px, 3.1vw, 46px);
+        letter-spacing: -0.055em;
+        white-space: normal;
+      }
+
+      .slider-head p {
+        max-width: 680px;
+        font-size: 14px;
+        white-space: normal;
+      }
+
+      .feature-viewport,
+      .feature-slide {
+        border-radius: 20px;
+      }
+
+      .access-frame {
+        display: flex;
+        min-height: 100%;
+        padding: 9px;
+        background: linear-gradient(150deg, #133f6e 0%, #147ea9 52%, #20a75f 100%);
+      }
+
+      .access-card {
+        width: 100%;
+        align-content: center;
+        padding: clamp(24px, 3vw, 34px);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 252, 254, 0.94));
+      }
+
+      .access-intro {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+
+      .access-intro h2 {
+        margin: 0;
+        color: var(--navy);
+        font-family: "Sora Variable", "Manrope", sans-serif;
+        font-size: clamp(25px, 2.45vw, 34px);
+        line-height: 1.1;
+        letter-spacing: -0.055em;
+      }
+
+      .access-intro p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.65;
+      }
+
+      .dock {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .dock-btn {
+        min-height: 52px;
+        border-radius: 16px;
+        font-size: 12.5px;
+      }
+
+      .dock-btn.primary,
+      .dock-btn.google {
+        grid-column: 1 / -1;
+      }
+
+      .dock-btn.primary {
+        background: linear-gradient(135deg, #1697d0, #1474ad);
+        box-shadow: 0 12px 24px rgba(20, 116, 173, 0.24);
+      }
+
+      .dock-btn.google {
+        border-color: rgba(61, 87, 122, 0.2);
+        background: #ffffff;
+        color: #34445d;
+        box-shadow: 0 8px 18px rgba(12, 31, 59, 0.07);
+      }
+
+      .dock-btn.google:hover {
+        border-color: rgba(22, 151, 208, 0.35);
+        background: #ffffff;
+        box-shadow: 0 12px 24px rgba(12, 31, 59, 0.11);
+      }
+
+      .dock-btn.google i {
+        color: #ea4335;
+      }
+
+      @media (max-width: 900px) {
+        .landing-main {
+          grid-template-columns: 1fr;
+        }
+
+        .access-card {
+          padding: 24px;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .login-page {
+          width: calc(100% - 14px);
+          margin: 7px auto 20px;
+        }
+
+        .showcase-shell {
+          padding: 10px;
+          border-radius: 26px;
+        }
+
+        .feature-slider-card {
+          padding: 20px;
+        }
+
+        .slider-head h1 {
+          font-size: 25px;
+        }
+
+        .dock {
+          grid-template-columns: 1fr;
+        }
+
+        .dock-btn.primary,
+        .dock-btn.google {
+          grid-column: auto;
+        }
+      }
     </style>
   </head>
   <body>
@@ -1316,6 +1495,18 @@
           >
             <div class="access-frame">
               <div class="access-card">
+                <div class="access-intro">
+                  <span class="access-kicker">
+                    <i class="fa-solid fa-lock"></i>
+                    Secure workspace
+                  </span>
+                  <h2>Run your shop with clarity.</h2>
+                  <p>
+                    Sign in to manage stock, billing, reports, and your team
+                    from one trusted workspace.
+                  </p>
+                </div>
+
                 <div class="dock" aria-label="Quick account actions">
                   <button
                     type="button"
@@ -1325,6 +1516,14 @@
                     <i class="fa-solid fa-right-to-bracket"></i>
                     <span>Login</span>
                   </button>
+                  <a
+                    id="googleLoginBtn"
+                    class="dock-btn google"
+                    href="/api/auth/google/start"
+                  >
+                    <i class="fa-brands fa-google"></i>
+                    <span>Continue with Google</span>
+                  </a>
                   <button
                     type="button"
                     class="dock-btn"
@@ -1357,14 +1556,6 @@
                     <i class="fa-solid fa-key"></i>
                     <span>Reset</span>
                   </button>
-                  <a
-                    id="googleLoginBtn"
-                    class="dock-btn google"
-                    href="/api/auth/google/start"
-                  >
-                    <i class="fa-brands fa-google"></i>
-                    <span>Login with Gmail</span>
-                  </a>
                 </div>
 
                 <div id="authMount"></div>

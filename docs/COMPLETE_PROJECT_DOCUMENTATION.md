@@ -1,11 +1,11 @@
 # Shop Inventory Management Documentation
 
-Last verified against the web repository and linked Android wrapper: `2026-07-23`
+Last verified against the web repository: `2026-08-09`
 
 Verification baseline:
 
-- web repository HEAD: `8484172`
-- Android wrapper build snapshot: `versionName 1.2.40`, `versionCode 43`
+- web repository HEAD: `27bc003`
+- Android wrapper build snapshot: `versionName 1.2.40`, `versionCode 43` (retained from the prior `2026-07-23` verification; the native wrapper is outside this repository)
 - active Express router declarations: `84`
 - effective PostgreSQL tables: `17`
 
@@ -104,8 +104,9 @@ Scope note: [`USER_RELATED_DATA_QUERY_GUIDE.md`](./USER_RELATED_DATA_QUERY_GUIDE
   - [11.6 Export routes from `routes/exports.js`](#116-export-routes-from-routesexportsjs)
   - [11.7 Ops routes from `routes/ops.js`](#117-ops-routes-from-routesopsjs)
   - [11.8 Health routes from `server.js`](#118-health-routes-from-serverjs)
-  - [11.9 Network diagnostic route from `server.js`](#119-network-diagnostic-route-from-serverjs)
-  - [11.10 Conditional debug routes from `server.js`](#1110-conditional-debug-routes-from-serverjs)
+  - [11.9 Cache repair route from `server.js`](#119-cache-repair-route-from-serverjs)
+  - [11.10 Network diagnostic route from `server.js`](#1110-network-diagnostic-route-from-serverjs)
+  - [11.11 Conditional debug routes from `server.js`](#1111-conditional-debug-routes-from-serverjs)
 - [12. Database Schema](#12-database-schema)
   - [12.1 Schema source of truth](#121-schema-source-of-truth)
   - [12.2 Ownership model](#122-ownership-model)
@@ -173,10 +174,11 @@ Important current-state notes:
 - HTML pages are served through [`server.js`](../server.js), which injects a CSP nonce into inline scripts and styles.
 - [`server.js`](../server.js) still injects CDN preconnect hints and [`../public/js/service-worker-register.js`](../public/js/service-worker-register.js), but that helper now removes older service-worker registrations and runtime caches instead of installing the low-network app-shell cache.
 - [`../public/service-worker.js`](../public/service-worker.js) is currently a rollback worker: it clears old `shop-inventory-runtime-*` / `inventory-runtime-*` caches, unregisters itself, and does not intercept fetches.
+- The versioned cache-repair bootstrap runs on every served HTML page. When its repair version changes, or it finds an older worker/runtime cache, it clears local runtime cache state, requests the no-store `/cache-repair` response with `Clear-Site-Data: "cache"`, and performs at most one guarded reload per minute.
 - Database schema truth comes from the SQL files in [`migrations/`](../migrations) plus runtime compatibility patches in [`db.js`](../db.js).
 - The app now includes an owner/staff support chat plus dedicated developer support login and inbox pages backed by [`../routes/support.js`](../routes/support.js).
 - Runtime health and readiness handlers are registered for `/health`, `/api/health`, `/healthz`, `/api/healthz`, `/ready`, `/api/ready`, `/readyz`, `/api/readyz`, `/live`, `/api/live`, `/livez`, and `/api/livez`. Because the `/api` routers are mounted first, only the non-API aliases are reliable public probes in the current route order; see [Section 11.8](#118-health-routes-from-serverjs).
-- [`server.js`](../server.js) also serves `/network-check` and `/network-check.html`, a no-store first-party diagnostic page for checking whether a client can reach `/live`, `/health`, and `/api/live` without relying on CDN assets or service-worker cached navigation.
+- [`server.js`](../server.js) also serves `/cache-repair`, plus `/network-check` and `/network-check.html`, a no-store first-party diagnostic page for checking whether a client can reach `/live`, `/health`, and `/api/live` without relying on CDN assets or service-worker cached navigation.
 - Owner-only ops endpoints now expose in-process metrics, DB overview, response-cache stats, export-queue stats, and background-job status through [`../routes/ops.js`](../routes/ops.js).
 - PDF/Excel export requests can run asynchronously when the frontend adds `_async_export=1`; jobs are stored in the in-memory export queue and downloaded through [`../routes/exports.js`](../routes/exports.js).
 - Frequently read JSON endpoints now use short owner-scoped response caching and pagination metadata helpers where list size can grow.
@@ -518,9 +520,11 @@ Current Express route-order consequence:
 
 - [`../public/js/service-worker-register.js`](../public/js/service-worker-register.js)
   - no longer registers a persistent service worker
-  - runs after the `load` event when service-worker APIs are available
+  - runs immediately as a versioned HTML bootstrap, rather than waiting for the `load` event
   - unregisters same-origin service-worker registrations and deletes old inventory runtime caches
-  - quietly skips cleanup errors so a service-worker issue cannot block login, dashboard, invoice, or support pages
+  - records its completed version in `localStorage`, detects a version change, and requests `/cache-repair` with `cache: "no-store"`
+  - reloads once after an actual repair or version transition; a one-minute local-storage guard prevents reload loops
+  - quietly skips storage, cache, worker, and network cleanup errors so a cache-repair issue cannot block login, dashboard, invoice, or support pages
 
 - [`../public/service-worker.js`](../public/service-worker.js)
   - rollback version: `2026-07-14-disable-low-network-cache-1`
@@ -591,7 +595,13 @@ The project currently keeps backend response caching, but the browser/WebView se
   - unregisters old same-origin service-worker registrations
   - does not intercept `/api/*`, HTML navigation, JS, CSS, images, health checks, or `/network-check`
 
-The rollback worker version is `2026-07-14-disable-low-network-cache-1`. Updating these web files can ship through normal Railway deployment; changing native WebView behavior still requires a Play Store/AAB release from the Android wrapper project.
+- Versioned browser cache repair:
+  - `server.js` injects `/js/service-worker-register.js?v=<repair-version>` and a matching `data-cache-repair-version` value into every served HTML page
+  - repair version priority is `APP_CACHE_VERSION`, then Railway's `RAILWAY_GIT_COMMIT_SHA`, then the built-in fallback `2026-08-04-auto-cache-repair-1`
+  - a changed version, old worker, or old runtime cache triggers cleanup and a no-store request to `/cache-repair`; the endpoint emits `Clear-Site-Data: "cache"`
+  - the reload guard is per origin and only permits one automatic reload every 60 seconds
+
+The rollback worker version is `2026-07-14-disable-low-network-cache-1`; the current HTML cache-repair fallback version is `2026-08-04-auto-cache-repair-1`. Updating these web files can ship through normal Railway deployment; changing native WebView behavior still requires a Play Store/AAB release from the Android wrapper project.
 
 ### Frontend storage usage
 
@@ -635,11 +645,13 @@ Current frontend storage behavior:
 - mounting [`../routes/exports.js`](../routes/exports.js) for export job status/download and [`../routes/ops.js`](../routes/ops.js) for owner-only metrics
 - serving HTML pages through nonce-aware template injection
 - injecting CDN preconnect hints and `/js/service-worker-register.js` into HTML pages before nonce replacement
+- versioning that cache-repair script with `APP_CACHE_VERSION` or Railway's commit SHA and exposing the same version through `data-cache-repair-version`
 - discovering up to 10 numbered `login_page_banner_N` image files, adding file-version query strings, and injecting the generated slides into `login.html`
 - caching HTML templates in memory while still sending HTML with `Cache-Control: no-store`
 - serving `/service-worker.js` with `Cache-Control: no-cache` and `Service-Worker-Allowed: /` so already-installed clients can receive the rollback worker and clear old runtime caches
 - serving `/privacy-policy(.html)` and `/account-deletion(.html)` in addition to the app pages
 - serving `/network-check(.html)` as a generated, no-store diagnostic page that uses only first-party resources and tests `/live`, `/health`, and `/api/live`
+- serving `/cache-repair` as a no-store JSON response with `Clear-Site-Data: "cache"` for controlled browser-cache repair
 - exposing readiness routes:
   - `/health`
   - `/api/health`
@@ -822,6 +834,7 @@ Important scope note:
 | `setStaticAssetCacheHeaders(res, filePath)`   | applies cache rules for HTML, service worker, images, fonts, and other static assets            |
 | `sendHtmlTemplate(res, fileName, statusCode)` | injects performance bootstrap tags plus the CSP nonce into cached HTML and sends it             |
 | `sendMaintenancePage(req, res)`               | renders no-store HTML or JSON maintenance responses when maintenance mode is enabled            |
+| `sendCacheRepairResponse(res)`                | returns no-store cache-repair JSON with `Clear-Site-Data: "cache"`                              |
 | `sendNetworkCheckPage(req, res)`              | renders the no-store first-party network diagnostic page served at `/network-check(.html)`      |
 | `getAuthTokenFromRequest(req)`                | reads a session token from cookie or bearer header for rate-limit identity                      |
 | `getRateLimitKey(req)`                        | builds user/actor-aware rate-limit keys, falling back to IP when unauthenticated                |
@@ -1146,12 +1159,16 @@ Route handlers in this file are owner-only and cover monitoring metrics plus bac
 
 #### `public/js/service-worker-register.js` function inventory
 
-| Function                             | Purpose                                                                 |
-| ------------------------------------ | ----------------------------------------------------------------------- |
-| `cleanupInventoryServiceWorker()`    | starts service-worker/cache cleanup after page load                     |
-| `isInventoryRuntimeCache(cacheName)` | identifies old inventory app-shell runtime caches                       |
-| `clearRuntimeCaches()`               | deletes old `shop-inventory-runtime-*` and `inventory-runtime-*` caches |
-| `unregisterInventoryWorkers()`       | unregisters same-origin service-worker registrations                    |
+| Function                                  | Purpose                                                                 |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| `getRepairVersion()`                      | reads the injected repair version, with a built-in fallback             |
+| `isInventoryRuntimeCache(cacheName)`      | identifies old inventory app-shell runtime caches                       |
+| `getVersionRepairReason(version)`         | detects first run or a changed cache-repair version                     |
+| `clearRuntimeCaches()`                    | deletes old `shop-inventory-runtime-*` and `inventory-runtime-*` caches |
+| `unregisterInventoryWorkers()`            | unregisters same-origin service-worker registrations                    |
+| `requestHttpCacheRepair(version, reason)` | calls the no-store `/cache-repair` endpoint                             |
+| `canReloadAfterRepair()`                  | prevents more than one repair reload within 60 seconds                  |
+| `runAutomaticCacheRepair()`               | coordinates cleanup, repair signalling, version storage, and reload     |
 
 #### `public/service-worker.js` function inventory
 
@@ -1346,6 +1363,7 @@ Current hardening that is visible in the codebase:
 - `/service-worker.js` is served with `Cache-Control: no-cache` and `Service-Worker-Allowed: /` so updates are checked while preserving root scope
 - the current service-worker rollback path does not intercept fetches, so authenticated JSON, exports, invoice PDFs, report data, stock data, payment state, and diagnostics are never fulfilled from browser Cache Storage
 - old app-shell runtime caches are deleted by both the cleanup helper and rollback worker
+- the versioned cleanup helper also calls `/cache-repair` with `cache: no-store`; that response requests browser-cache clearing through `Clear-Site-Data: "cache"` and the helper reloads only behind its one-minute loop guard
 - `/network-check(.html)` is generated with `Cache-Control: no-store`, `Pragma: no-cache`, and `X-Robots-Tag: noindex, nofollow`
 - developer support login now relies on the `developer_support_token` cookie rather than returning a browser-readable token in the response body
 - owner-only delete routes for customer ledgers, supplier ledgers, purchase bills, and purchase items are protected with `requireOwner`; the frontend also hides their 3-dot menus from staff sessions
@@ -1799,7 +1817,15 @@ All ops routes require an owner session.
 
 Railway correctly uses non-API `/health`. Do not configure a platform or load-balancer probe to an `/api/*` health alias until the route registration/guard scopes are corrected.
 
-### 11.9 Network diagnostic route from `server.js`
+### 11.9 Cache repair route from `server.js`
+
+| Method | Path            | Purpose                                                                                      |
+| ------ | --------------- | -------------------------------------------------------------------------------------------- |
+| `GET`  | `/cache-repair` | no-store JSON repair acknowledgement with `Clear-Site-Data: "cache"`; used by HTML bootstrap |
+
+This route does not clear server-side response cache or application data. It asks a compatible browser to clear its HTTP cache for the current origin; the client-side helper separately removes old Cache Storage entries and service-worker registrations.
+
+### 11.10 Network diagnostic route from `server.js`
 
 | Method | Path group                              | Purpose                                                                          |
 | ------ | --------------------------------------- | -------------------------------------------------------------------------------- |
@@ -1807,7 +1833,7 @@ Railway correctly uses non-API `/health`. Do not configure a platform or load-ba
 
 The `/api/live` row in this diagnostic currently also reveals the API-route-order problem: an unauthenticated browser can see `401` there even while `/live` and `/health` prove the service is healthy.
 
-### 11.10 Conditional debug routes from `server.js`
+### 11.11 Conditional debug routes from `server.js`
 
 These non-API routes are registered only when `NODE_ENV` is not `production` and `ENABLE_DEBUG_ROUTES=true`. They have no session guard, so enable them only in a controlled development environment; maintenance mode can still intercept them.
 
@@ -2873,53 +2899,54 @@ Data-integrity boundaries to keep in mind:
 
 ## 13. Environment Variables
 
-| Variable                                    | Required                                        | Purpose                                                                                       |
-| ------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                              | yes                                             | PostgreSQL connection string                                                                  |
-| `DB_SSL`                                    | optional                                        | force SSL on or off; otherwise auto-detected from `DATABASE_URL`                              |
-| `PG_POOL_MAX`                               | optional                                        | maximum PostgreSQL pool size                                                                  |
-| `PG_CONNECTION_TIMEOUT_MS`                  | optional                                        | DB connect timeout in milliseconds                                                            |
-| `PG_IDLE_TIMEOUT_MS`                        | optional                                        | DB idle timeout in milliseconds                                                               |
-| `PG_KEEP_ALIVE_DELAY_MS`                    | optional                                        | initial keep-alive delay for DB connections                                                   |
-| `PG_MAX_USES`                               | optional                                        | recycle DB connections after this many uses                                                   |
-| `PG_STATEMENT_TIMEOUT_MS`                   | optional                                        | PostgreSQL statement timeout in milliseconds; `0` disables it                                 |
-| `PG_QUERY_TIMEOUT_MS`                       | optional                                        | client query timeout in milliseconds; `0` disables it                                         |
-| `PG_IDLE_IN_TRANSACTION_SESSION_TIMEOUT_MS` | optional                                        | idle-in-transaction timeout in milliseconds; defaults to `30000`                              |
-| `PG_APPLICATION_NAME`                       | optional                                        | PostgreSQL application name; defaults to `shop-inventory-api`                                 |
-| `JWT_SECRET`                                | yes                                             | signing key for session JWTs                                                                  |
-| `STAFF_SESSION_CACHE_TTL_MS`                | optional                                        | staff auth cache TTL in milliseconds; default `0` disables it; cache is capped at 200 entries |
-| `PORT`                                      | optional                                        | HTTP port; defaults to `8080`                                                                 |
-| `NODE_ENV`                                  | optional                                        | production/development behavior                                                               |
-| `MAINTENANCE_MODE`                          | optional                                        | enable maintenance responses with `1`, `true`, `yes`, or `on`; health paths remain exempt     |
-| `MAINTENANCE_MESSAGE`                       | optional                                        | user-facing maintenance text; defaults to `Sorry for the inconvenience.`                      |
-| `MAINTENANCE_RETRY_AFTER_SECONDS`           | optional                                        | positive `Retry-After` value for maintenance responses; defaults to `3600`                    |
-| `CORS_ALLOWED_ORIGINS`                      | recommended                                     | comma-separated allowlist for cross-origin requests                                           |
-| `BASE_URL`                                  | recommended, effectively required in production | public app base URL, also used in reset links                                                 |
-| `MAIL_RELAY_URL`                            | optional                                        | outbound mail relay endpoint                                                                  |
-| `MAIL_RELAY_KEY`                            | optional                                        | credential for mail relay                                                                     |
-| `GOOGLE_CLIENT_ID`                          | optional                                        | enables Google OAuth owner login when paired with client secret                               |
-| `GOOGLE_CLIENT_SECRET`                      | optional                                        | Google OAuth client secret                                                                    |
-| `GOOGLE_REDIRECT_URI`                       | optional                                        | explicit OAuth callback URL; otherwise derived from `BASE_URL`                                |
-| `DEVELOPER_REGISTRATION_KEY`                | required for safe production setup              | private setup key used by `/api/developer-auth/register`; do not rely on the code fallback    |
-| `SUPPORT_ADMIN_BOOTSTRAP`                   | optional                                        | when truthy, enables startup bootstrap/update of a developer admin                            |
-| `SUPPORT_ADMIN_EMAIL`                       | optional                                        | email address for the bootstrap developer admin                                               |
-| `SUPPORT_ADMIN_PASSWORD_HASH`               | optional                                        | pre-hashed bcrypt password for the bootstrap developer admin                                  |
-| `SUPPORT_ADMIN_PASSWORD`                    | optional                                        | plain-text bootstrap password, hashed at startup if no hash is supplied                       |
-| `SUPPORT_ADMIN_NAME`                        | optional                                        | display name for the bootstrap developer admin                                                |
-| `JSON_BODY_LIMIT`                           | optional                                        | JSON request body size limit for Express; defaults to `1mb`                                   |
-| `URLENCODED_BODY_LIMIT`                     | optional                                        | URL-encoded request body size limit for Express; defaults to `200kb`                          |
-| `ENABLE_DEBUG_ROUTES`                       | optional                                        | enable `/debug-env` and `/debug-db` in non-production                                         |
-| `ENABLE_REQUEST_LOGS`                       | optional                                        | log every request instead of only slow/error requests                                         |
-| `REQUEST_LOG_SLOW_MS`                       | optional                                        | mark requests slower than this threshold for logging; defaults to `1500` ms                   |
-| `DB_POOL_WAITING_REJECT_THRESHOLD`          | optional                                        | reject non-health API requests when DB pool waiting count reaches this; defaults to `20`      |
-| `API_RATE_LIMIT_MAX`                        | optional                                        | `/api` request limit per 15-minute window; defaults to `500`                                  |
-| `RESPONSE_CACHE_MAX_ENTRIES`                | optional                                        | max in-memory JSON response cache entries; defaults to `600`                                  |
-| `EXPORT_QUEUE_TIMEOUT_MS`                   | optional                                        | internal export fetch timeout; defaults to `110000` ms                                        |
-| `EXPORT_QUEUE_MAX_JOBS`                     | optional                                        | max in-memory queued export jobs; defaults to `80`                                            |
-| `EXPORT_QUEUE_CONCURRENCY`                  | optional                                        | export worker concurrency; defaults to `1`                                                    |
-| `EXPORT_QUEUE_TTL_MS`                       | optional                                        | completed/failed export retention; defaults to `600000` ms                                    |
-| `BACKGROUND_CLEANUP_INTERVAL_MS`            | optional                                        | cache/export cleanup interval; defaults to `60000` ms                                         |
-| `MONITOR_HEARTBEAT_INTERVAL_MS`             | optional                                        | monitor heartbeat log interval; defaults to `300000` ms                                       |
+| Variable                                    | Required                                        | Purpose                                                                                          |
+| ------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `DATABASE_URL`                              | yes                                             | PostgreSQL connection string                                                                     |
+| `DB_SSL`                                    | optional                                        | force SSL on or off; otherwise auto-detected from `DATABASE_URL`                                 |
+| `PG_POOL_MAX`                               | optional                                        | maximum PostgreSQL pool size                                                                     |
+| `PG_CONNECTION_TIMEOUT_MS`                  | optional                                        | DB connect timeout in milliseconds                                                               |
+| `PG_IDLE_TIMEOUT_MS`                        | optional                                        | DB idle timeout in milliseconds                                                                  |
+| `PG_KEEP_ALIVE_DELAY_MS`                    | optional                                        | initial keep-alive delay for DB connections                                                      |
+| `PG_MAX_USES`                               | optional                                        | recycle DB connections after this many uses                                                      |
+| `PG_STATEMENT_TIMEOUT_MS`                   | optional                                        | PostgreSQL statement timeout in milliseconds; `0` disables it                                    |
+| `PG_QUERY_TIMEOUT_MS`                       | optional                                        | client query timeout in milliseconds; `0` disables it                                            |
+| `PG_IDLE_IN_TRANSACTION_SESSION_TIMEOUT_MS` | optional                                        | idle-in-transaction timeout in milliseconds; defaults to `30000`                                 |
+| `PG_APPLICATION_NAME`                       | optional                                        | PostgreSQL application name; defaults to `shop-inventory-api`                                    |
+| `JWT_SECRET`                                | yes                                             | signing key for session JWTs                                                                     |
+| `STAFF_SESSION_CACHE_TTL_MS`                | optional                                        | staff auth cache TTL in milliseconds; default `0` disables it; cache is capped at 200 entries    |
+| `PORT`                                      | optional                                        | HTTP port; defaults to `8080`                                                                    |
+| `NODE_ENV`                                  | optional                                        | production/development behavior                                                                  |
+| `APP_CACHE_VERSION`                         | optional                                        | explicit browser cache-repair version; otherwise Railway commit SHA or built-in fallback is used |
+| `MAINTENANCE_MODE`                          | optional                                        | enable maintenance responses with `1`, `true`, `yes`, or `on`; health paths remain exempt        |
+| `MAINTENANCE_MESSAGE`                       | optional                                        | user-facing maintenance text; defaults to `Sorry for the inconvenience.`                         |
+| `MAINTENANCE_RETRY_AFTER_SECONDS`           | optional                                        | positive `Retry-After` value for maintenance responses; defaults to `3600`                       |
+| `CORS_ALLOWED_ORIGINS`                      | recommended                                     | comma-separated allowlist for cross-origin requests                                              |
+| `BASE_URL`                                  | recommended, effectively required in production | public app base URL, also used in reset links                                                    |
+| `MAIL_RELAY_URL`                            | optional                                        | outbound mail relay endpoint                                                                     |
+| `MAIL_RELAY_KEY`                            | optional                                        | credential for mail relay                                                                        |
+| `GOOGLE_CLIENT_ID`                          | optional                                        | enables Google OAuth owner login when paired with client secret                                  |
+| `GOOGLE_CLIENT_SECRET`                      | optional                                        | Google OAuth client secret                                                                       |
+| `GOOGLE_REDIRECT_URI`                       | optional                                        | explicit OAuth callback URL; otherwise derived from `BASE_URL`                                   |
+| `DEVELOPER_REGISTRATION_KEY`                | required for safe production setup              | private setup key used by `/api/developer-auth/register`; do not rely on the code fallback       |
+| `SUPPORT_ADMIN_BOOTSTRAP`                   | optional                                        | when truthy, enables startup bootstrap/update of a developer admin                               |
+| `SUPPORT_ADMIN_EMAIL`                       | optional                                        | email address for the bootstrap developer admin                                                  |
+| `SUPPORT_ADMIN_PASSWORD_HASH`               | optional                                        | pre-hashed bcrypt password for the bootstrap developer admin                                     |
+| `SUPPORT_ADMIN_PASSWORD`                    | optional                                        | plain-text bootstrap password, hashed at startup if no hash is supplied                          |
+| `SUPPORT_ADMIN_NAME`                        | optional                                        | display name for the bootstrap developer admin                                                   |
+| `JSON_BODY_LIMIT`                           | optional                                        | JSON request body size limit for Express; defaults to `1mb`                                      |
+| `URLENCODED_BODY_LIMIT`                     | optional                                        | URL-encoded request body size limit for Express; defaults to `200kb`                             |
+| `ENABLE_DEBUG_ROUTES`                       | optional                                        | enable `/debug-env` and `/debug-db` in non-production                                            |
+| `ENABLE_REQUEST_LOGS`                       | optional                                        | log every request instead of only slow/error requests                                            |
+| `REQUEST_LOG_SLOW_MS`                       | optional                                        | mark requests slower than this threshold for logging; defaults to `1500` ms                      |
+| `DB_POOL_WAITING_REJECT_THRESHOLD`          | optional                                        | reject non-health API requests when DB pool waiting count reaches this; defaults to `20`         |
+| `API_RATE_LIMIT_MAX`                        | optional                                        | `/api` request limit per 15-minute window; defaults to `500`                                     |
+| `RESPONSE_CACHE_MAX_ENTRIES`                | optional                                        | max in-memory JSON response cache entries; defaults to `600`                                     |
+| `EXPORT_QUEUE_TIMEOUT_MS`                   | optional                                        | internal export fetch timeout; defaults to `110000` ms                                           |
+| `EXPORT_QUEUE_MAX_JOBS`                     | optional                                        | max in-memory queued export jobs; defaults to `80`                                               |
+| `EXPORT_QUEUE_CONCURRENCY`                  | optional                                        | export worker concurrency; defaults to `1`                                                       |
+| `EXPORT_QUEUE_TTL_MS`                       | optional                                        | completed/failed export retention; defaults to `600000` ms                                       |
+| `BACKGROUND_CLEANUP_INTERVAL_MS`            | optional                                        | cache/export cleanup interval; defaults to `60000` ms                                            |
+| `MONITOR_HEARTBEAT_INTERVAL_MS`             | optional                                        | monitor heartbeat log interval; defaults to `300000` ms                                          |
 
 ## 14. Maintenance Guide
 
@@ -3046,6 +3073,8 @@ Edit:
 
 For carrier, DNS, SSL, or weak-network debugging, start with `/network-check` and the liveness route `/live`. If those routes fail on one network but not another, investigate the deployed domain/DNS/SSL path before changing business API code.
 
+If an old browser cache or service worker is suspected after a deployment, load any normal HTML page once. The injected versioned bootstrap will remove known runtime caches/workers, request `/cache-repair`, and reload once when needed. Set a new `APP_CACHE_VERSION` only when an explicit cache-repair rollout is required; Railway commit SHA normally changes it automatically on deployment.
+
 Railway is configured to probe `/health`. Keep deployment probes on the non-API `/health`, `/ready`, or `/live` paths: because broad `/api` router middleware is mounted first, the `/api/*` aliases currently cross DB/auth gates and can return `401` to an unauthenticated probe. Maintenance mode exempts health path names and returns no-store `503` plus `Retry-After` elsewhere.
 
 ### If you want to change caching, pagination, or queued exports
@@ -3058,8 +3087,9 @@ Edit:
 - [`../utils/export-queue.js`](../utils/export-queue.js)
 - [`../utils/pagination.js`](../utils/pagination.js)
 - route files that opt into cache/pagination/export behavior
+- [`../public/js/service-worker-register.js`](../public/js/service-worker-register.js) for versioned browser cache repair, runtime-cache removal, and guarded reload behavior
 - [`../public/service-worker.js`](../public/service-worker.js) for browser/WebView service-worker rollback and old cache cleanup
-- [`../server.js`](../server.js) for static asset headers, service-worker headers, and HTML bootstrap injection
+- [`../server.js`](../server.js) for static asset headers, service-worker headers, `/cache-repair`, and HTML bootstrap injection
 
 Do not re-enable service-worker fetch handling unless the endpoint has an explicit stale-data policy and mobile-carrier behavior has been tested. Current business data freshness and Jio troubleshooting depend on requests going directly to the network.
 
@@ -3454,6 +3484,7 @@ This codebase is organized around a single owner-scoped business workspace:
 - runtime behavior includes structured lifecycle/request logging, request metrics, DB-pool backpressure protection, maintenance mode, background cleanup, queued export jobs, and health endpoints
 - non-API `/health`, `/ready`, and `/live` are the reliable public probes; current router order causes their `/api/*` aliases to cross DB/auth middleware
 - `/network-check` provides a first-party diagnostic page for mobile/carrier reachability checks, while `/api/live` may currently report `401` without a session
+- versioned HTML cache repair removes old same-origin workers and known runtime caches, requests `/cache-repair` with `Clear-Site-Data: "cache"`, and reloads once under a loop guard when repair is needed
 - login HTML receives up to ten numerically named banner slides from `public/images`; nine are present at this baseline
 - deployment defaults for Railway are codified in [`../railway.json`](../railway.json)
 - Android users can install through the Play Store link on `login.html`, while `site.webmanifest` keeps browser/PWA install metadata available
