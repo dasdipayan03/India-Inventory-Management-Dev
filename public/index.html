@@ -6183,59 +6183,20 @@
         </div>
 
         <div id="accountSection" class="form-section">
-          <div class="section-grid section-grid--dues">
-            <section class="panel-card panel-card--highlight">
+          <div class="section-grid">
+            <section id="accountDetailsCard" class="panel-card panel-card--surface">
               <div class="panel-heading">
                 <div>
-                  <span class="panel-kicker">Account</span>
-                  <h4>Workspace profile</h4>
-                </div>
-              </div>
-
-              <p class="text-muted mb-0" id="accountAccessNote">
-                Loading account access details…
-              </p>
-
-              <div class="summary-strip mt-4">
-                <span class="summary-pill">
-                  <i class="fa-solid fa-shield-halved"></i>
-                  Secure account information
-                </span>
-                <span class="summary-pill">
-                  <i class="fa-solid fa-store"></i>
-                  Connected workspace profile
-                </span>
-              </div>
-
-              <div id="accountStaffCard" class="panel-card panel-card--surface mt-4" hidden>
-                <div class="panel-heading mb-2">
-                  <div>
-                    <span class="panel-kicker">Staff Login</span>
-                    <h5>Your read-only account</h5>
-                  </div>
-                </div>
-                <div class="row g-3">
-                  <div class="col-12">
-                    <label class="form-label small">Staff Name</label>
-                    <input id="accountStaffName" class="form-control" readonly />
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label small">Username</label>
-                    <input id="accountStaffUsername" class="form-control" readonly />
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section id="accountOwnerDetailsCard" class="panel-card panel-card--surface">
-              <div class="panel-heading">
-                <div>
-                  <span class="panel-kicker">Owner Details</span>
+                  <span id="accountDetailsKicker" class="panel-kicker">Account</span>
                   <h4 id="accountDetailsHeading">Manage your account</h4>
                 </div>
               </div>
 
-              <div class="row g-3">
+              <p id="accountAccessNote" class="text-muted mb-4">
+                Loading account details…
+              </p>
+
+              <div id="accountOwnerFields" class="row g-3">
                 <div class="col-12">
                   <label class="form-label small" for="accountOwnerName">Owner Name</label>
                   <input id="accountOwnerName" class="form-control" type="text" maxlength="50" autocomplete="name" />
@@ -6252,12 +6213,23 @@
                   <label class="form-label small" for="accountShopName">Shop Name</label>
                   <input id="accountShopName" class="form-control" type="text" maxlength="150" autocomplete="organization" />
                 </div>
-                <div class="col-12 d-flex flex-wrap align-items-center gap-3">
+                <div id="accountSaveActions" class="col-12 d-flex flex-wrap align-items-center gap-3">
                   <button id="saveAccountBtn" class="btn btn-primary" type="button">
                     <i class="fa-solid fa-floppy-disk"></i>
                     Save Changes
                   </button>
                   <p id="accountSaveStatus" class="mb-0 text-muted small"></p>
+                </div>
+              </div>
+
+              <div id="accountStaffFields" class="row g-3" hidden>
+                <div class="col-12">
+                  <label class="form-label small">Staff Name</label>
+                  <input id="accountStaffName" class="form-control" readonly />
+                </div>
+                <div class="col-12">
+                  <label class="form-label small">Username</label>
+                  <input id="accountStaffUsername" class="form-control" readonly />
                 </div>
               </div>
             </section>

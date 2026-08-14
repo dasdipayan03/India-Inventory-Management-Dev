@@ -833,16 +833,18 @@ function cacheElements() {
     supportComposerStatus: document.getElementById("supportComposerStatus"),
     supportSendBtn: document.getElementById("supportSendBtn"),
     accountAccessNote: document.getElementById("accountAccessNote"),
-    accountStaffCard: document.getElementById("accountStaffCard"),
+    accountOwnerFields: document.getElementById("accountOwnerFields"),
+    accountStaffFields: document.getElementById("accountStaffFields"),
     accountStaffName: document.getElementById("accountStaffName"),
     accountStaffUsername: document.getElementById("accountStaffUsername"),
-    accountOwnerDetailsCard: document.getElementById("accountOwnerDetailsCard"),
+    accountDetailsKicker: document.getElementById("accountDetailsKicker"),
     accountDetailsHeading: document.getElementById("accountDetailsHeading"),
     accountOwnerName: document.getElementById("accountOwnerName"),
     accountOwnerEmail: document.getElementById("accountOwnerEmail"),
     accountOwnerMobile: document.getElementById("accountOwnerMobile"),
     accountShopName: document.getElementById("accountShopName"),
     saveAccountBtn: document.getElementById("saveAccountBtn"),
+    accountSaveActions: document.getElementById("accountSaveActions"),
     accountSaveStatus: document.getElementById("accountSaveStatus"),
     staffName: document.getElementById("staffName"),
     staffUsername: document.getElementById("staffUsername"),
@@ -8693,11 +8695,11 @@ async function loadAccountDetails(options = {}) {
     dom.accountShopName.value = isStaff ? "" : owner.shop_name || "";
     setAccountOwnerFieldsReadOnly(isStaff);
 
-    if (dom.accountStaffCard) {
-      dom.accountStaffCard.hidden = !isStaff;
+    if (dom.accountOwnerFields) {
+      dom.accountOwnerFields.hidden = isStaff;
     }
-    if (dom.accountOwnerDetailsCard) {
-      dom.accountOwnerDetailsCard.hidden = isStaff;
+    if (dom.accountStaffFields) {
+      dom.accountStaffFields.hidden = !isStaff;
     }
     if (dom.accountStaffName) {
       dom.accountStaffName.value = data?.staff?.name || "";
@@ -8707,12 +8709,18 @@ async function loadAccountDetails(options = {}) {
     }
     if (dom.accountDetailsHeading) {
       dom.accountDetailsHeading.textContent = isStaff
-        ? "Owner account details"
+        ? "Your staff account"
         : "Manage your account";
+    }
+    if (dom.accountDetailsKicker) {
+      dom.accountDetailsKicker.textContent = isStaff ? "Staff Account" : "Account";
     }
     if (dom.saveAccountBtn) {
       dom.saveAccountBtn.hidden = isStaff;
       dom.saveAccountBtn.disabled = isStaff;
+    }
+    if (dom.accountSaveActions) {
+      dom.accountSaveActions.hidden = isStaff;
     }
     if (dom.accountAccessNote) {
       dom.accountAccessNote.textContent = isStaff
