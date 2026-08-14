@@ -116,6 +116,13 @@
       iconClass: "fa-solid fa-headset",
       label: "Chat Support",
     },
+    {
+      kind: "section",
+      sectionId: "accountSection",
+      availableToAll: true,
+      iconClass: "fa-solid fa-user-gear",
+      label: "Account",
+    },
   ];
 
   function preventFocusedNumberWheelChange() {

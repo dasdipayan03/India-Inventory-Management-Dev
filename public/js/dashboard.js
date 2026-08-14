@@ -832,6 +832,18 @@ function cacheElements() {
     supportMessageInput: document.getElementById("supportMessageInput"),
     supportComposerStatus: document.getElementById("supportComposerStatus"),
     supportSendBtn: document.getElementById("supportSendBtn"),
+    accountAccessNote: document.getElementById("accountAccessNote"),
+    accountStaffCard: document.getElementById("accountStaffCard"),
+    accountStaffName: document.getElementById("accountStaffName"),
+    accountStaffUsername: document.getElementById("accountStaffUsername"),
+    accountOwnerDetailsCard: document.getElementById("accountOwnerDetailsCard"),
+    accountDetailsHeading: document.getElementById("accountDetailsHeading"),
+    accountOwnerName: document.getElementById("accountOwnerName"),
+    accountOwnerEmail: document.getElementById("accountOwnerEmail"),
+    accountOwnerMobile: document.getElementById("accountOwnerMobile"),
+    accountShopName: document.getElementById("accountShopName"),
+    saveAccountBtn: document.getElementById("saveAccountBtn"),
+    accountSaveStatus: document.getElementById("accountSaveStatus"),
     staffName: document.getElementById("staffName"),
     staffUsername: document.getElementById("staffUsername"),
     staffPassword: document.getElementById("staffPassword"),
@@ -1924,6 +1936,10 @@ function setActiveSection(sectionId) {
 
   if (sectionId === "staffAccessSection" && isOwnerSession()) {
     loadStaffAccounts({ silent: true });
+  }
+
+  if (sectionId === "accountSection") {
+    void loadAccountDetails({ silent: true });
   }
 
   if (
@@ -8630,6 +8646,140 @@ function bindExpenseEvents() {
   dom.loadExpenseReportBtn.addEventListener("click", () => loadExpenseReport());
 }
 
+function setAccountSaveStatus(message = "", tone = "muted") {
+  if (!dom.accountSaveStatus) {
+    return;
+  }
+
+  dom.accountSaveStatus.textContent = message;
+  dom.accountSaveStatus.classList.toggle("text-danger", tone === "error");
+  dom.accountSaveStatus.classList.toggle("text-success", tone === "success");
+  dom.accountSaveStatus.classList.toggle("text-muted", tone === "muted");
+}
+
+function setAccountOwnerFieldsReadOnly(readOnly) {
+  [
+    dom.accountOwnerName,
+    dom.accountOwnerEmail,
+    dom.accountOwnerMobile,
+    dom.accountShopName,
+  ].forEach((input) => {
+    if (input) {
+      input.readOnly = readOnly;
+      input.setAttribute("aria-readonly", String(readOnly));
+      input.classList.toggle("is-readonly", readOnly);
+    }
+  });
+}
+
+async function loadAccountDetails(options = {}) {
+  if (!dom.accountOwnerName) {
+    return null;
+  }
+
+  setAccountSaveStatus("");
+  if (dom.accountAccessNote) {
+    dom.accountAccessNote.textContent = "Loading account details…";
+  }
+
+  try {
+    const data = await fetchJSON("/auth/account");
+    const isStaff = data?.role === "staff" || data?.can_edit === false;
+    const owner = data?.owner || {};
+
+    dom.accountOwnerName.value = isStaff ? "" : owner.name || "";
+    dom.accountOwnerEmail.value = isStaff ? "" : owner.email || "";
+    dom.accountOwnerMobile.value = isStaff ? "" : owner.mobile_number || "";
+    dom.accountShopName.value = isStaff ? "" : owner.shop_name || "";
+    setAccountOwnerFieldsReadOnly(isStaff);
+
+    if (dom.accountStaffCard) {
+      dom.accountStaffCard.hidden = !isStaff;
+    }
+    if (dom.accountOwnerDetailsCard) {
+      dom.accountOwnerDetailsCard.hidden = isStaff;
+    }
+    if (dom.accountStaffName) {
+      dom.accountStaffName.value = data?.staff?.name || "";
+    }
+    if (dom.accountStaffUsername) {
+      dom.accountStaffUsername.value = data?.staff?.username || "";
+    }
+    if (dom.accountDetailsHeading) {
+      dom.accountDetailsHeading.textContent = isStaff
+        ? "Owner account details"
+        : "Manage your account";
+    }
+    if (dom.saveAccountBtn) {
+      dom.saveAccountBtn.hidden = isStaff;
+      dom.saveAccountBtn.disabled = isStaff;
+    }
+    if (dom.accountAccessNote) {
+      dom.accountAccessNote.textContent = isStaff
+        ? "You are signed in as staff. Only your own account details are visible, and they cannot be changed from this page."
+        : "Keep your contact and shop details current. These details are used across your workspace and documents.";
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Account details load failed:", error);
+    if (dom.accountAccessNote) {
+      dom.accountAccessNote.textContent = "Account details could not be loaded right now. Please refresh and try again.";
+    }
+    if (!options.silent) {
+      showPopup("error", "Account unavailable", error.message || "Could not load account details.", {
+        autoClose: false,
+      });
+    }
+    return null;
+  }
+}
+
+async function saveAccountDetails() {
+  if (!isOwnerSession()) {
+    return;
+  }
+
+  const payload = {
+    name: dom.accountOwnerName?.value.trim() || "",
+    email: dom.accountOwnerEmail?.value.trim() || "",
+    mobile_number: dom.accountOwnerMobile?.value.trim() || "",
+    shop_name: dom.accountShopName?.value.trim() || "",
+  };
+
+  await withButtonState(
+    dom.saveAccountBtn,
+    '<i class="fa-solid fa-spinner fa-spin"></i> Saving…',
+    async () => {
+      setAccountSaveStatus("Saving account details…");
+      try {
+        const data = await fetchJSON("/auth/account", {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+        const updatedUser = data?.user;
+        if (updatedUser && state.sessionUser) {
+          applySessionAccess({ ...state.sessionUser, ...updatedUser });
+        }
+        setAccountSaveStatus(
+          data?.message || "Account details saved.",
+          "success",
+        );
+        showPopup("success", "Account updated", data?.message || "Your account details have been saved.");
+      } catch (error) {
+        console.error("Account details save failed:", error);
+        setAccountSaveStatus(error.message || "Could not save account details.", "error");
+      }
+    },
+  );
+}
+
+function bindAccountEvents() {
+  dom.saveAccountBtn?.addEventListener("click", () => {
+    void saveAccountDetails();
+  });
+}
+
 function bindStaffEvents() {
   if (!dom.createStaffBtn) {
     return;
@@ -8686,6 +8836,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   bindCustomerDueEvents();
   bindExpenseEvents();
   bindSupportEvents();
+  bindAccountEvents();
   bindStaffEvents();
   updateCurrentDateLabel();
   if (dom.purchaseItemsBody) {

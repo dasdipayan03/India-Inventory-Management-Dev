@@ -393,6 +393,13 @@
         animation: section-in 0.25s ease;
       }
 
+      #accountSection .form-control[readonly] {
+        cursor: not-allowed;
+        border-color: rgba(117, 142, 180, 0.22);
+        background: rgba(237, 245, 255, 0.82);
+        color: var(--ink-soft);
+      }
+
       .section-grid {
         display: grid;
         gap: 16px;
@@ -6175,6 +6182,88 @@
           </div>
         </div>
 
+        <div id="accountSection" class="form-section">
+          <div class="section-grid section-grid--dues">
+            <section class="panel-card panel-card--highlight">
+              <div class="panel-heading">
+                <div>
+                  <span class="panel-kicker">Account</span>
+                  <h4>Workspace profile</h4>
+                </div>
+              </div>
+
+              <p class="text-muted mb-0" id="accountAccessNote">
+                Loading account access details…
+              </p>
+
+              <div class="summary-strip mt-4">
+                <span class="summary-pill">
+                  <i class="fa-solid fa-shield-halved"></i>
+                  Secure account information
+                </span>
+                <span class="summary-pill">
+                  <i class="fa-solid fa-store"></i>
+                  Connected workspace profile
+                </span>
+              </div>
+
+              <div id="accountStaffCard" class="panel-card panel-card--surface mt-4" hidden>
+                <div class="panel-heading mb-2">
+                  <div>
+                    <span class="panel-kicker">Staff Login</span>
+                    <h5>Your read-only account</h5>
+                  </div>
+                </div>
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label small">Staff Name</label>
+                    <input id="accountStaffName" class="form-control" readonly />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label small">Username</label>
+                    <input id="accountStaffUsername" class="form-control" readonly />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section id="accountOwnerDetailsCard" class="panel-card panel-card--surface">
+              <div class="panel-heading">
+                <div>
+                  <span class="panel-kicker">Owner Details</span>
+                  <h4 id="accountDetailsHeading">Manage your account</h4>
+                </div>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label small" for="accountOwnerName">Owner Name</label>
+                  <input id="accountOwnerName" class="form-control" type="text" maxlength="50" autocomplete="name" />
+                </div>
+                <div class="col-12">
+                  <label class="form-label small" for="accountOwnerEmail">Email Address</label>
+                  <input id="accountOwnerEmail" class="form-control" type="email" maxlength="100" autocomplete="email" />
+                </div>
+                <div class="col-12">
+                  <label class="form-label small" for="accountOwnerMobile">Mobile Number</label>
+                  <input id="accountOwnerMobile" class="form-control" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" />
+                </div>
+                <div class="col-12">
+                  <label class="form-label small" for="accountShopName">Shop Name</label>
+                  <input id="accountShopName" class="form-control" type="text" maxlength="150" autocomplete="organization" />
+                </div>
+                <div class="col-12 d-flex flex-wrap align-items-center gap-3">
+                  <button id="saveAccountBtn" class="btn btn-primary" type="button">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    Save Changes
+                  </button>
+                  <p id="accountSaveStatus" class="mb-0 text-muted small"></p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
         <div id="staffAccessSection" class="form-section">
           <div class="section-grid section-grid--dues">
             <section class="panel-card panel-card--surface">
@@ -6346,8 +6435,8 @@
     </div>
 
     <script src="js/permission-contract.js"></script>
-    <script src="js/app-core.js"></script>
+    <script src="js/app-core.js?v=2026-08-14-account-1"></script>
     <script src="js/app-shell.js"></script>
-    <script src="js/dashboard.js?v=2026-07-02-serial-slots-1"></script>
+    <script src="js/dashboard.js?v=2026-08-14-account-1"></script>
   </body>
 </html>

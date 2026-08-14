@@ -1596,6 +1596,169 @@ router.delete(
   },
 );
 
+router.get("/account", authMiddleware, async (req, res) => {
+  try {
+    markSensitiveResponse(res);
+
+    if (req.user.role === "staff") {
+      const result = await pool.query(
+        `
+          SELECT
+            s.name AS staff_name,
+            s.username AS staff_username
+          FROM staff_accounts s
+          WHERE s.id = $1
+          LIMIT 1
+        `,
+        [req.user.actorId],
+      );
+
+      if (!result.rowCount) {
+        return res.status(401).json({ error: "Invalid or expired token" });
+      }
+
+      const account = result.rows[0];
+      return res.json({
+        role: "staff",
+        can_edit: false,
+        staff: {
+          name: account.staff_name,
+          username: account.staff_username,
+        },
+      });
+    }
+
+    const result = await pool.query(
+      `
+        SELECT
+          u.name,
+          u.email,
+          u.mobile_number,
+          COALESCE(settings.shop_name, '') AS shop_name
+        FROM users u
+        LEFT JOIN settings ON settings.user_id = u.id
+        WHERE u.id = $1
+        LIMIT 1
+      `,
+      [getUserId(req)],
+    );
+
+    if (!result.rowCount) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+
+    const account = result.rows[0];
+    return res.json({
+      role: "owner",
+      can_edit: true,
+      owner: {
+        name: account.name,
+        email: account.email,
+        mobile_number: account.mobile_number || "",
+        shop_name: account.shop_name,
+      },
+    });
+  } catch (error) {
+    console.error("Account profile load error:", error.message);
+    return res.status(500).json({ error: "Could not load account details" });
+  }
+});
+
+router.patch("/account", authMiddleware, requireOwner, async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    markSensitiveResponse(res);
+    const name = normalizeName(req.body.name);
+    const email = normalizeEmail(req.body.email);
+    const mobileNumber = normalizeMobileNumber(
+      req.body.mobile_number || req.body.mobileNumber,
+    );
+    const shopName = String(req.body.shop_name || "").trim();
+
+    if (name.length < 2 || name.length > OWNER_NAME_MAX_LENGTH) {
+      return res.status(400).json({
+        error: `Name must be between 2 and ${OWNER_NAME_MAX_LENGTH} characters`,
+      });
+    }
+
+    if (!email || !email.includes("@") || email.length > 100) {
+      return res.status(400).json({ error: "Enter a valid email address" });
+    }
+
+    if (!isValidMobileNumber(mobileNumber)) {
+      return res
+        .status(400)
+        .json({ error: "Enter a valid 10-digit mobile number" });
+    }
+
+    if (shopName.length > 150) {
+      return res
+        .status(400)
+        .json({ error: "Shop name must be 150 characters or fewer" });
+    }
+
+    const userId = getUserId(req);
+    await client.query("BEGIN");
+
+    const userResult = await client.query(
+      `
+        UPDATE users
+        SET name = $1, email = $2, mobile_number = $3
+        WHERE id = $4
+        RETURNING id, name, email, mobile_number
+      `,
+      [name, email, mobileNumber, userId],
+    );
+
+    if (!userResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Account not found" });
+    }
+
+    await client.query(
+      `
+        INSERT INTO settings (user_id, shop_name)
+        VALUES ($1, $2)
+        ON CONFLICT (user_id)
+        DO UPDATE SET shop_name = EXCLUDED.shop_name
+      `,
+      [userId, shopName],
+    );
+
+    await client.query("COMMIT");
+    const user = userResult.rows[0];
+    const session = buildOwnerSession(user);
+    setSessionCookie(res, signSession(session));
+    markSensitiveResponse(res);
+    return res.json({
+      message: "Account details updated successfully",
+      user: toClientUser(session),
+      owner: {
+        name: user.name,
+        email: user.email,
+        mobile_number: user.mobile_number,
+        shop_name: shopName,
+      },
+    });
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (_rollbackError) {
+      // The transaction may not have started when a connection error occurs.
+    }
+
+    if (error.code === "23505") {
+      return res.status(400).json({ error: "This email is already registered" });
+    }
+
+    console.error("Account profile update error:", error.message);
+    return res.status(500).json({ error: "Could not update account details" });
+  } finally {
+    client.release();
+  }
+});
+
 router.get("/me", authMiddleware, async (req, res) => {
   try {
     markSensitiveResponse(res);
