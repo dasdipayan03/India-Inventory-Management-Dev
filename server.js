@@ -845,6 +845,16 @@ app.use(express.urlencoded({ extended: false, limit: URLENCODED_BODY_LIMIT }));
 app.use(cookieParser()); // Parse cookies from client
 app.use(compression({ threshold: 1024 })); // Compress larger responses only
 
+// Keep all health aliases ahead of /api middleware and routers so Railway and
+// load balancers can check readiness without a user session.
+app.get(Array.from(READINESS_ROUTE_PATHS), (req, res) => {
+  sendHealthResponse(res, "readiness");
+});
+
+app.get(Array.from(LIVENESS_ROUTE_PATHS), (req, res) => {
+  sendHealthResponse(res, "liveness");
+});
+
 function getAuthTokenFromRequest(req) {
   if (req.cookies?.token) {
     return req.cookies.token;
@@ -990,17 +1000,6 @@ app.use("/api", require("./routes/ops"));
 app.use("/api", require("./routes/inventory"));
 app.use("/api", require("./routes/business"));
 app.use("/api", require("./routes/invoices"));
-
-// =========================================================
-// ❤️ HEALTH CHECK ROUTE (Railway stability)
-// =========================================================
-app.get(Array.from(READINESS_ROUTE_PATHS), (req, res) => {
-  sendHealthResponse(res, "readiness");
-});
-
-app.get(Array.from(LIVENESS_ROUTE_PATHS), (req, res) => {
-  sendHealthResponse(res, "liveness");
-});
 
 // =========================================================
 // 🛠 DEBUG ROUTES (Only in Development Mode)
