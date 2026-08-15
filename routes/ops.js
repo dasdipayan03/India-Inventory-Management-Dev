@@ -3,6 +3,7 @@ const pool = require("../db");
 const { authMiddleware, requireOwner } = require("../middleware/auth");
 const {
   runCleanup,
+  runInvoiceCounterCleanup,
   getBackgroundJobStatus,
 } = require("../utils/background-jobs");
 const { buildMonitoringSnapshot } = require("../utils/monitoring");
@@ -47,8 +48,11 @@ router.get("/ops/background-jobs", (req, res) => {
   });
 });
 
-router.post("/ops/background-jobs/cleanup", (req, res) => {
-  const cleanup = runCleanup();
+router.post("/ops/background-jobs/cleanup", async (req, res) => {
+  const cleanup = {
+    ...runCleanup(),
+    ...(await runInvoiceCounterCleanup(pool)),
+  };
   res.set("Cache-Control", "no-store");
   res.json({
     success: true,
