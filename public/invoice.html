@@ -1067,6 +1067,10 @@
         margin-top: 12px;
       }
 
+      .invoice-history-panel .search-result:empty {
+        display: none;
+      }
+
       .checkout-actions {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2604,16 +2608,6 @@
             <div class="eyebrow">Invoice History</div>
             <h2>Search and open invoices</h2>
           </div>
-          <!-- <div class="mini">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <span id="searchCountText">Latest list</span>
-          </div> -->
-          <div class="mini">
-            <i class="fa-solid fa-filter"></i>
-            <span id="searchHintText"
-              >Empty search loads your latest invoices.</span
-            >
-          </div>
         </div>
 
         <div class="search-grid">
@@ -2635,25 +2629,7 @@
           </button>
         </div>
 
-        <div class="mini-row stack-top-14">
-          <!-- <div class="mini">
-            <i class="fa-solid fa-filter"></i>
-            <span id="searchHintText"
-              >Showing latest invoices when search is empty.</span
-            >
-          </div> -->
-          <div class="mini">
-            <i class="fa-solid fa-bolt"></i>
-            Open shows full invoice detail instantly.
-          </div>
-        </div>
-
-        <div id="searchResult" class="search-result">
-          <div class="empty">
-            <i class="fa-regular fa-folder-open"></i>
-            <h3>Invoice history is ready</h3>
-          </div>
-        </div>
+        <div id="searchResult" class="search-result"></div>
       </section>
     </div>
 
