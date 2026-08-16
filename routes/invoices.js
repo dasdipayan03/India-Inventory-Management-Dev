@@ -2259,7 +2259,7 @@ router.get(
 
       /* ================= FOOTER AND PAGE NUMBER ================= */
       const accountPanelY = hasAccountDetails
-        ? Math.max(y + summaryHeight + 12, pageHeight - 160)
+        ? Math.max(y + summaryHeight + 12, pageHeight - 184)
         : null;
       const range = doc.bufferedPageRange();
       const totalPages = range.count;
@@ -2278,11 +2278,11 @@ router.get(
         doc.text(
           "This is a system generated invoice. No signature required.",
           leftX,
-          pageHeight - 54,
+          pageHeight - 70,
           { width: contentWidth, align: "center" },
         );
 
-        doc.text(`Page ${i + 1} of ${totalPages}`, leftX, pageHeight - 38, {
+        doc.text(`Page ${i + 1} of ${totalPages}`, leftX, pageHeight - 54, {
           width: contentWidth,
           align: "right",
         });
