@@ -727,6 +727,12 @@
         box-shadow: 0 16px 30px rgba(17, 29, 58, 0.12);
       }
 
+      .dropdown-list--invoice {
+        max-height: min(360px, 52vh);
+        scrollbar-width: thin;
+        scrollbar-color: rgba(2, 132, 199, 0.52) transparent;
+      }
+
       #lineItemsCard .dropdown-list {
         right: auto;
         min-width: max(100%, 280px);
@@ -3185,7 +3191,7 @@
         syncMobileCardLayout(true);
 
         const invoiceDropdown = document.createElement("div");
-        invoiceDropdown.className = "dropdown-list";
+        invoiceDropdown.className = "dropdown-list dropdown-list--invoice";
         invoiceDropdown.hidden = true;
         dom.searchInvoiceInput
           .closest(".dropdown-wrap")
@@ -4264,6 +4270,7 @@
             return;
           }
 
+          setupScrollableDropdown(host);
           host.innerHTML = suggestions
             .map((entry) => {
               const invoiceNo = escapeHtml(entry.invoice_no || "-");
@@ -4411,6 +4418,7 @@
               suggestions,
               (invoiceNo) => {
                 dom.searchInvoiceInput.value = invoiceNo;
+                void loadExact(invoiceNo);
               },
             );
             return;
@@ -4428,6 +4436,7 @@
 
           renderDropdown(invoiceDropdown, matches, (value) => {
             dom.searchInvoiceInput.value = value;
+            void loadExact(value);
           });
         }
 
