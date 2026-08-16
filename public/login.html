@@ -695,6 +695,17 @@
       .popup-box.error i {
         color: var(--danger);
       }
+      .popup-dismiss-icon {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+      }
+      .popup-dismiss-icon:focus-visible {
+        outline: 3px solid rgba(220, 38, 38, 0.2);
+        outline-offset: 4px;
+        border-radius: 10px;
+      }
       .popup-box h3 {
         margin-top: 14px;
         font-size: 28px;
@@ -2148,7 +2159,12 @@
 
     <div id="errorScreen" class="popup-overlay" aria-hidden="true">
       <div class="popup-box error" role="dialog" aria-modal="true">
-        <i class="fa-solid fa-circle-xmark"></i>
+        <button
+          id="errorDismissIcon"
+          class="popup-dismiss-icon"
+          type="button"
+          aria-label="Dismiss error popup"
+        ><i class="fa-solid fa-circle-xmark"></i></button>
         <h3>Error</h3>
         <p id="errorText">Something went wrong.</p>
       </div>
@@ -3842,6 +3858,10 @@
             hidePopup("error");
           }
         });
+
+        document
+          .getElementById("errorDismissIcon")
+          ?.addEventListener("click", () => hidePopup("error"));
 
         document.addEventListener("keydown", (event) => {
           if (event.key !== "Escape") {

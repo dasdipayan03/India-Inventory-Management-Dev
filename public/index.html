@@ -2736,40 +2736,13 @@
         animation: popup-in 0.22s ease;
       }
 
-      .popup-close {
-        position: absolute;
-        top: 14px;
-        right: 14px;
-        width: 36px;
-        height: 36px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 0;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0.12);
-        color: var(--ink-soft);
-        cursor: pointer;
-        transition:
-          background-color 0.2s ease,
-          color 0.2s ease,
-          transform 0.2s ease;
-      }
-
-      .popup-close:hover {
-        background: rgba(14, 165, 233, 0.12);
-        color: var(--cyan-strong);
-        transform: translateY(-1px);
-      }
-
       #resetPurchaseBtn,
       #clearAddStockBtn,
       #clearDebtBtn,
       #clearProductPurchaseHistoryBtn,
       #clearAllStaffPagesBtn,
       .purchase-remove-btn,
-      .staff-delete-btn,
-      .popup-close {
+      .staff-delete-btn {
         color: #991b1b;
         background: rgba(254, 226, 226, 0.92);
         box-shadow: 0 10px 22px rgba(153, 27, 27, 0.08);
@@ -2781,8 +2754,7 @@
       #clearProductPurchaseHistoryBtn i,
       #clearAllStaffPagesBtn i,
       .purchase-remove-btn i,
-      .staff-delete-btn i,
-      .popup-close i {
+      .staff-delete-btn i {
         color: currentColor;
       }
 
@@ -2792,8 +2764,7 @@
       #clearProductPurchaseHistoryBtn:hover,
       #clearAllStaffPagesBtn:hover,
       .purchase-remove-btn:hover,
-      .staff-delete-btn:hover,
-      .popup-close:hover {
+      .staff-delete-btn:hover {
         color: #991b1b;
         background: rgba(254, 226, 226, 0.98);
         box-shadow: 0 14px 28px rgba(153, 27, 27, 0.12);
@@ -2947,10 +2918,23 @@
         display: grid;
         place-items: center;
         margin: 0 auto 16px;
+        padding: 0;
+        border: 0;
         border-radius: 18px;
         background: rgba(14, 165, 233, 0.1);
         color: var(--cyan-strong);
+        cursor: pointer;
         font-size: 24px;
+        transition: transform 0.2s ease, filter 0.2s ease;
+      }
+
+      .popup-icon:hover:not(:disabled) {
+        filter: brightness(0.96);
+        transform: scale(1.04);
+      }
+
+      .popup-icon:disabled {
+        cursor: default;
       }
 
       .popup-box.success .popup-icon {
@@ -3036,7 +3020,7 @@
         box-shadow: 0 16px 30px rgba(220, 38, 38, 0.3);
       }
 
-      .popup-close:focus-visible,
+      .popup-icon:focus-visible,
       .popup-action-btn:focus-visible,
       .btn:focus-visible,
       .form-control:focus-visible,
@@ -6419,16 +6403,13 @@
       <div id="popupOverlay" class="popup-overlay"></div>
       <div id="popupBox" class="popup-box">
         <button
-          id="popupClose"
-          class="popup-close"
+          class="popup-icon"
+          id="popupIcon"
           type="button"
-          aria-label="Close popup"
+          aria-label="Dismiss popup"
         >
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-        <div class="popup-icon" id="popupIcon">
           <i class="fa-solid fa-circle-info"></i>
-        </div>
+        </button>
         <h4 id="popupTitle"></h4>
         <p id="popupMessage"></p>
         <div id="popupActions" class="popup-actions" hidden>

@@ -1507,49 +1507,20 @@
         animation: popup-in 0.22s ease;
       }
 
-      .popup-close {
-        position: absolute;
-        top: 14px;
-        right: 14px;
-        width: 36px;
-        height: 36px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border: 0;
-        border-radius: 999px;
-        background: rgba(148, 163, 184, 0.12);
-        color: var(--muted);
-        cursor: pointer;
-        transition:
-          background-color 0.2s ease,
-          color 0.2s ease,
-          transform 0.2s ease;
-      }
-
-      .popup-close:hover {
-        background: rgba(14, 165, 233, 0.12);
-        color: var(--sky);
-        transform: translateY(-1px);
-      }
-
       #clearBtn,
-      #lineItemsCard .remove-btn,
-      .popup-close {
+      #lineItemsCard .remove-btn {
         color: #991b1b;
         background: rgba(254, 226, 226, 0.92);
         box-shadow: 0 10px 22px rgba(153, 27, 27, 0.08);
       }
 
       #clearBtn i,
-      #lineItemsCard .remove-btn i,
-      .popup-close i {
+      #lineItemsCard .remove-btn i {
         color: currentColor;
       }
 
       #clearBtn:hover,
-      #lineItemsCard .remove-btn:hover,
-      .popup-close:hover {
+      #lineItemsCard .remove-btn:hover {
         color: #991b1b;
         background: rgba(254, 226, 226, 0.98);
         box-shadow: 0 14px 28px rgba(153, 27, 27, 0.12);
@@ -1630,10 +1601,19 @@
         display: grid;
         place-items: center;
         margin: 0 auto 16px;
+        padding: 0;
+        border: 0;
         border-radius: 18px;
         background: rgba(14, 165, 233, 0.1);
         color: var(--sky);
+        cursor: pointer;
         font-size: 24px;
+        transition: transform 0.2s ease, filter 0.2s ease;
+      }
+
+      .popup-icon:hover {
+        filter: brightness(0.96);
+        transform: scale(1.04);
       }
 
       .popup-box.success .popup-icon {
@@ -1661,7 +1641,7 @@
         line-height: 1.7;
       }
 
-      .popup-close:focus-visible,
+      .popup-icon:focus-visible,
       .btn:focus-visible,
       .input:focus-visible,
       select:focus-visible,
@@ -2673,16 +2653,13 @@
       <div id="popupOverlay" class="popup-overlay"></div>
       <div id="popupBox" class="popup-box">
         <button
-          id="popupClose"
-          class="popup-close"
+          class="popup-icon"
+          id="popupIcon"
           type="button"
-          aria-label="Close popup"
+          aria-label="Dismiss popup"
         >
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-        <div class="popup-icon" id="popupIcon">
           <i class="fa-solid fa-circle-info"></i>
-        </div>
+        </button>
         <h4 id="popupTitle"></h4>
         <p id="popupMessage"></p>
       </div>
@@ -3095,7 +3072,6 @@
           popupIcon: $("popupIcon"),
           popupTitle: $("popupTitle"),
           popupMessage: $("popupMessage"),
-          popupClose: $("popupClose"),
         };
 
         const shopProfileInputs = [
@@ -6036,7 +6012,7 @@
         });
 
         dom.popupOverlay.addEventListener("click", hidePopup);
-        dom.popupClose.addEventListener("click", hidePopup);
+        dom.popupIcon.addEventListener("click", hidePopup);
         dom.popupBox.addEventListener("click", (event) => {
           event.stopPropagation();
         });

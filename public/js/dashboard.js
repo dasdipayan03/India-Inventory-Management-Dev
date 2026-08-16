@@ -862,7 +862,6 @@ function cacheElements() {
     popupIcon: document.getElementById("popupIcon"),
     popupTitle: document.getElementById("popupTitle"),
     popupMessage: document.getElementById("popupMessage"),
-    popupClose: document.getElementById("popupClose"),
     popupActions: document.getElementById("popupActions"),
     popupCancel: document.getElementById("popupCancel"),
     popupConfirm: document.getElementById("popupConfirm"),
@@ -1209,6 +1208,7 @@ function setPopupConfirmMode(enabled, options = {}) {
 
   dom.popupActions.hidden = !enabled;
   dom.popupBox?.classList.toggle("has-actions", enabled);
+  dom.popupIcon?.toggleAttribute("disabled", enabled);
 
   if (!enabled) {
     return;
@@ -8087,7 +8087,11 @@ function setDefaultSalesDates() {
 
 function bindPopupEvents() {
   dom.popupOverlay.addEventListener("click", hidePopup);
-  dom.popupClose.addEventListener("click", hidePopup);
+  dom.popupIcon?.addEventListener("click", () => {
+    if (!dom.popupBox?.classList.contains("has-actions")) {
+      hidePopup();
+    }
+  });
   dom.popupCancel?.addEventListener("click", hidePopup);
   dom.popupConfirm?.addEventListener("click", () => {
     resolvePopupConfirm(true);
