@@ -1555,7 +1555,6 @@
         box-shadow: 0 14px 28px rgba(153, 27, 27, 0.12);
       }
 
-      #searchDownloadBtn,
       #modalYes,
       .detail-download,
       .invoice-download {
@@ -1565,14 +1564,12 @@
         box-shadow: 0 12px 24px rgba(14, 165, 233, 0.22);
       }
 
-      #searchDownloadBtn i,
       #modalYes i,
       .detail-download i,
       .invoice-download i {
         color: currentColor;
       }
 
-      #searchDownloadBtn:hover,
       #modalYes:hover,
       .detail-download:hover,
       .invoice-download:hover {
@@ -2629,10 +2626,6 @@
             <i class="fa-solid fa-search"></i>
             Search / View All
           </button>
-          <button id="searchDownloadBtn" class="btn ghost" type="button">
-            <i class="fa-solid fa-download"></i>
-            Download PDF
-          </button>
         </div>
 
         <div id="searchResult" class="search-result"></div>
@@ -3088,7 +3081,6 @@
           clearBtn: $("clearBtn"),
           searchInvoiceInput: $("searchInvoiceInput"),
           searchInvoiceBtn: $("searchInvoiceBtn"),
-          searchDownloadBtn: $("searchDownloadBtn"),
           searchResult: $("searchResult"),
           downloadModal: $("downloadModal"),
           modalYes: $("modalYes"),
@@ -6177,20 +6169,6 @@
         });
 
         dom.searchInvoiceBtn.addEventListener("click", () => performSearch());
-        dom.searchDownloadBtn.addEventListener("click", () => {
-          const exact = resolveExactInvoiceNo(
-            dom.searchInvoiceInput.value.trim(),
-          );
-          if (!exact) {
-            showPopup(
-              "error",
-              "Missing invoice",
-              "Please enter an exact invoice number to download the PDF.",
-            );
-            return;
-          }
-          downloadInvoice(exact, dom.searchDownloadBtn);
-        });
 
         document.addEventListener("click", (event) => {
           if (!event.target.closest(".dropdown-wrap")) hideDropdowns();
