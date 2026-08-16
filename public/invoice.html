@@ -2624,7 +2624,7 @@
           </div>
           <button id="searchInvoiceBtn" class="btn soft" type="button">
             <i class="fa-solid fa-search"></i>
-            Search / View All
+            View All Invoices
           </button>
         </div>
 
@@ -6168,7 +6168,7 @@
           }
         });
 
-        dom.searchInvoiceBtn.addEventListener("click", () => performSearch());
+        dom.searchInvoiceBtn.addEventListener("click", () => performSearch(""));
 
         document.addEventListener("click", (event) => {
           if (!event.target.closest(".dropdown-wrap")) hideDropdowns();
