@@ -1782,7 +1782,7 @@ router.get(
 
       const doc = new PDFDocument({
         size: "A4",
-        margin: 40,
+        margin: 28,
         bufferPages: true,
       });
 
@@ -1803,8 +1803,8 @@ router.get(
 
       /* ================= PAGE HELPERS ================= */
       const pageHeight = doc.page.height;
-      const leftX = 40;
-      const contentWidth = 515;
+      const leftX = 28;
+      const contentWidth = 539;
       const colors = {
         ink: "#111111",
         muted: "#475569",
@@ -1891,11 +1891,11 @@ router.get(
 
         const panelX = leftX;
         const panelWidth = contentWidth;
-        const panelHeight = 112;
-        const textX = panelX + 16;
-        const labelWidth = 86;
+        const panelHeight = 96;
+        const textX = panelX + 12;
+        const labelWidth = 76;
         const valueX = textX + labelWidth + 8;
-        const valueWidth = upiQrMatrix ? 275 : 382;
+        const valueWidth = upiQrMatrix ? 304 : 420;
 
         doc.save();
         doc
@@ -1905,46 +1905,46 @@ router.get(
 
         doc
           .font("Helvetica-Bold")
-          .fontSize(10.5)
+          .fontSize(9.5)
           .fillColor(colors.ink)
-          .text("Payment Account Details", textX, startY + 12, {
+          .text("Payment Account Details", textX, startY + 10, {
             width: 250,
           });
 
-        let rowY = startY + 31;
+        let rowY = startY + 27;
         accountRows.forEach(([label, value]) => {
           doc
             .font("Helvetica")
-            .fontSize(8.7)
+            .fontSize(8)
             .fillColor(colors.muted)
             .text(`${label}:`, textX, rowY, { width: labelWidth });
           doc
             .font("Helvetica-Bold")
-            .fontSize(8.8)
+            .fontSize(8.1)
             .fillColor(colors.ink)
-            .text(shortenPdfText(value, upiQrMatrix ? 38 : 56), valueX, rowY, {
+            .text(shortenPdfText(value, upiQrMatrix ? 42 : 62), valueX, rowY, {
               width: valueWidth,
             });
-          rowY += 13.2;
+          rowY += 11.5;
         });
 
         if (!upiQrMatrix) {
           return;
         }
 
-        const qrSize = 78;
-        const qrX = panelX + panelWidth - qrSize - 18;
-        const qrY = startY + 19;
+        const qrSize = 64;
+        const qrX = panelX + panelWidth - qrSize - 14;
+        const qrY = startY + 14;
 
         doc.save();
         doc
-          .roundedRect(qrX - 5, qrY - 5, qrSize + 10, qrSize + 20, 8)
+          .roundedRect(qrX - 4, qrY - 4, qrSize + 8, qrSize + 17, 7)
           .fillAndStroke("#ffffff", "#e2e8f0");
         doc.restore();
         drawQrCode(upiQrMatrix, qrX, qrY, qrSize);
         doc
           .font("Helvetica-Bold")
-          .fontSize(7.4)
+          .fontSize(6.8)
           .fillColor(colors.muted)
           .text("Scan UPI", qrX, qrY + qrSize + 5, {
             width: qrSize,
@@ -1954,36 +1954,36 @@ router.get(
 
       function drawHeader() {
         doc.save();
-        doc.rect(40, 30, 520, 70).fill("#eef2f6");
+        doc.rect(leftX, 24, contentWidth, 58).fill("#eef2f6");
         doc.restore();
 
         doc.fillColor(colors.ink);
         doc
           .font("Helvetica-Bold")
-          .fontSize(18)
-          .text(shop.shop_name || "Shop Inventory Management", 50, 45, {
-            width: 320,
+          .fontSize(15.5)
+          .text(shop.shop_name || "Shop Inventory Management", leftX + 12, 37, {
+            width: 330,
           });
         doc
           .font("Helvetica")
-          .fontSize(9)
-          .text(shop.shop_address || "", 50, 68, { width: 320 })
-          .text(`GSTIN: ${shop.gst_no || inv.gst_no || "N/A"}`, 50, 82, {
-            width: 240,
+          .fontSize(7.8)
+          .text(shop.shop_address || "", leftX + 12, 57, { width: 330 })
+          .text(`GSTIN: ${shop.gst_no || inv.gst_no || "N/A"}`, leftX + 12, 69, {
+            width: 270,
           });
 
-        doc.font("Helvetica-Bold").fontSize(16).text("INVOICE", 420, 56, {
-          width: 110,
+        doc.font("Helvetica-Bold").fontSize(13).text("TAX INVOICE", 425, 45, {
+          width: 128,
           align: "center",
         });
       }
 
       function drawInvoiceInfo(startY) {
-        const leftWidth = 236;
-        const rightX = 300;
-        const rightWidth = 240;
-        const labelWidth = 56;
-        const rowGap = 5;
+        const leftWidth = 250;
+        const rightX = 307;
+        const rightWidth = 260;
+        const labelWidth = 53;
+        const rowGap = 2;
 
         const drawInfoRows = (rows, x, y, totalWidth) => {
           let cursorY = y;
@@ -1994,18 +1994,18 @@ router.get(
               width: valueWidth,
               align: "left",
             });
-            const rowHeight = Math.max(12, valueHeight) + 2;
+            const rowHeight = Math.max(10, valueHeight) + 1;
 
             doc
               .font("Helvetica-Bold")
-              .fontSize(8.8)
+              .fontSize(8)
               .fillColor(colors.ink)
               .text(`${label}:`, x, cursorY, {
                 width: labelWidth,
               });
             doc
               .font("Helvetica")
-              .fontSize(9.4)
+              .fontSize(8.4)
               .fillColor(colors.ink)
               .text(safeValue, x + labelWidth + 8, cursorY, {
                 width: valueWidth,
@@ -2018,7 +2018,7 @@ router.get(
                 .moveTo(x, cursorY - 2)
                 .lineTo(x + totalWidth, cursorY - 2)
                 .strokeColor("#d7dee8")
-                .lineWidth(0.6)
+                .lineWidth(0.45)
                 .stroke();
             }
           });
@@ -2036,9 +2036,9 @@ router.get(
         const leftRows = [
           ["Invoice No", inv.invoice_no || "-"],
           ["Date", formatPdfDateTime(inv.date)],
+          ["Customer", inv.customer_name || "-"],
         ];
         const rightRows = [
-          ["Customer", inv.customer_name || "-"],
           ["Contact", inv.contact || "-"],
           ["Address", inv.address || "-"],
           ["Payment", `${invoiceStatusText} via ${invoiceModeText}`],
@@ -2055,7 +2055,7 @@ router.get(
           .lineWidth(0.8)
           .stroke();
 
-        return blockBottom + 10;
+        return blockBottom + 7;
       }
 
       function drawTableHeader(startY) {
@@ -2064,36 +2064,37 @@ router.get(
           .lineTo(leftX + contentWidth, startY)
           .strokeColor(colors.line)
           .stroke();
-        const labelY = startY + 8;
-        doc.font("Helvetica-Bold").fontSize(9).fillColor(colors.ink);
-        doc.text("Item", leftX, labelY, { width: 250 });
-        doc.text("Qty", 290, labelY, { width: 40, align: "right" });
-        doc.text("Rate", 372, labelY, { width: 60, align: "right" });
-        doc.text("Amount", 462, labelY, { width: 78, align: "right" });
+        const labelY = startY + 6;
+        doc.font("Helvetica-Bold").fontSize(8).fillColor(colors.ink);
+        doc.text("#", leftX, labelY, { width: 18 });
+        doc.text("Product / Serial No.", leftX + 24, labelY, { width: 270 });
+        doc.text("Qty", 326, labelY, { width: 42, align: "right" });
+        doc.text("Rate", 382, labelY, { width: 70, align: "right" });
+        doc.text("Amount", 462, labelY, { width: 105, align: "right" });
         doc
-          .moveTo(leftX, startY + 24)
-          .lineTo(leftX + contentWidth, startY + 24)
+          .moveTo(leftX, startY + 19)
+          .lineTo(leftX + contentWidth, startY + 19)
           .strokeColor(colors.line)
           .stroke();
 
-        return startY + 30;
+        return startY + 24;
       }
 
       function ensureTableSpace(currentY, neededHeight) {
-        if (currentY + neededHeight <= pageHeight - 120) {
+        if (currentY + neededHeight <= pageHeight - 88) {
           return currentY;
         }
 
         doc.addPage();
         drawHeader();
-        return drawTableHeader(drawInvoiceInfo(130));
+        return drawTableHeader(drawInvoiceInfo(96));
       }
 
       drawHeader();
-      let y = drawTableHeader(drawInvoiceInfo(130));
+      let y = drawTableHeader(drawInvoiceInfo(96));
 
       /* ================= TABLE ROWS ================= */
-      (Array.isArray(inv.items) ? inv.items : []).forEach((item) => {
+      (Array.isArray(inv.items) ? inv.items : []).forEach((item, index) => {
         const itemName = String(item.description || "-");
         const serialText = (Array.isArray(item.serial_numbers)
           ? item.serial_numbers
@@ -2102,50 +2103,49 @@ router.get(
           .map((serial) => normalizeSerialNumber(serial.serial_no))
           .filter(Boolean)
           .join(", ");
-        const rowHeight =
-          Math.max(
-            16,
-            doc.heightOfString(
-              serialText ? `${itemName}\nSN: ${serialText}` : itemName,
-              {
-                width: 240,
-              },
-            ),
-          ) + 2;
+        doc.font("Helvetica-Bold").fontSize(8.7);
+        const itemHeight = doc.heightOfString(itemName, { width: 270 });
+        doc.font("Helvetica").fontSize(7.1);
+        const serialHeight = serialText
+          ? doc.heightOfString(`SN: ${serialText}`, { width: 270 })
+          : 0;
+        const rowHeight = Math.max(13, itemHeight + serialHeight + (serialText ? 2 : 0));
 
-        y = ensureTableSpace(y, rowHeight + 10);
+        y = ensureTableSpace(y, rowHeight + 5);
 
-        doc.font("Helvetica").fontSize(9.8).fillColor(colors.ink);
-        doc.text(itemName, leftX, y, { width: 240 });
+        doc.font("Helvetica").fontSize(8).fillColor(colors.muted);
+        doc.text(String(index + 1), leftX, y, { width: 18 });
+        doc.font("Helvetica-Bold").fontSize(8.7).fillColor(colors.ink);
+        doc.text(itemName, leftX + 24, y, { width: 270 });
         if (serialText) {
           doc
             .font("Helvetica")
-            .fontSize(8)
+            .fontSize(7.1)
             .fillColor(colors.muted)
-            .text(`SN: ${serialText}`, leftX, y + 13, { width: 240 });
+            .text(`SN: ${serialText}`, leftX + 24, y + itemHeight + 1, { width: 270 });
         }
-        doc.font("Helvetica").fontSize(9.8).fillColor(colors.ink);
-        doc.text(String(item.quantity ?? "-"), 290, y, {
-          width: 40,
+        doc.font("Helvetica").fontSize(8.4).fillColor(colors.ink);
+        doc.text(String(item.quantity ?? "-"), 326, y, {
+          width: 42,
           align: "right",
         });
-        doc.text(formatPdfMoney(item.rate), 372, y, {
-          width: 60,
+        doc.text(formatPdfMoney(item.rate), 382, y, {
+          width: 70,
           align: "right",
         });
         doc.text(formatPdfMoney(item.amount), 462, y, {
-          width: 78,
+          width: 105,
           align: "right",
         });
 
-        y += rowHeight + 8;
+        y += rowHeight + 4;
       });
 
       /* ================= TOTALS / PAYMENT DETAILS ================= */
-      const summaryHeight = 112;
-      const accountPanelHeight = hasAccountDetails ? 112 : 0;
+      const summaryHeight = 90;
+      const accountPanelHeight = hasAccountDetails ? 96 : 0;
       const accountFooterReserve = hasAccountDetails
-        ? accountPanelHeight + 24
+        ? accountPanelHeight + 14
         : 0;
       y = ensureTableSpace(y + 10, summaryHeight + 12 + accountFooterReserve);
 
@@ -2172,7 +2172,7 @@ router.get(
         .lineWidth(0.7)
         .stroke();
 
-      doc.font("Helvetica-Bold").fontSize(9.5).fillColor(colors.ink);
+      doc.font("Helvetica-Bold").fontSize(8.7).fillColor(colors.ink);
       doc.text("Payment Details", paymentBlockX, blockTitleY, { width: 118 });
       doc.text("Amount Summary", amountBlockX, blockTitleY, {
         width: 134,
@@ -2180,14 +2180,14 @@ router.get(
       });
 
       doc
-        .moveTo(paymentBlockX, blockTitleY + 13)
-        .lineTo(paymentBlockX + 118, blockTitleY + 13)
+        .moveTo(paymentBlockX, blockTitleY + 12)
+        .lineTo(paymentBlockX + 118, blockTitleY + 12)
         .strokeColor("#c7d2e1")
         .lineWidth(0.7)
         .stroke();
       doc
-        .moveTo(amountBlockX, blockTitleY + 13)
-        .lineTo(amountBlockX + 134, blockTitleY + 13)
+        .moveTo(amountBlockX, blockTitleY + 12)
+        .lineTo(amountBlockX + 134, blockTitleY + 12)
         .strokeColor("#c7d2e1")
         .lineWidth(0.7)
         .stroke();
@@ -2207,16 +2207,16 @@ router.get(
         ["Due", formatPdfMoney(inv.amount_due || 0)],
       ];
 
-      let paymentY = y + 22;
+      let paymentY = y + 19;
       paymentSummaryRows.forEach(([label, value]) => {
-        doc.font("Helvetica").fontSize(9.5).fillColor(colors.muted);
+        doc.font("Helvetica").fontSize(8.3).fillColor(colors.muted);
         doc.text(label, paymentBlockX, paymentY, { width: paymentLabelWidth });
-        doc.font("Helvetica-Bold").fontSize(9.6).fillColor(colors.ink);
+        doc.font("Helvetica-Bold").fontSize(8.4).fillColor(colors.ink);
         doc.text(value, paymentBlockX + paymentLabelWidth + 4, paymentY, {
           width: paymentValueWidth,
           align: "right",
         });
-        paymentY += 15.5;
+        paymentY += 12.5;
       });
 
       if (lastPayment) {
@@ -2225,41 +2225,41 @@ router.get(
         ).toLocaleDateString("en-IN", {
           timeZone: "Asia/Kolkata",
         })}`;
-        doc.font("Helvetica").fontSize(8.3).fillColor(colors.muted);
-        doc.text(lastTxnText, paymentBlockX, y + 95, { width: 126 });
+        doc.font("Helvetica").fontSize(7.5).fillColor(colors.muted);
+        doc.text(lastTxnText, paymentBlockX, y + 81, { width: 126 });
       }
 
-      let amountY = y + 22;
+      let amountY = y + 19;
       amountSummaryRows.forEach(([label, value]) => {
-        doc.font("Helvetica").fontSize(9.5).fillColor(colors.muted);
+        doc.font("Helvetica").fontSize(8.3).fillColor(colors.muted);
         doc.text(label, amountBlockX, amountY, { width: amountLabelWidth });
-        doc.font("Helvetica-Bold").fontSize(9.6).fillColor(colors.ink);
+        doc.font("Helvetica-Bold").fontSize(8.4).fillColor(colors.ink);
         doc.text(value, amountBlockX + amountLabelWidth + 6, amountY, {
           width: amountValueWidth,
           align: "right",
         });
-        amountY += 15.5;
+        amountY += 12.5;
       });
 
       doc
-        .moveTo(amountBlockX, y + 83)
-        .lineTo(amountBlockX + 140, y + 83)
+        .moveTo(amountBlockX, y + 68)
+        .lineTo(amountBlockX + 140, y + 68)
         .strokeColor(colors.line)
         .lineWidth(0.8)
         .stroke();
 
-      doc.font("Helvetica-Bold").fontSize(12.5).fillColor(colors.ink);
-      doc.text("Total:", amountBlockX, y + 89, {
+      doc.font("Helvetica-Bold").fontSize(11).fillColor(colors.ink);
+      doc.text("Total:", amountBlockX, y + 74, {
         width: amountLabelWidth + 10,
       });
-      doc.text(formatPdfMoney(inv.total_amount), amountBlockX + 56, y + 89, {
+      doc.text(formatPdfMoney(inv.total_amount), amountBlockX + 56, y + 74, {
         width: 90,
         align: "right",
       });
 
       /* ================= FOOTER AND PAGE NUMBER ================= */
       const accountPanelY = hasAccountDetails
-        ? Math.max(y + summaryHeight + 16, pageHeight - 210)
+        ? Math.max(y + summaryHeight + 12, pageHeight - 160)
         : null;
       const range = doc.bufferedPageRange();
       const totalPages = range.count;
@@ -2277,13 +2277,13 @@ router.get(
 
         doc.text(
           "This is a system generated invoice. No signature required.",
-          40,
-          pageHeight - 80,
-          { width: 520, align: "center" },
+          leftX,
+          pageHeight - 54,
+          { width: contentWidth, align: "center" },
         );
 
-        doc.text(`Page- ${i + 1} / ${totalPages}`, 40, pageHeight - 60, {
-          width: 520,
+        doc.text(`Page ${i + 1} of ${totalPages}`, leftX, pageHeight - 38, {
+          width: contentWidth,
           align: "right",
         });
       }
