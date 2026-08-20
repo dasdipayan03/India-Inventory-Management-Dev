@@ -44,13 +44,23 @@ router.get("/ops/metrics", async (req, res) => {
 router.get("/ops/health-report", async (req, res) => {
   try {
     const monitoring = buildMonitoringSnapshot(pool);
+    const [database, backgroundJobs] = await Promise.all([
+      loadDatabaseOverview(pool).catch((error) => ({
+        error: error.message || "Database overview unavailable",
+      })),
+      Promise.resolve(getBackgroundJobStatus(pool)),
+    ]);
     const health = await buildFullHealthReport({
       pool,
       monitoring,
-      backgroundJobs: getBackgroundJobStatus(pool),
+      backgroundJobs,
     });
     res.set("Cache-Control", "no-store");
-    res.json({ success: true, health, metrics: monitoring });
+    res.json({
+      success: true,
+      health,
+      metrics: { ...monitoring, database, background_jobs: backgroundJobs },
+    });
   } catch (error) {
     console.error("Full health report error:", error);
     res.status(500).json({ success: false, error: "Could not build health report." });
