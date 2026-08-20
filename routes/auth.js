@@ -19,7 +19,7 @@ const {
 
 const router = express.Router();
 
-const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const SESSION_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const RESET_TOKEN_BYTES = 32;
 const GOOGLE_OAUTH_STATE_COOKIE = "google_oauth_state";
 const GOOGLE_ONBOARDING_COOKIE = "google_onboarding";
@@ -163,7 +163,7 @@ function normalizeUsername(value) {
 }
 
 function signSession(payload) {
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "3d" });
 }
 
 function normalizeGoogleOAuthClient(value) {

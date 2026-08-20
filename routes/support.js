@@ -15,7 +15,7 @@ const {
 
 const router = express.Router();
 
-const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const SESSION_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const MESSAGE_MAX_LENGTH = 2000;
 const DEVELOPER_MIN_PASSWORD_LENGTH = 6;
 const DEVELOPER_REGISTRATION_KEY = String(
@@ -117,7 +117,7 @@ function normalizeConversationStatus(value) {
 }
 
 function signDeveloperSession(payload) {
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1d" });
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "3d" });
 }
 
 function setDeveloperSessionCookie(res, token) {
