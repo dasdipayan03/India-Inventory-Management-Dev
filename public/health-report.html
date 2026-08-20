@@ -30,6 +30,7 @@
       <header class="top"><div><h1>System Health Report</h1><p id="updated">Loading live system data…</p></div><div class="actions"><a class="btn" href="/index.html">Dashboard</a><button id="refresh" class="primary">Refresh report</button></div></header>
       <div id="report" hidden>
         <div class="card"><span id="overall" class="status"><i class="dot"></i> System healthy</span><p id="headline" class="note"></p></div>
+        <section class="card" style="margin-top:14px"><h2>Alerts, warnings & security risks</h2><div id="alerts"></div><p id="noAlerts" class="note" hidden>No active critical alerts or warnings.</p></section>
         <section class="summary">
           <div class="card"><div class="label">App uptime</div><div class="value" id="uptime">—</div><p class="note">Continuous running time</p></div>
           <div class="card"><div class="label">Database</div><div class="value" id="database">—</div><p class="note" id="dbNote">PostgreSQL connection</p></div>
@@ -41,6 +42,7 @@
           <div class="card"><h2>Background services</h2><div class="details" id="services"></div></div>
         </section>
         <section class="card" style="margin-top:14px"><h2>Most used API routes</h2><div style="overflow:auto"><table><thead><tr><th>Route</th><th class="right">Requests</th><th class="right">Average</th><th class="right">Errors</th></tr></thead><tbody id="routes"></tbody></table></div></section>
+        <section class="card" style="margin-top:14px"><h2>Recent application events</h2><div id="events" class="details"></div></section>
         <p class="foot">This page is visible only to the signed-in Owner. It refreshes data from the protected live monitoring service.</p>
       </div>
       <div id="problem" hidden></div>

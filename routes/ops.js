@@ -7,6 +7,7 @@ const {
   getBackgroundJobStatus,
 } = require("../utils/background-jobs");
 const { buildMonitoringSnapshot } = require("../utils/monitoring");
+const { buildFullHealthReport } = require("../utils/health-report");
 const { loadDatabaseOverview } = require("../repositories/ops-repository");
 
 const router = express.Router();
@@ -37,6 +38,22 @@ router.get("/ops/metrics", async (req, res) => {
       success: false,
       error: "Could not load monitoring metrics.",
     });
+  }
+});
+
+router.get("/ops/health-report", async (req, res) => {
+  try {
+    const monitoring = buildMonitoringSnapshot(pool);
+    const health = await buildFullHealthReport({
+      pool,
+      monitoring,
+      backgroundJobs: getBackgroundJobStatus(pool),
+    });
+    res.set("Cache-Control", "no-store");
+    res.json({ success: true, health, metrics: monitoring });
+  } catch (error) {
+    console.error("Full health report error:", error);
+    res.status(500).json({ success: false, error: "Could not build health report." });
   }
 });
 

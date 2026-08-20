@@ -1,4 +1,6 @@
 const REDACTED_VALUE = "[REDACTED]";
+const MAX_RECENT_EVENTS = 80;
+const recentEvents = [];
 const sensitiveKeyFragments = [
   "password",
   "token",
@@ -115,6 +117,13 @@ function logEvent(level, event, meta = {}) {
 
   const serialized = JSON.stringify(entry);
 
+  // Keep a small, non-sensitive diagnostic trail for the owner-only health
+  // report. Metadata is deliberately not retained in memory or exposed.
+  recentEvents.push({ ts: entry.ts, level: entry.level, event: entry.event });
+  if (recentEvents.length > MAX_RECENT_EVENTS) {
+    recentEvents.splice(0, recentEvents.length - MAX_RECENT_EVENTS);
+  }
+
   if (level === "error") {
     console.error(serialized);
     return;
@@ -128,7 +137,16 @@ function logEvent(level, event, meta = {}) {
   console.log(serialized);
 }
 
+function getRecentRuntimeEvents(levels = ["error", "warn"], limit = 20) {
+  const accepted = new Set(levels);
+  return recentEvents
+    .filter((entry) => accepted.has(entry.level))
+    .slice(-Math.max(1, Math.min(Number(limit) || 20, MAX_RECENT_EVENTS)))
+    .reverse();
+}
+
 module.exports = {
+  getRecentRuntimeEvents,
   logEvent,
   normalizeError,
 };
