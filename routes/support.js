@@ -99,7 +99,7 @@ function normalizeDeveloperAccessKey(value) {
       ? rawValue.normalize("NFKC")
       : rawValue;
 
-  // Mobile copy/paste can introduce invisible characters or full-width forms.
+  // Mobile copy/paste can introduce invisible characters or full-width forms...
   return normalizedValue.replace(/[\s\u200B-\u200D\u2060\uFEFF]+/g, "");
 }
 
