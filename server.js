@@ -1087,6 +1087,10 @@ app.get("/developer-support.html", (req, res) => {
   sendHtmlTemplate(res, "developer-support.html");
 });
 
+app.get(["/health-report", "/health-report.html"], (req, res) => {
+  sendHtmlTemplate(res, "health-report.html");
+});
+
 app.use(
   express.static(publicDir, {
     etag: true,

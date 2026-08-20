@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en" data-csp-nonce="__CSP_NONCE__">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>System Health Report | Shop Inventory</title>
+    <link rel="icon" type="image/png" href="/images/app_logo.png" />
+    <style nonce="__CSP_NONCE__">
+      :root { --ink:#183153; --muted:#64748b; --line:#dbe5f0; --surface:#fff; --page:#f3f7fc; --good:#15803d; --warn:#b45309; --bad:#b91c1c; --blue:#2563eb; }
+      * { box-sizing:border-box; }
+      body { margin:0; font:15px/1.5 "Segoe UI",sans-serif; color:var(--ink); background:var(--page); }
+      .wrap { width:min(1120px,calc(100% - 28px)); margin:30px auto 48px; }
+      .top { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:20px; }
+      h1 { font-size:clamp(24px,4vw,34px); margin:0 0 4px; } h2 { font-size:18px; margin:0 0 14px; }
+      p { margin:0; color:var(--muted); } .actions { display:flex; gap:8px; flex-wrap:wrap; }
+      button,a.btn { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:9px; padding:9px 13px; font:inherit; text-decoration:none; cursor:pointer; }
+      button.primary { color:#fff; border-color:var(--blue); background:var(--blue); }
+      .summary,.grid { display:grid; gap:14px; } .summary { grid-template-columns:repeat(4,1fr); margin:18px 0; } .grid { grid-template-columns:repeat(2,1fr); }
+      .card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:18px; box-shadow:0 3px 12px #163c6610; }
+      .label { font-size:12px; font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; } .value { margin-top:5px; font-size:25px; font-weight:750; } .note { margin-top:4px; font-size:13px; }
+      .status { display:inline-flex; align-items:center; gap:7px; border-radius:999px; padding:6px 11px; background:#dcfce7; color:var(--good); font-weight:700; } .dot { width:8px;height:8px;border-radius:50%;background:currentColor; }
+      .details { display:grid; grid-template-columns:1fr 1fr; gap:10px 22px; } .detail { border-bottom:1px solid #eef2f7; padding:7px 0; display:flex; justify-content:space-between; gap:12px; } .detail span:last-child { font-weight:650; text-align:right; }
+      table { width:100%; border-collapse:collapse; font-size:14px; } th,td { padding:10px 8px; text-align:left; border-bottom:1px solid #eef2f7; } th { color:var(--muted); font-size:12px; text-transform:uppercase; } .right{text-align:right}.error{color:var(--bad)} .foot { font-size:12px;margin-top:16px; }
+      #problem { margin-top:18px; padding:14px; border-radius:10px; color:var(--bad); background:#fef2f2; border:1px solid #fecaca; }
+      @media(max-width:720px){.top{display:block}.actions{margin-top:14px}.summary,.grid,.details{grid-template-columns:1fr 1fr}.card{padding:14px}} @media(max-width:460px){.summary,.grid,.details{grid-template-columns:1fr}.value{font-size:22px}}
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <header class="top"><div><h1>System Health Report</h1><p id="updated">Loading live system data…</p></div><div class="actions"><a class="btn" href="/index.html">Dashboard</a><button id="refresh" class="primary">Refresh report</button></div></header>
+      <div id="report" hidden>
+        <div class="card"><span id="overall" class="status"><i class="dot"></i> System healthy</span><p id="headline" class="note"></p></div>
+        <section class="summary">
+          <div class="card"><div class="label">App uptime</div><div class="value" id="uptime">—</div><p class="note">Continuous running time</p></div>
+          <div class="card"><div class="label">Database</div><div class="value" id="database">—</div><p class="note" id="dbNote">PostgreSQL connection</p></div>
+          <div class="card"><div class="label">Average API response</div><div class="value" id="response">—</div><p class="note" id="slow">Slow requests: —</p></div>
+          <div class="card"><div class="label">Memory used</div><div class="value" id="memory">—</div><p class="note" id="memoryNote">Server process memory</p></div>
+        </section>
+        <section class="grid">
+          <div class="card"><h2>Traffic & errors</h2><div class="details" id="traffic"></div></div>
+          <div class="card"><h2>Background services</h2><div class="details" id="services"></div></div>
+        </section>
+        <section class="card" style="margin-top:14px"><h2>Most used API routes</h2><div style="overflow:auto"><table><thead><tr><th>Route</th><th class="right">Requests</th><th class="right">Average</th><th class="right">Errors</th></tr></thead><tbody id="routes"></tbody></table></div></section>
+        <p class="foot">This page is visible only to the signed-in Owner. It refreshes data from the protected live monitoring service.</p>
+      </div>
+      <div id="problem" hidden></div>
+    </main>
+    <script src="/js/health-report.js"></script>
+  </body>
+</html>
