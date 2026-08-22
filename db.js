@@ -164,6 +164,23 @@ async function ensureSchemaCompatibility() {
   `);
 
   await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS password_set BOOLEAN NOT NULL DEFAULT TRUE
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS password_set_at TIMESTAMPTZ
+  `);
+
+  await pool.query(`
+    UPDATE users
+    SET password_set = FALSE
+    WHERE google_sub IS NOT NULL
+      AND password_set_at IS NULL
+  `);
+
+  await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub_unique
       ON users (google_sub)
       WHERE google_sub IS NOT NULL AND google_sub <> ''

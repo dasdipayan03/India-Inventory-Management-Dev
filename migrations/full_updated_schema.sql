@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(100) UNIQUE NOT NULL,
   mobile_number VARCHAR(10) CHECK (mobile_number ~ '^[0-9]{10}$'),
   password_hash VARCHAR(255) NOT NULL,
+  password_set BOOLEAN NOT NULL DEFAULT TRUE,
+  password_set_at TIMESTAMPTZ,
   is_verified BOOLEAN DEFAULT FALSE,
   google_sub VARCHAR(255),
   google_email_verified BOOLEAN NOT NULL DEFAULT FALSE,

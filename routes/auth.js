@@ -688,6 +688,7 @@ async function linkGoogleProfileToOwner(user, profile) {
             ELSE google_picture_url
           END,
           is_verified = TRUE,
+          password_set_at = COALESCE(password_set_at, NOW()),
           updated_at = NOW()
       WHERE id = $1
       RETURNING id, name, email, mobile_number, password_hash, google_sub
@@ -715,12 +716,13 @@ async function createOwnerFromGoogleProfile(profile, shopName, mobileNumber) {
           email,
           mobile_number,
           password_hash,
+          password_set,
           is_verified,
           google_sub,
           google_email_verified,
           google_picture_url
         )
-        VALUES ($1, $2, $3, $4, TRUE, $5, TRUE, NULLIF($6, ''))
+        VALUES ($1, $2, $3, $4, FALSE, TRUE, $5, TRUE, NULLIF($6, ''))
         RETURNING id, name, email, mobile_number, password_hash, google_sub
       `,
       [
@@ -1338,6 +1340,77 @@ router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
   }
 });
 
+router.post(
+  "/account/password-setup",
+  authMiddleware,
+  requireOwner,
+  passwordResetLimiter,
+  async (req, res) => {
+    try {
+      markSensitiveResponse(res);
+      const result = await pool.query(
+        `
+          SELECT email, password_set
+          FROM users
+          WHERE id = $1
+          LIMIT 1
+        `,
+        [getUserId(req)],
+      );
+
+      const account = result.rows[0];
+      if (!account) {
+        return res.status(404).json({ error: "Account not found" });
+      }
+
+      if (account.password_set) {
+        return res.status(400).json({ error: "A password is already set" });
+      }
+
+      const resetToken = crypto.randomBytes(RESET_TOKEN_BYTES).toString("hex");
+      const resetTokenHash = hashResetToken(resetToken);
+      const expires = new Date(Date.now() + 1000 * 60 * 15);
+      await pool.query(
+        "UPDATE users SET reset_token=$1, reset_token_expires=$2 WHERE id=$3",
+        [resetTokenHash, expires, getUserId(req)],
+      );
+
+      const resetLink = `${resolvePublicBaseUrl(req)}/reset.html#token=${encodeURIComponent(resetToken)}&email=${encodeURIComponent(account.email)}`;
+      if (process.env.MAIL_RELAY_URL && process.env.MAIL_RELAY_KEY) {
+        const relayResponse = await fetch(process.env.MAIL_RELAY_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            key: process.env.MAIL_RELAY_KEY,
+            to: account.email,
+            subject: "Set your account password",
+            html: `<p>Set a password to protect changes to your account.</p><p><a href="${resetLink}">Set Password</a></p><p>Valid for 15 minutes.</p>`,
+          }),
+        });
+
+        if (!relayResponse.ok) {
+          console.error("Password setup relay failed:", relayResponse.status);
+          return res.status(502).json({
+            error: "Could not send the password setup email. Please try again.",
+          });
+        }
+      } else {
+        console.error("Mail relay configuration missing for password setup");
+        return res.status(503).json({
+          error: "Password setup email is not configured. Contact support.",
+        });
+      }
+
+      return res.json({
+        message: "A password setup link has been sent to your registered email.",
+      });
+    } catch (error) {
+      console.error("Account password setup error:", error.message);
+      return res.status(500).json({ error: "Could not start password setup" });
+    }
+  },
+);
+
 router.post("/reset-password", passwordResetLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
@@ -1378,7 +1451,7 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
     await pool.query(
       `
         UPDATE users
-        SET password_hash=$1, reset_token=NULL, reset_token_expires=NULL
+      SET password_hash=$1, password_set=TRUE, password_set_at=NOW(), reset_token=NULL, reset_token_expires=NULL
         WHERE id=$2
       `,
       [password_hash, user.id],
@@ -1634,6 +1707,7 @@ router.get("/account", authMiddleware, async (req, res) => {
           u.name,
           u.email,
           u.mobile_number,
+          u.password_set,
           COALESCE(settings.shop_name, '') AS shop_name
         FROM users u
         LEFT JOIN settings ON settings.user_id = u.id
@@ -1651,6 +1725,7 @@ router.get("/account", authMiddleware, async (req, res) => {
     return res.json({
       role: "owner",
       can_edit: true,
+      requires_password_setup: !account.password_set,
       owner: {
         name: account.name,
         email: account.email,
@@ -1710,6 +1785,7 @@ router.patch("/account", authMiddleware, requireOwner, async (req, res) => {
           u.email,
           u.mobile_number,
           u.password_hash,
+          u.password_set,
           COALESCE(settings.shop_name, '') AS shop_name
         FROM users u
         LEFT JOIN settings ON settings.user_id = u.id
@@ -1734,6 +1810,14 @@ router.patch("/account", authMiddleware, requireOwner, async (req, res) => {
     if (!hasChanges) {
       await client.query("COMMIT");
       return res.json({ message: "No account changes to save" });
+    }
+
+    if (!currentAccount.password_set) {
+      await client.query("ROLLBACK");
+      return res.status(428).json({
+        error: "Set a password from your registered email before saving account changes.",
+        requires_password_setup: true,
+      });
     }
 
     if (!currentPassword) {

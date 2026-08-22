@@ -47,6 +47,7 @@ const state = {
   popupTimer: null,
   popupConfirmResolve: null,
   popupPasswordResolve: null,
+  accountRequiresPasswordSetup: false,
   profitSaveRequestId: 0,
   profitSaveTimer: null,
   lastSavedProfitPercent: null,
@@ -8771,6 +8772,7 @@ async function loadAccountDetails(options = {}) {
   try {
     const data = await fetchJSON("/auth/account");
     const isStaff = data?.role === "staff" || data?.can_edit === false;
+    state.accountRequiresPasswordSetup = !isStaff && Boolean(data?.requires_password_setup);
     const owner = data?.owner || {};
 
     dom.accountOwnerName.value = isStaff ? "" : owner.name || "";
@@ -8861,6 +8863,35 @@ async function saveAccountDetails() {
 
   if (!hasChanges) {
     setAccountSaveStatus("No account changes to save.");
+    return;
+  }
+
+  if (state.accountRequiresPasswordSetup) {
+    const sendSetupLink = await showConfirmPopup({
+      type: "info",
+      title: "Set a password first",
+      message:
+        "This Google account does not have a password yet. Send a password setup link to your registered email?",
+      confirmText: "Send setup link",
+      confirmIcon: "fa-solid fa-envelope",
+    });
+    if (!sendSetupLink) {
+      setAccountSaveStatus("Set a password before saving account changes.");
+      return;
+    }
+
+    try {
+      const data = await fetchJSON("/auth/account/password-setup", {
+        method: "POST",
+      });
+      setAccountSaveStatus(data?.message || "Password setup link sent.", "success");
+      showPopup("success", "Check your email", data?.message || "Password setup link sent.");
+    } catch (error) {
+      setAccountSaveStatus(error.message || "Could not send password setup link.", "error");
+      showPopup("error", "Password setup unavailable", error.message || "Could not send password setup link.", {
+        autoClose: false,
+      });
+    }
     return;
   }
 
