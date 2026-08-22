@@ -8898,6 +8898,12 @@ async function saveAccountDetails() {
       } catch (error) {
         console.error("Account details save failed:", error);
         setAccountSaveStatus(error.message || "Could not save account details.", "error");
+        showPopup(
+          "error",
+          "Account changes not saved",
+          error.message || "Could not save account details.",
+          { autoClose: false },
+        );
       }
     },
   );

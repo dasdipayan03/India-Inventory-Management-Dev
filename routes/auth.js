@@ -1749,7 +1749,9 @@ router.patch("/account", authMiddleware, requireOwner, async (req, res) => {
     );
     if (!passwordValid) {
       await client.query("ROLLBACK");
-      return res.status(401).json({ error: "Current password is incorrect" });
+      return res.status(400).json({
+        error: "Wrong password. Enter your current password and try again.",
+      });
     }
 
     const userResult = await client.query(
