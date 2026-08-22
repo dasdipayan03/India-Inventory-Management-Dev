@@ -1675,6 +1675,7 @@ router.patch("/account", authMiddleware, requireOwner, async (req, res) => {
       req.body.mobile_number || req.body.mobileNumber,
     );
     const shopName = String(req.body.shop_name || "").trim();
+    const currentPassword = String(req.body.current_password || "");
 
     if (name.length < 2 || name.length > OWNER_NAME_MAX_LENGTH) {
       return res.status(400).json({
@@ -1700,6 +1701,56 @@ router.patch("/account", authMiddleware, requireOwner, async (req, res) => {
 
     const userId = getUserId(req);
     await client.query("BEGIN");
+
+    const currentAccountResult = await client.query(
+      `
+        SELECT
+          u.id,
+          u.name,
+          u.email,
+          u.mobile_number,
+          u.password_hash,
+          COALESCE(settings.shop_name, '') AS shop_name
+        FROM users u
+        LEFT JOIN settings ON settings.user_id = u.id
+        WHERE u.id = $1
+        FOR UPDATE OF u
+      `,
+      [userId],
+    );
+
+    const currentAccount = currentAccountResult.rows[0];
+    if (!currentAccount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Account not found" });
+    }
+
+    const hasChanges =
+      currentAccount.name !== name ||
+      normalizeEmail(currentAccount.email) !== email ||
+      String(currentAccount.mobile_number || "") !== mobileNumber ||
+      String(currentAccount.shop_name || "").trim() !== shopName;
+
+    if (!hasChanges) {
+      await client.query("COMMIT");
+      return res.json({ message: "No account changes to save" });
+    }
+
+    if (!currentPassword) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({
+        error: "Enter your current password to save account changes",
+      });
+    }
+
+    const passwordValid = await bcrypt.compare(
+      currentPassword,
+      currentAccount.password_hash,
+    );
+    if (!passwordValid) {
+      await client.query("ROLLBACK");
+      return res.status(401).json({ error: "Current password is incorrect" });
+    }
 
     const userResult = await client.query(
       `

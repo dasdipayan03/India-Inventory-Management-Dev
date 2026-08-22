@@ -46,6 +46,7 @@ const state = {
   },
   popupTimer: null,
   popupConfirmResolve: null,
+  popupPasswordResolve: null,
   profitSaveRequestId: 0,
   profitSaveTimer: null,
   lastSavedProfitPercent: null,
@@ -865,6 +866,8 @@ function cacheElements() {
     popupActions: document.getElementById("popupActions"),
     popupCancel: document.getElementById("popupCancel"),
     popupConfirm: document.getElementById("popupConfirm"),
+    popupPasswordField: document.getElementById("popupPasswordField"),
+    popupPasswordInput: document.getElementById("popupPasswordInput"),
   });
 }
 
@@ -1171,8 +1174,10 @@ function showPopup(type, title, message, options = {}) {
   window.clearTimeout(state.popupTimer);
   state.popupTimer = null;
   resolvePopupConfirm(false);
+  resolvePopupPassword(null);
 
   setPopupConfirmMode(false);
+  setPopupPasswordMode(false);
   dom.popupBox.classList.remove("success", "error", "has-actions");
   if (type === "success" || type === "error") {
     dom.popupBox.classList.add(type);
@@ -1199,6 +1204,28 @@ function resolvePopupConfirm(value) {
   const resolve = state.popupConfirmResolve;
   state.popupConfirmResolve = null;
   resolve(Boolean(value));
+}
+
+function resolvePopupPassword(value) {
+  if (typeof state.popupPasswordResolve !== "function") {
+    return;
+  }
+
+  const resolve = state.popupPasswordResolve;
+  state.popupPasswordResolve = null;
+  resolve(value || null);
+}
+
+function setPopupPasswordMode(enabled) {
+  if (!dom.popupPasswordField) {
+    return;
+  }
+
+  dom.popupPasswordField.hidden = !enabled;
+  if (!enabled && dom.popupPasswordInput) {
+    dom.popupPasswordInput.value = "";
+    dom.popupPasswordInput.removeAttribute("aria-invalid");
+  }
 }
 
 function setPopupConfirmMode(enabled, options = {}) {
@@ -1241,6 +1268,7 @@ function showConfirmPopup(options = {}) {
   window.clearTimeout(state.popupTimer);
   state.popupTimer = null;
   resolvePopupConfirm(false);
+  resolvePopupPassword(null);
 
   dom.popupBox.classList.remove("success", "error", "has-actions");
   if (type === "success" || type === "error") {
@@ -1248,6 +1276,7 @@ function showConfirmPopup(options = {}) {
   }
 
   setPopupConfirmMode(true, options);
+  setPopupPasswordMode(false);
   dom.popupIcon.innerHTML = iconMap[type] || iconMap.info;
   dom.popupTitle.textContent = options.title || "Confirm action";
   dom.popupMessage.textContent = options.message || "Do you want to continue?";
@@ -1263,6 +1292,35 @@ function showConfirmPopup(options = {}) {
   });
 }
 
+function requestAccountPassword() {
+  if (!dom.commonPopup || !dom.popupPasswordInput) {
+    return Promise.resolve(null);
+  }
+
+  window.clearTimeout(state.popupTimer);
+  state.popupTimer = null;
+  resolvePopupConfirm(false);
+  resolvePopupPassword(null);
+
+  dom.popupBox.classList.remove("success", "error", "has-actions");
+  setPopupConfirmMode(true, {
+    cancelText: "Cancel",
+    confirmText: "Save changes",
+    confirmIcon: "fa-solid fa-lock",
+  });
+  setPopupPasswordMode(true);
+  dom.popupIcon.innerHTML = '<i class="fa-solid fa-shield-halved"></i>';
+  dom.popupTitle.textContent = "Confirm account changes";
+  dom.popupMessage.textContent = "Enter your current password to save these changes.";
+  dom.commonPopup.classList.add("active");
+  dom.commonPopup.setAttribute("aria-hidden", "false");
+
+  window.setTimeout(() => dom.popupPasswordInput?.focus(), 0);
+  return new Promise((resolve) => {
+    state.popupPasswordResolve = resolve;
+  });
+}
+
 function hidePopup(options = {}) {
   if (!dom.commonPopup) {
     return;
@@ -1272,8 +1330,10 @@ function hidePopup(options = {}) {
   state.popupTimer = null;
   if (!options.skipConfirmResolve) {
     resolvePopupConfirm(false);
+    resolvePopupPassword(null);
   }
   setPopupConfirmMode(false);
+  setPopupPasswordMode(false);
   dom.commonPopup.classList.remove("active");
   dom.commonPopup.setAttribute("aria-hidden", "true");
 }
@@ -8094,8 +8154,28 @@ function bindPopupEvents() {
   });
   dom.popupCancel?.addEventListener("click", hidePopup);
   dom.popupConfirm?.addEventListener("click", () => {
+    if (typeof state.popupPasswordResolve === "function") {
+      const password = dom.popupPasswordInput?.value || "";
+      if (!password) {
+        dom.popupPasswordInput?.setAttribute("aria-invalid", "true");
+        dom.popupPasswordInput?.focus();
+        return;
+      }
+      resolvePopupPassword(password);
+      hidePopup({ skipConfirmResolve: true });
+      return;
+    }
     resolvePopupConfirm(true);
     hidePopup({ skipConfirmResolve: true });
+  });
+  dom.popupPasswordInput?.addEventListener("input", () => {
+    dom.popupPasswordInput.removeAttribute("aria-invalid");
+  });
+  dom.popupPasswordInput?.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      dom.popupConfirm?.click();
+    }
   });
   dom.popupBox.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -8697,6 +8777,16 @@ async function loadAccountDetails(options = {}) {
     dom.accountOwnerEmail.value = isStaff ? "" : owner.email || "";
     dom.accountOwnerMobile.value = isStaff ? "" : owner.mobile_number || "";
     dom.accountShopName.value = isStaff ? "" : owner.shop_name || "";
+    [
+      dom.accountOwnerName,
+      dom.accountOwnerEmail,
+      dom.accountOwnerMobile,
+      dom.accountShopName,
+    ].forEach((input) => {
+      if (input) {
+        input.dataset.accountValue = input.value.trim();
+      }
+    });
     setAccountOwnerFieldsReadOnly(isStaff);
 
     if (dom.accountOwnerFields) {
@@ -8759,6 +8849,28 @@ async function saveAccountDetails() {
     shop_name: dom.accountShopName?.value.trim() || "",
   };
 
+  const fields = [
+    [dom.accountOwnerName, payload.name],
+    [dom.accountOwnerEmail, payload.email],
+    [dom.accountOwnerMobile, payload.mobile_number],
+    [dom.accountShopName, payload.shop_name],
+  ];
+  const hasChanges = fields.some(
+    ([input, value]) => (input?.dataset.accountValue || "") !== value,
+  );
+
+  if (!hasChanges) {
+    setAccountSaveStatus("No account changes to save.");
+    return;
+  }
+
+  const currentPassword = await requestAccountPassword();
+  if (!currentPassword) {
+    setAccountSaveStatus("Account changes were not saved.");
+    return;
+  }
+  payload.current_password = currentPassword;
+
   await withButtonState(
     dom.saveAccountBtn,
     '<i class="fa-solid fa-spinner fa-spin"></i> Saving…',
@@ -8773,6 +8885,11 @@ async function saveAccountDetails() {
         if (updatedUser && state.sessionUser) {
           applySessionAccess({ ...state.sessionUser, ...updatedUser });
         }
+        fields.forEach(([input, value]) => {
+          if (input) {
+            input.dataset.accountValue = value;
+          }
+        });
         setAccountSaveStatus(
           data?.message || "Account details saved.",
           "success",

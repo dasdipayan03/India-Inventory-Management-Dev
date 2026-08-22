@@ -3031,8 +3031,32 @@
         box-shadow: 0 16px 30px rgba(220, 38, 38, 0.3);
       }
 
+      .popup-password-field {
+        display: grid;
+        gap: 7px;
+        margin: 18px 0 4px;
+        text-align: left;
+      }
+
+      .popup-password-field label {
+        color: var(--ink-strong);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .popup-password-input {
+        width: 100%;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid rgba(117, 142, 180, 0.28);
+        border-radius: 10px;
+        background: #ffffff;
+        color: var(--ink-strong);
+      }
+
       .popup-icon:focus-visible,
       .popup-action-btn:focus-visible,
+      .popup-password-input:focus-visible,
       .btn:focus-visible,
       .form-control:focus-visible,
       .form-select:focus-visible {
@@ -6423,6 +6447,16 @@
         </button>
         <h4 id="popupTitle"></h4>
         <p id="popupMessage"></p>
+        <div id="popupPasswordField" class="popup-password-field" hidden>
+          <label for="popupPasswordInput">Current password</label>
+          <input
+            id="popupPasswordInput"
+            class="popup-password-input"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Enter your current password"
+          />
+        </div>
         <div id="popupActions" class="popup-actions" hidden>
           <button
             id="popupCancel"
@@ -6446,6 +6480,6 @@
     <script src="js/permission-contract.js"></script>
     <script src="js/app-core.js?v=2026-08-14-account-1"></script>
     <script src="js/app-shell.js"></script>
-    <script src="js/dashboard.js?v=2026-08-14-account-1"></script>
+    <script src="js/dashboard.js?v=2026-08-22-account-password-1"></script>
   </body>
 </html>
