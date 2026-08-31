@@ -1,12 +1,12 @@
 # Shop Inventory Management Documentation
 
-Last verified against the web repository: `2026-08-09`
+Last verified against the web repository: `2026-08-26`
 
 Verification baseline:
 
-- web repository HEAD: `27bc003`
+- web repository HEAD: `8a487ed`
 - Android wrapper build snapshot: `versionName 1.2.40`, `versionCode 43` (retained from the prior `2026-07-23` verification; the native wrapper is outside this repository)
-- active Express router declarations: `84`
+- active Express router declarations: `88`
 - effective PostgreSQL tables: `17`
 
 This is the single merged documentation file for the project. It replaces the earlier split project doc and database schema doc.
@@ -81,6 +81,7 @@ Scope note: [`USER_RELATED_DATA_QUERY_GUIDE.md`](./USER_RELATED_DATA_QUERY_GUIDE
 - [10. Main Business Workflows](#10-main-business-workflows)
   - [Owner registration](#owner-registration)
   - [Owner login](#owner-login)
+  - [Owner account profile change and password setup](#owner-account-profile-change-and-password-setup)
   - [Google owner sign-in](#google-owner-sign-in)
   - [Staff login](#staff-login)
   - [Purchase Entry / Add Stock](#purchase-entry--add-stock)
@@ -169,6 +170,7 @@ Important current-state notes:
 
 - Authentication is cookie-based. The frontend uses `credentials: "include"` and bootstraps sessions through `/api/auth/me`.
 - Owner auth now supports password login, staff login, and Google OAuth. Google sign-in has web callbacks, Android deep-link transfer, and a first-time onboarding step that collects shop name and mobile number.
+- Saving changed owner account details (name, email, mobile number, or shop name) requires the current password. Google-only accounts must first set a password through a short-lived setup link sent to their registered email.
 - Developer support authentication is also cookie-based through `/api/developer-auth/*`; the browser no longer stores a readable developer JWT in session storage.
 - `localStorage` is still used for UI state and invoice draft storage, but not as the primary auth token store.
 - HTML pages are served through [`server.js`](../server.js), which injects a CSP nonce into inline scripts and styles.
@@ -263,7 +265,7 @@ The system is owner-centric:
 - JWT via `jsonwebtoken`
 - `bcrypt` for password hashing
 - `helmet`, `cors`, `cookie-parser`, `compression`, `express-rate-limit`
-- optional `MAIL_RELAY_URL` / `MAIL_RELAY_KEY` reset-email relay, called with Node `fetch`
+- `MAIL_RELAY_URL` / `MAIL_RELAY_KEY` password-reset and Google password-setup email relay, called with Node `fetch`
 - `nodemailer` is installed but not imported by the current code; password-reset delivery uses the HTTP relay above
 - `pdfkit` for PDF generation
 - `exceljs` for Excel export
@@ -694,6 +696,7 @@ Current frontend storage behavior:
 Compatibility patching currently ensures:
 
 - Google OAuth columns on `users`: `google_sub`, `google_email_verified`, and `google_picture_url`
+- account-password state columns on `users`: `password_set` and `password_set_at`; Google-only accounts begin without a user-known password
 - `settings.default_profit_percent`
 - invoice payment profile columns on `settings`: `bank_name`, `account_holder_name`, `account_number`, `ifsc_code`, and `upi_id`
 - `sales.cost_price`
@@ -900,7 +903,7 @@ Important scope note:
 
 #### `routes/auth.js` function inventory
 
-Route handlers in this file cover registration, owner login, Google OAuth login/onboarding, staff login, logout, password reset, staff CRUD, and current-session lookup.
+Route handlers in this file cover registration, owner login, Google OAuth login/onboarding, staff login, logout, password reset/setup, protected owner account profile changes, staff CRUD, and current-session lookup.
 
 | Function                                                        | Purpose                                                                |
 | --------------------------------------------------------------- | ---------------------------------------------------------------------- |
@@ -1291,6 +1294,9 @@ Current Google sign-in behavior:
 - New Google owners receive a short-lived `google_onboarding` cookie and are redirected to `login.html?google_onboarding=1`.
 - `GET /api/auth/google/onboarding` lets the login page read the pending Google email/name without exposing the full token.
 - `POST /api/auth/google/complete-profile` requires shop name and 10-digit mobile number, creates the owner and `settings` row, clears onboarding, and sets the normal `token` cookie.
+- A Google-created owner starts with `password_set = FALSE`; its stored bcrypt value is random and cannot be used as a login or confirmation password.
+- When such an owner changes account profile fields, the dashboard asks to send `POST /api/auth/account/password-setup`. That authenticated owner-only route creates a hashed 15-minute reset token and sends a setup link to the email already stored for that account.
+- `POST /api/auth/reset-password` sets the new bcrypt password and records `password_set = TRUE` with `password_set_at`. Future profile edits require that current password; the server verifies it before writing any account fields.
 - Android wrapper mode uses `client=android`, signs a 5-minute transfer token, and targets the `indiainventory://google-auth` deep link. `/api/auth/google/android-open` renders an intent/manual-open fallback page, while `/api/auth/google/android-transfer` converts the transfer back into the web cookie flow.
 
 ### Developer support session model
@@ -1356,6 +1362,8 @@ Current hardening that is visible in the codebase:
 - password reset limiter:
   - `5` attempts per `15` minutes
 - password reset tokens are hashed before being stored in `users.reset_token`
+- account profile writes are owner-only and require a verified current password; a wrong password is a normal validation error, not a session-expiry response
+- Google-only accounts cannot save profile changes until they set a password through the registered-email setup link
 - reset links place the token in the URL hash, so the token is not sent back to the server as a query parameter during initial page load
 - Google OAuth state and onboarding data are short-lived signed JWT cookies
 - Google OAuth only creates accounts after verified Google email plus required shop name and 10-digit mobile number
@@ -1441,6 +1449,19 @@ login.html
   -> users and settings rows are created
   -> token cookie is set and user goes to index.html
 ```
+
+### Owner account profile change and password setup
+
+```text
+Account page -> user changes name/email/mobile/shop name -> Save Changes
+  -> password already set: password-confirmation popup -> PATCH /api/auth/account
+     -> bcrypt.compare(current password) -> update users + settings in one transaction
+  -> Google-only password not yet set: setup-link confirmation -> POST /api/auth/account/password-setup
+     -> registered-email link -> reset.html -> POST /api/auth/reset-password
+     -> password_set becomes TRUE -> future edits use password confirmation
+```
+
+The authenticated setup route always uses the current account's stored email; it does not trust an edited email field when deciding where to send the setup link.
 
 ### Staff login
 
@@ -1684,25 +1705,28 @@ Domain guard summary:
 
 ### 11.1 Auth routes from `routes/auth.js`
 
-| Method   | Path                                   | Purpose                                         |
-| -------- | -------------------------------------- | ----------------------------------------------- |
-| `GET`    | `/api/auth/google/start`               | start Google OAuth login                        |
-| `GET`    | `/api/auth/google/callback`            | finish Google OAuth callback                    |
-| `GET`    | `/api/auth/google/android-open`        | render Android intent/manual-open fallback page |
-| `GET`    | `/api/auth/google/android-transfer`    | convert Android Google transfer token           |
-| `GET`    | `/api/auth/google/onboarding`          | read pending first-time Google profile          |
-| `POST`   | `/api/auth/google/complete-profile`    | finish first-time Google owner setup            |
-| `POST`   | `/api/auth/register`                   | create owner account                            |
-| `POST`   | `/api/auth/login`                      | owner login by email or mobile                  |
-| `POST`   | `/api/auth/staff/login`                | staff login by username                         |
-| `POST`   | `/api/auth/logout`                     | clear session cookie                            |
-| `POST`   | `/api/auth/forgot-password`            | create reset token and send reset email         |
-| `POST`   | `/api/auth/reset-password`             | validate reset token and update password        |
-| `GET`    | `/api/auth/staff`                      | list staff accounts for current owner           |
-| `POST`   | `/api/auth/staff`                      | create a staff account                          |
-| `PATCH`  | `/api/auth/staff/:staffId/permissions` | update page permissions                         |
-| `DELETE` | `/api/auth/staff/:staffId`             | permanently delete a staff account row          |
-| `GET`    | `/api/auth/me`                         | return normalized current session               |
+| Method   | Path                                   | Purpose                                                                      |
+| -------- | -------------------------------------- | ---------------------------------------------------------------------------- |
+| `GET`    | `/api/auth/google/start`               | start Google OAuth login                                                     |
+| `GET`    | `/api/auth/google/callback`            | finish Google OAuth callback                                                 |
+| `GET`    | `/api/auth/google/android-open`        | render Android intent/manual-open fallback page                              |
+| `GET`    | `/api/auth/google/android-transfer`    | convert Android Google transfer token                                        |
+| `GET`    | `/api/auth/google/onboarding`          | read pending first-time Google profile                                       |
+| `POST`   | `/api/auth/google/complete-profile`    | finish first-time Google owner setup                                         |
+| `POST`   | `/api/auth/register`                   | create owner account                                                         |
+| `POST`   | `/api/auth/login`                      | owner login by email or mobile                                               |
+| `POST`   | `/api/auth/staff/login`                | staff login by username                                                      |
+| `POST`   | `/api/auth/logout`                     | clear session cookie                                                         |
+| `POST`   | `/api/auth/forgot-password`            | create reset token and send reset email                                      |
+| `POST`   | `/api/auth/reset-password`             | validate reset token and update password                                     |
+| `POST`   | `/api/auth/account/password-setup`     | owner: send first password setup link to registered email                    |
+| `GET`    | `/api/auth/account`                    | owner/staff: load account page details and password-setup state              |
+| `PATCH`  | `/api/auth/account`                    | owner: verify current password and update name, email, mobile, and shop name |
+| `GET`    | `/api/auth/staff`                      | list staff accounts for current owner                                        |
+| `POST`   | `/api/auth/staff`                      | create a staff account                                                       |
+| `PATCH`  | `/api/auth/staff/:staffId/permissions` | update page permissions                                                      |
+| `DELETE` | `/api/auth/staff/:staffId`             | permanently delete a staff account row                                       |
+| `GET`    | `/api/auth/me`                         | return normalized current session                                            |
 
 ### 11.2 Inventory routes from `routes/inventory.js`
 
@@ -1945,6 +1969,8 @@ Key columns:
 - `email`
 - `mobile_number`
 - `password_hash`
+- `password_set`
+- `password_set_at`
 - `google_sub`
 - `google_email_verified`
 - `google_picture_url`
@@ -1957,6 +1983,7 @@ Notes:
 
 - `is_verified` and `verify_token` exist in schema, but current core flows are centered on password login, Google OAuth, and reset rather than a full email-verification workflow
 - Google OAuth profile data is optional. When present, `google_sub` is indexed uniquely so the same Google account cannot attach to multiple owners.
+- `password_set` distinguishes a normal user-known password from the random placeholder bcrypt value assigned to a new Google-only account. `password_set_at` prevents startup compatibility logic from reverting an account after the user has set a password.
 
 #### `staff_accounts`
 
@@ -2369,6 +2396,8 @@ The dictionary below reflects the current effective schema from [`../migrations/
 | `email`                 | `VARCHAR(100)` | no   | none     | unique login identifier                      |
 | `mobile_number`         | `VARCHAR(10)`  | yes  | none     | optional 10-digit mobile number              |
 | `password_hash`         | `VARCHAR(255)` | no   | none     | bcrypt hash                                  |
+| `password_set`          | `BOOLEAN`      | no   | `TRUE`   | whether the owner has set a usable password  |
+| `password_set_at`       | `TIMESTAMPTZ`  | yes  | none     | time a user-known password was set           |
 | `is_verified`           | `BOOLEAN`      | yes  | `FALSE`  | currently not central to active auth flow    |
 | `google_sub`            | `VARCHAR(255)` | yes  | none     | Google account subject identifier            |
 | `google_email_verified` | `BOOLEAN`      | no   | `FALSE`  | whether the linked Google email was verified |
@@ -2922,8 +2951,8 @@ Data-integrity boundaries to keep in mind:
 | `MAINTENANCE_RETRY_AFTER_SECONDS`           | optional                                        | positive `Retry-After` value for maintenance responses; defaults to `3600`                       |
 | `CORS_ALLOWED_ORIGINS`                      | recommended                                     | comma-separated allowlist for cross-origin requests                                              |
 | `BASE_URL`                                  | recommended, effectively required in production | public app base URL, also used in reset links                                                    |
-| `MAIL_RELAY_URL`                            | optional                                        | outbound mail relay endpoint                                                                     |
-| `MAIL_RELAY_KEY`                            | optional                                        | credential for mail relay                                                                        |
+| `MAIL_RELAY_URL`                            | required for email reset/setup delivery         | outbound mail relay endpoint for password reset and Google password setup links                  |
+| `MAIL_RELAY_KEY`                            | required with `MAIL_RELAY_URL`                  | credential for the outbound password-reset/setup mail relay                                      |
 | `GOOGLE_CLIENT_ID`                          | optional                                        | enables Google OAuth owner login when paired with client secret                                  |
 | `GOOGLE_CLIENT_SECRET`                      | optional                                        | Google OAuth client secret                                                                       |
 | `GOOGLE_REDIRECT_URI`                       | optional                                        | explicit OAuth callback URL; otherwise derived from `BASE_URL`                                   |
