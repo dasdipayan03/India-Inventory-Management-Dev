@@ -1,6 +1,5 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
 const pool = require("../db");
 const {
@@ -12,6 +11,7 @@ const {
   getDeveloperId,
   getUserId,
 } = require("../middleware/auth");
+const { signDeveloperSessionToken } = require("../utils/token-security");
 
 const router = express.Router();
 
@@ -117,7 +117,7 @@ function normalizeConversationStatus(value) {
 }
 
 function signDeveloperSession(payload) {
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "3d" });
+  return signDeveloperSessionToken(payload);
 }
 
 function setDeveloperSessionCookie(res, token) {

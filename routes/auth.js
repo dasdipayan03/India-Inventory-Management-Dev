@@ -1,7 +1,6 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-const jwt = require("jsonwebtoken");
 const rateLimit = require("express-rate-limit");
 const pool = require("../db");
 const {
@@ -15,6 +14,12 @@ const {
   invalidateStaffSessionCache,
   requireOwner,
 } = require("../middleware/auth");
+const {
+  TOKEN_PURPOSES,
+  signSessionToken,
+  signToken,
+  verifyToken,
+} = require("../utils/token-security");
 // aa
 
 const router = express.Router();
@@ -163,7 +168,7 @@ function normalizeUsername(value) {
 }
 
 function signSession(payload) {
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "3d" });
+  return signSessionToken(payload);
 }
 
 function normalizeGoogleOAuthClient(value) {
@@ -175,20 +180,23 @@ function normalizeGoogleOAuthClient(value) {
 }
 
 function signGoogleOAuthState(client) {
-  return jwt.sign(
+  return signToken(
     {
       type: "google_oauth_state",
       nonce: crypto.randomBytes(16).toString("hex"),
       client: normalizeGoogleOAuthClient(client),
     },
-    process.env.JWT_SECRET,
-    { expiresIn: "10m" },
+    TOKEN_PURPOSES.GOOGLE_OAUTH_STATE,
+    "10m",
   );
 }
 
 function readGoogleOAuthState(state) {
   try {
-    const decoded = jwt.verify(state, process.env.JWT_SECRET);
+    const decoded = verifyToken(state, TOKEN_PURPOSES.GOOGLE_OAUTH_STATE, {
+      allowLegacy: true,
+      validateLegacy: (legacy) => legacy.type === "google_oauth_state" && Boolean(legacy.nonce),
+    });
     if (decoded.type !== "google_oauth_state" || !decoded.nonce) {
       return null;
     }
@@ -235,18 +243,21 @@ function readAndroidGoogleCallbackResult(state) {
 }
 
 function signAndroidGoogleTransfer(payload) {
-  return jwt.sign(
+  return signToken(
     {
       type: "android_google_transfer",
       ...payload,
     },
-    process.env.JWT_SECRET,
-    { expiresIn: "5m" },
+    TOKEN_PURPOSES.ANDROID_GOOGLE_TRANSFER,
+    "5m",
   );
 }
 
 function verifyAndroidGoogleTransfer(token) {
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  const decoded = verifyToken(token, TOKEN_PURPOSES.ANDROID_GOOGLE_TRANSFER, {
+    allowLegacy: true,
+    validateLegacy: (legacy) => legacy.type === "android_google_transfer",
+  });
   if (decoded.type !== "android_google_transfer") {
     throw new Error("Invalid Android Google transfer token");
   }
@@ -255,7 +266,7 @@ function verifyAndroidGoogleTransfer(token) {
 }
 
 function signGoogleOnboarding(profile) {
-  return jwt.sign(
+  return signToken(
     {
       type: "google_onboarding",
       sub: profile.sub,
@@ -263,13 +274,16 @@ function signGoogleOnboarding(profile) {
       name: profile.name,
       picture: profile.picture || "",
     },
-    process.env.JWT_SECRET,
-    { expiresIn: "15m" },
+    TOKEN_PURPOSES.GOOGLE_ONBOARDING,
+    "15m",
   );
 }
 
 function verifyGoogleOnboardingToken(token) {
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  const decoded = verifyToken(token, TOKEN_PURPOSES.GOOGLE_ONBOARDING, {
+    allowLegacy: true,
+    validateLegacy: (legacy) => legacy.type === "google_onboarding",
+  });
   if (decoded.type !== "google_onboarding") {
     throw new Error("Invalid Google onboarding token");
   }

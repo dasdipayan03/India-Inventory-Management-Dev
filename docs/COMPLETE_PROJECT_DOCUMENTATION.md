@@ -1399,10 +1399,10 @@ Current hardening that is visible in the codebase:
 
 These are current code facts and follow-up items, not security guarantees:
 
-- **JWT role separation:** `authMiddleware` special-cases only `staff` and rewrites any other valid token as an owner session. Developer-support tokens use the same `JWT_SECRET`; if one is manually supplied as a Bearer token, it can be misclassified as an owner ID. The main middleware should explicitly allow only owner/admin/staff token purposes.
+- **JWT claims rollout:** new tokens carry an issuer, audience, and purpose claim. `JWT_CLAIMS_ENFORCEMENT=compat` temporarily permits older owner/staff sessions without those claims; switch to `strict` after the previous 3-day session window has elapsed.
 - **Developer registration:** `DEVELOPER_REGISTRATION_KEY` has a built-in fallback. Production must set a private value; a future hardening change should fail closed when it is absent.
 - **OAuth state binding:** the Google callback accepts a valid signed state or a matching cookie rather than requiring both, so browser-to-login binding is weaker than a strict state-cookie check.
-- **Shared signing secret:** owner/staff sessions, developer sessions, OAuth state, onboarding, and Android transfer tokens share one secret and do not enforce issuer/audience/purpose claims.
+- **Shared signing secret:** token types still use the configured `JWT_SECRET`; their issuer, audience, and purpose claims are now enforced to prevent cross-purpose use. Separate per-purpose secrets remain an optional future defence-in-depth improvement.
 - **Session revocation:** staff and developer accounts are checked against PostgreSQL, but a normal owner JWT is accepted for its one-day lifetime without a fresh owner-status lookup.
 - **Route ordering:** broad middleware mounted on the inventory/business routers intercepts later `/api` routes. API health aliases are not public, unknown API paths can return `401`, and business/invoice calls may repeat authentication. Use non-API health probes until the route scopes/order are fixed.
 - **CSRF model:** state-changing endpoints do not use an explicit CSRF token and rely mainly on `SameSite=Lax` cookies plus origin/CORS behavior.
@@ -2942,6 +2942,7 @@ Data-integrity boundaries to keep in mind:
 | `PG_IDLE_IN_TRANSACTION_SESSION_TIMEOUT_MS` | optional                                        | idle-in-transaction timeout in milliseconds; defaults to `30000`                                 |
 | `PG_APPLICATION_NAME`                       | optional                                        | PostgreSQL application name; defaults to `shop-inventory-api`                                    |
 | `JWT_SECRET`                                | yes                                             | signing key for session JWTs                                                                     |
+| `JWT_CLAIMS_ENFORCEMENT`                    | optional                                        | `compat` (default) accepts legacy owner/staff sessions during rollout; set `strict` after 3 days |
 | `STAFF_SESSION_CACHE_TTL_MS`                | optional                                        | staff auth cache TTL in milliseconds; default `0` disables it; cache is capped at 200 entries    |
 | `PORT`                                      | optional                                        | HTTP port; defaults to `8080`                                                                    |
 | `NODE_ENV`                                  | optional                                        | production/development behavior                                                                  |

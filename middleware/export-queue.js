@@ -1,8 +1,8 @@
-const jwt = require("jsonwebtoken");
 const {
   exportQueue,
   parseFilenameFromDisposition,
 } = require("../utils/export-queue");
+const { verifySessionToken } = require("../utils/token-security");
 
 const EXPORT_TIMEOUT_MS = readPositiveInt(
   process.env.EXPORT_QUEUE_TIMEOUT_MS,
@@ -34,7 +34,7 @@ function getTokenSubject(req) {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifySessionToken(token);
     return {
       ownerId: decoded.ownerId || decoded.id,
       actorId: decoded.actorId || decoded.staffId || decoded.id,

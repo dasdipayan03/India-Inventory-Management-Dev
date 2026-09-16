@@ -9,12 +9,15 @@
  *  - Provide reusable role and permission guards
  * =========================================================
  */
-const jwt = require("jsonwebtoken");
 const pool = require("../db");
 const {
   DEFAULT_STAFF_PERMISSIONS,
   normalizePermissions,
 } = require("../public/js/permission-contract");
+const {
+  verifyDeveloperSessionToken,
+  verifySessionToken,
+} = require("../utils/token-security");
 
 if (!process.env.JWT_SECRET) {
   console.error("JWT_SECRET not found in environment variables.");
@@ -185,7 +188,7 @@ async function authMiddleware(req, res, next) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifySessionToken(token);
 
     if (normalizeSessionRole(decoded.role) === STAFF_ROLE) {
       const staffId = decoded.actorId || decoded.staffId || decoded.id;
@@ -270,7 +273,7 @@ async function developerAuthMiddleware(req, res, next) {
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyDeveloperSessionToken(token);
     if (
       String(decoded.role || "")
         .trim()

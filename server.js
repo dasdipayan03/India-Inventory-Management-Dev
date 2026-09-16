@@ -21,7 +21,6 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const jwt = require("jsonwebtoken");
 
 // =========================================================
 // 🔐 SECURITY & PERFORMANCE MIDDLEWARE
@@ -38,6 +37,7 @@ const cookieParser = require("cookie-parser"); // Cookie parsing
 const pool = require("./db");
 const { logEvent } = require("./utils/runtime-log");
 const { createQueuedExportMiddleware } = require("./middleware/export-queue");
+const { verifySessionToken } = require("./utils/token-security");
 const {
   markHttpRequestFinished,
   markHttpRequestStarted,
@@ -872,7 +872,7 @@ function getRateLimitKey(req) {
   const token = getAuthTokenFromRequest(req);
   if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = verifySessionToken(token);
       const ownerId = decoded.ownerId || decoded.id;
       const actorId = decoded.actorId || decoded.staffId || decoded.id;
       const role = decoded.role || "user";
