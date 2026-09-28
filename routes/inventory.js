@@ -848,6 +848,7 @@ router.get(
       const user_id = getUserId(req);
       const { name } = req.query;
       const showSelling = req.query.show_selling !== "false";
+      const showBuying = req.query.show_buying !== "false";
       const shopName = await getShopName(user_id);
 
       let params = [user_id];
@@ -887,20 +888,22 @@ router.get(
         name && name.trim()
           ? `Filtered for: ${name.trim()}`
           : "Full stock catalog";
-      const stockColumns = showSelling ? [
+      const hiddenRateColumnCount = Number(!showBuying) + Number(!showSelling);
+      const visibleRateColumnCount = Number(showBuying) + Number(showSelling);
+      const stockColumns = [
         { label: "Sl", x: 46, width: 28 },
-        { label: "Item Name", x: 78, width: 180 },
-        { label: "Available", x: 262, width: 72, align: "right" },
-        { label: "Buying", x: 338, width: 72, align: "right" },
-        { label: "Selling", x: 414, width: 72, align: "right" },
-        { label: "Sold", x: 490, width: 54, align: "right" },
-      ] : [
-        { label: "Sl", x: 46, width: 28 },
-        { label: "Item Name", x: 78, width: 256 },
-        { label: "Available", x: 338, width: 72, align: "right" },
-        { label: "Buying", x: 414, width: 72, align: "right" },
-        { label: "Sold", x: 490, width: 54, align: "right" },
+        { label: "Item Name", x: 78, width: 180 + hiddenRateColumnCount * 76 },
+        { label: "Available", x: 262 + hiddenRateColumnCount * 76, width: 72, align: "right" },
       ];
+      let rateColumnX = 490 - visibleRateColumnCount * 76;
+      if (showBuying) {
+        stockColumns.push({ label: "Buying", x: rateColumnX, width: 72, align: "right" });
+        rateColumnX += 76;
+      }
+      if (showSelling) {
+        stockColumns.push({ label: "Selling", x: rateColumnX, width: 72, align: "right" });
+      }
+      stockColumns.push({ label: "Sold", x: 490, width: 54, align: "right" });
 
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
@@ -956,8 +959,8 @@ router.get(
           String(i + 1),
           r.item_name || "",
           qty.toFixed(2),
-          formatCurrency(buy),
         ];
+        if (showBuying) values.push(formatCurrency(buy));
         if (showSelling) values.push(formatCurrency(sell));
         values.push(Number(r.sold_qty).toFixed(2));
         stockColumns.forEach((column, index) => {

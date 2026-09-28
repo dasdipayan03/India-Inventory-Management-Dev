@@ -710,6 +710,8 @@ function cacheElements() {
     itemReportBody: document.getElementById("itemReportBody"),
     itemReportShowSelling: document.getElementById("itemReportShowSelling"),
     itemReportSellingHeader: document.getElementById("itemReportSellingHeader"),
+    itemReportShowBuying: document.getElementById("itemReportShowBuying"),
+    itemReportBuyingHeader: document.getElementById("itemReportBuyingHeader"),
     lowStockCard: document.getElementById("lowStockCard"),
     lowStockCount: document.getElementById("lowStockCount"),
     lowStockBody: document.getElementById("lowStockBody"),
@@ -4877,8 +4879,10 @@ async function submitExpense() {
 
 function renderItemReport(rows) {
   const showSelling = dom.itemReportShowSelling.checked;
-  const columnCount = showSelling ? 5 : 4;
+  const showBuying = dom.itemReportShowBuying.checked;
+  const columnCount = 3 + Number(showSelling) + Number(showBuying);
   dom.itemReportSellingHeader.hidden = !showSelling;
+  dom.itemReportBuyingHeader.hidden = !showBuying;
   dom.itemReportBody.innerHTML = "";
 
   if (!rows.length) {
@@ -4905,7 +4909,7 @@ function renderItemReport(rows) {
     tr.innerHTML = `
       <td>${escapeHtml(row.item_name)}</td>
       <td>${formatNumber(availableQty)}</td>
-      <td>${formatCurrencyValue(buyingRate)}</td>
+      ${showBuying ? `<td>${formatCurrencyValue(buyingRate)}</td>` : ""}
       ${showSelling ? `<td>${formatCurrencyValue(sellingRate)}</td>` : ""}
       <td>${formatNumber(soldQty)}</td>
     `;
@@ -5794,6 +5798,7 @@ async function downloadItemReportPDF() {
   const params = new URLSearchParams();
   if (item) params.set("name", item);
   if (!dom.itemReportShowSelling.checked) params.set("show_selling", "false");
+  if (!dom.itemReportShowBuying.checked) params.set("show_buying", "false");
   const queryString = params.toString();
   const query = queryString ? `?${queryString}` : "";
   const fallbackName = item
@@ -8486,24 +8491,37 @@ function bindPurchaseEvents() {
 }
 
 function bindReportEvents() {
-  const preferenceKey = "stockReport.showSelling";
+  const sellingPreferenceKey = "stockReport.showSelling";
+  const buyingPreferenceKey = "stockReport.showBuying";
   try {
     dom.itemReportShowSelling.checked =
-      localStorage.getItem(preferenceKey) !== "false";
+      localStorage.getItem(sellingPreferenceKey) !== "false";
+    dom.itemReportShowBuying.checked =
+      localStorage.getItem(buyingPreferenceKey) !== "false";
   } catch (_error) {
     // The switch still works when browser storage is unavailable.
   }
   dom.itemReportSellingHeader.hidden = !dom.itemReportShowSelling.checked;
+  dom.itemReportBuyingHeader.hidden = !dom.itemReportShowBuying.checked;
   dom.itemReportBody.querySelector("td[colspan]").colSpan =
-    dom.itemReportShowSelling.checked ? 5 : 4;
-  dom.itemReportShowSelling.addEventListener("change", () => {
+    3 + Number(dom.itemReportShowSelling.checked) + Number(dom.itemReportShowBuying.checked);
+  const saveVisibilityPreference = () => {
     try {
-      localStorage.setItem(preferenceKey, String(dom.itemReportShowSelling.checked));
+      localStorage.setItem(
+        sellingPreferenceKey,
+        String(dom.itemReportShowSelling.checked),
+      );
+      localStorage.setItem(
+        buyingPreferenceKey,
+        String(dom.itemReportShowBuying.checked),
+      );
     } catch (_error) {
       // Keep the current preference for this page even if it cannot be saved.
     }
     renderItemReport(state.currentItemReportRows);
-  });
+  };
+  dom.itemReportShowSelling.addEventListener("change", saveVisibilityPreference);
+  dom.itemReportShowBuying.addEventListener("change", saveVisibilityPreference);
   setupFilterInput(dom.itemReportSearch, dom.itemReportDropdown, (value) => {
     dom.itemReportSearch.value = value;
   });
