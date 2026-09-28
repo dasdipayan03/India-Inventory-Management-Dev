@@ -4882,6 +4882,21 @@
               </div>
             </div>
 
+            <div class="mt-3 p-3 border rounded-3 bg-light-subtle">
+              <div class="form-check form-switch mb-1">
+                <input class="form-check-input" type="checkbox" role="switch"
+                  id="itemReportShowSelling" checked
+                  aria-describedby="itemReportVisibilityHelp" />
+                <label class="form-check-label fw-semibold" for="itemReportShowSelling">
+                  Show selling price &amp; profit
+                </label>
+              </div>
+              <small id="itemReportVisibilityHelp" class="text-muted d-block">
+                Applies to this table and downloaded PDF. Turn off to hide selling
+                rate, total selling value and estimated profit.
+              </small>
+            </div>
+
             <hr class="my-4" />
 
             <div class="table-responsive mobile-table-wrap">
@@ -4902,7 +4917,7 @@
                       <span class="table-label-full">Buying Rate</span>
                       <span class="table-label-compact">Buy Rate</span>
                     </th>
-                    <th>
+                    <th id="itemReportSellingHeader">
                       <span class="table-label-full">Selling Rate</span>
                       <span class="table-label-compact">Sell Rate</span>
                     </th>

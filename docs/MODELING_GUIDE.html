@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>MODELING_GUIDE.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> or <div class="page"></div> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+<link rel="stylesheet" href="file://c:\Users\Dipayan\OneDrive\Desktop\PROJECT_ALL_DOCUMENTS\India-Inventory-Management-Dev\.vscode\markdown-pdf.css" type="text/css">
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="shop-inventory-management--operational-sop">Shop Inventory Management — Operational SOP</h1>
+<p><strong>Document owner:</strong> Development / Operations owner</p>
+<p><strong>Applies to:</strong> <code>Dev-India-Inventory-Management</code> and <code>Main-India-Inventory-Management</code></p>
+<p><strong>Repository role:</strong> This is the development repository</p>
+<p><strong>Last reviewed:</strong> 2026-09-18</p>
+<p><strong>Primary technical reference:</strong> <a href="./COMPLETE_PROJECT_DOCUMENTATION.md">Complete Project Documentation</a>
+<strong>Database reference:</strong> <a href="./DATABASE_SCHEMA_REFERENCE.md">Database Schema Reference</a></p>
+<hr>
+<h2 id="1-purpose-and-operating-rule">1. Purpose and operating rule</h2>
+<p>This is the standard operating procedure (SOP) for running, changing, testing,
+deploying, and recovering the Shop Inventory Management application.</p>
+<p><strong>Non-negotiable rule:</strong> Dev and Main are separate systems. A successful Dev
+change is required before a Main release. Main must never be used for feature
+experiments.</p>
+<p>The application is one Node.js service: Express serves static pages and API
+routes, validates requests, then stores permanent business data in PostgreSQL.</p>
+<pre class="hljs"><code><div>Browser / Android WebView
+        ↓ cookie-authenticated HTTPS requests
+Node.js + Express (`server.js`)
+        ↓ validation, permissions, transactions
+PostgreSQL (`db.js` connection pool)
+        ↓
+Owner-scoped business tables
+</div></code></pre>
+<hr>
+<h2 id="2-system-inventory">2. System inventory</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Dev</th>
+<th>Main / Production</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Railway project</td>
+<td><code>Dev-India-Inventory-Management</code></td>
+<td><code>Main-India-Inventory-Management</code></td>
+</tr>
+<tr>
+<td>Application source</td>
+<td>Current development repository</td>
+<td>Separate main repository / approved branch</td>
+</tr>
+<tr>
+<td>PostgreSQL service</td>
+<td>Dev Railway PostgreSQL</td>
+<td>Main Railway PostgreSQL</td>
+</tr>
+<tr>
+<td>Data</td>
+<td>Dummy/test owner and development data</td>
+<td>Real business/customer data</td>
+</tr>
+<tr>
+<td>Permitted work</td>
+<td>Feature work, debugging, schema rehearsal</td>
+<td>Approved release and urgent production fix only</td>
+</tr>
+</tbody>
+</table>
+<p>Both services may show the PostgreSQL database name <code>railway</code>. They are still
+separate databases because they belong to separate Railway projects/services.
+Always verify the Railway project and connection host before running SQL or
+changing variables.</p>
+<hr>
+<h2 id="3-roles-and-access-boundaries">3. Roles and access boundaries</h2>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>May do</th>
+<th>Must not do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Development owner</td>
+<td>Change Dev code, inspect Dev DB/logs, deploy Dev</td>
+<td>Experiment in Main or expose secrets</td>
+</tr>
+<tr>
+<td>Production owner</td>
+<td>Approve Main releases, manage Main backups/variables</td>
+<td>Run unreviewed destructive SQL</td>
+</tr>
+<tr>
+<td>Shop owner</td>
+<td>Full control of own workspace</td>
+<td>Share account/session access</td>
+</tr>
+<tr>
+<td>Staff</td>
+<td>Use assigned pages</td>
+<td>Delete owner-only records or cross-owner data</td>
+</tr>
+<tr>
+<td>Developer support admin</td>
+<td>Use support inbox</td>
+<td>Access business APIs as an owner</td>
+</tr>
+</tbody>
+</table>
+<p>Every business table is owner-scoped. A client-supplied <code>user_id</code> must never be
+trusted; the owner comes from the authenticated session.</p>
+<hr>
+<h2 id="4-module-map">4. Module map</h2>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Frontend</th>
+<th>Backend</th>
+<th>Main tables</th>
+<th>Critical rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Accounts and staff</td>
+<td><code>login.html</code></td>
+<td><code>routes/auth.js</code></td>
+<td><code>users</code>, <code>staff_accounts</code>, <code>settings</code></td>
+<td>HTTP-only cookie sessions only</td>
+</tr>
+<tr>
+<td>Purchases and suppliers</td>
+<td>Dashboard</td>
+<td><code>routes/business.js</code></td>
+<td>suppliers, purchases, lines, items</td>
+<td>Purchase + stock is one transaction</td>
+</tr>
+<tr>
+<td>Stock, reports, due</td>
+<td>Dashboard</td>
+<td><code>routes/inventory.js</code></td>
+<td>items, sales, debts, serials</td>
+<td>Owner scope on every query</td>
+</tr>
+<tr>
+<td>Invoice and payment</td>
+<td><code>invoice.html</code></td>
+<td><code>routes/invoices.js</code></td>
+<td>invoices, lines, sales, debts</td>
+<td>Invoice reduces stock atomically</td>
+</tr>
+<tr>
+<td>Support</td>
+<td>Dashboard/developer pages</td>
+<td><code>routes/support.js</code></td>
+<td>support tables, developer admins</td>
+<td>Developer session remains separate</td>
+</tr>
+<tr>
+<td>Export and operations</td>
+<td>Dashboard/health pages</td>
+<td>exports/ops routes</td>
+<td>queue + DB summaries</td>
+<td>Export jobs are owner-scoped</td>
+</tr>
+</tbody>
+</table>
+<p>For exact APIs, columns, relationships, and route behavior, use the two
+reference documents linked above. This document controls the operating process.</p>
+<hr>
+<h2 id="5-daily-operating-checklist">5. Daily operating checklist</h2>
+<h3 id="start-of-day">Start of day</h3>
+<ol>
+<li>
+<p>Open Dev and Main Railway dashboards.</p>
+</li>
+<li>
+<p>Confirm each service is running/healthy.</p>
+</li>
+<li>
+<p>Open the following endpoints in each environment:</p>
+<pre class="hljs"><code><div>/live     — Node process responds
+/health   — PostgreSQL readiness is complete
+</div></code></pre>
+</li>
+<li>
+<p>For mobile/network reports, also open <code>/network-check</code> before changing code.</p>
+</li>
+<li>
+<p>Review logs for repeated 5xx responses, DB connection failures, export
+failures, or startup errors.</p>
+</li>
+</ol>
+<h3 id="before-changing-code">Before changing code</h3>
+<ol>
+<li>Write the intended outcome.</li>
+<li>Identify the frontend page, API route, middleware, tables, reports, and
+permissions involved.</li>
+<li>Decide whether money, stock, serial status, or a due ledger will change.</li>
+<li>If business data changes, identify the transaction boundary and rollback
+outcome.</li>
+<li>Make the change in Dev only.</li>
+</ol>
+<h3 id="after-changing-dev-code">After changing Dev code</h3>
+<ol>
+<li>Check syntax for changed server-side files.</li>
+<li>Deploy/restart Dev.</li>
+<li>Confirm <code>/live</code> and <code>/health</code>.</li>
+<li>Test the affected flow using Dev dummy data.</li>
+<li>Check browser console, Network responses, Railway logs, and relevant DB rows.</li>
+<li>Only then prepare a Main release.</li>
+</ol>
+<hr>
+<h2 id="6-standard-development-procedure">6. Standard development procedure</h2>
+<h3 id="61-change-classification">6.1 Change classification</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Examples</th>
+<th>Minimum verification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UI-only</td>
+<td>Text, spacing, display</td>
+<td>Desktop and mobile visual check</td>
+</tr>
+<tr>
+<td>Read-only API/report</td>
+<td>Search, filter, report field</td>
+<td>Owner scope, pagination, performance</td>
+</tr>
+<tr>
+<td>Auth/permission</td>
+<td>Login, staff access, Google OAuth</td>
+<td>Owner, allowed staff, blocked staff, logout/login</td>
+</tr>
+<tr>
+<td>Transactional rule</td>
+<td>Purchase, invoice, payment, stock, serial</td>
+<td>Positive path, invalid path, rollback path</td>
+</tr>
+<tr>
+<td>Schema/index</td>
+<td>New table, field, index, constraint</td>
+<td>Dev backup, SQL review, schema + app flow</td>
+</tr>
+<tr>
+<td>Deployment/security</td>
+<td>Railway variable, JWT, CSP, cache</td>
+<td>Dev deploy and relevant regression checks</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-required-change-map">6.2 Required change map</h3>
+<p>Create this note before a non-trivial change:</p>
+<pre class="hljs"><code><div>Goal:
+Frontend files:
+Backend route/middleware:
+Database tables/columns/indexes:
+Owner/staff permission:
+Transaction required: yes/no
+Dev verification steps:
+Rollback method:
+</div></code></pre>
+<h3 id="63-safe-editing-rules">6.3 Safe editing rules</h3>
+<ol>
+<li>Inspect existing code before editing; do not rewrite a large file for a small
+change.</li>
+<li>Update UI validation and server validation together when input changes.</li>
+<li>Keep SQL parameterized; never concatenate browser values into SQL.</li>
+<li>Keep <code>getUserId(req)</code>/session owner scope on business queries.</li>
+<li>Protect destructive actions with <code>requireOwner</code>.</li>
+<li>Protect staff business features with <code>requirePermission(...)</code>.</li>
+<li>Invalidate/refresh affected cache/report data after writes.</li>
+<li>Update technical documentation for schema, behavior, or variable changes.</li>
+</ol>
+<hr>
+<h2 id="7-business-data-sop">7. Business-data SOP</h2>
+<h3 id="71-purchase-and-stock-in">7.1 Purchase and stock-in</h3>
+<pre class="hljs"><code><div>Supplier → purchase header → purchase lines → item stock update → optional serial rows
+</div></code></pre>
+<p>Before approving a purchase change, verify:</p>
+<ul>
+<li>supplier is created/used under the authenticated owner;</li>
+<li>bill total, paid, and due values are valid;</li>
+<li>each line has valid quantity and rates;</li>
+<li>item quantity rises correctly;</li>
+<li>serialized items have one serial per whole-number unit when required;</li>
+<li>duplicate owner serials are rejected;</li>
+<li>a failure rolls back bill, stock, and serial changes together.</li>
+</ul>
+<p>Do not add an independent stock-add workflow. Stock creation/replenishment must
+continue through <code>POST /api/purchases</code>.</p>
+<h3 id="72-invoice-sale-and-due-collection">7.2 Invoice, sale, and due collection</h3>
+<pre class="hljs"><code><div>Invoice header → invoice lines → stock reduction → sales rows → serial status → debt ledger if due
+</div></code></pre>
+<p>Before approving an invoice change, verify:</p>
+<ul>
+<li>invoice totals are calculated on the server;</li>
+<li>stock cannot become negative;</li>
+<li>selected serials are owner-scoped, in stock, and protected from double sale;</li>
+<li>sales rows, invoice lines, and item quantity stay consistent;</li>
+<li>due invoices create/resync the debt ledger correctly;</li>
+<li>payment collection updates both invoice and ledger;</li>
+<li>PDF values match saved invoice values.</li>
+</ul>
+<h3 id="73-deletion-and-rollback-actions">7.3 Deletion and rollback actions</h3>
+<ol>
+<li>Confirm owner-only UI and backend protection.</li>
+<li>Check foreign-key/dependency behavior.</li>
+<li>Confirm stock rollback cannot create invalid quantity.</li>
+<li>Confirm sold serials block invalid purchase reversal.</li>
+<li>Confirm debt/invoice totals resync after related deletion.</li>
+<li>Test only with Dev dummy data before any Main action.</li>
+</ol>
+<hr>
+<h2 id="8-authentication-and-security-sop">8. Authentication and security SOP</h2>
+<h3 id="session-and-token-rules">Session and token rules</h3>
+<ul>
+<li>Use HTTP-only cookies; do not store readable sessions in local storage.</li>
+<li>New owner/staff sessions, developer sessions, Google OAuth state, onboarding,
+and Android transfer tokens carry a distinct JWT purpose, issuer, and audience.</li>
+<li><code>JWT_CLAIMS_ENFORCEMENT</code> is <code>compat</code> during rollout. After the three-day
+legacy session window, set <code>strict</code> in Dev, verify login flows, then set it in
+Main.</li>
+<li>Never expose JWTs, cookies, passwords, database URLs, or mail keys in logs,
+screenshots, commits, or chat.</li>
+</ul>
+<h3 id="railway-variable-procedure">Railway variable procedure</h3>
+<p>Keep secrets separately in Dev and Main Railway Variables:</p>
+<pre class="hljs"><code><div>DATABASE_URL
+JWT_SECRET
+BASE_URL
+GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET
+MAIL_RELAY_URL / MAIL_RELAY_KEY
+DEVELOPER_REGISTRATION_KEY
+</div></code></pre>
+<p>For a variable/security change:</p>
+<ol>
+<li>Change Dev first.</li>
+<li>Deploy/restart and test the impacted flow.</li>
+<li>Record the reason and verification result.</li>
+<li>Copy to Main only after approval.</li>
+<li>Never exchange Dev and Main database URLs.</li>
+</ol>
+<h3 id="monthly-access-review">Monthly access review</h3>
+<ol>
+<li>Review active staff accounts and their permissions.</li>
+<li>Disable/delete accounts no longer required.</li>
+<li>Review active developer-support accounts.</li>
+<li>Rotate any leaked or compromised secret immediately.</li>
+</ol>
+<hr>
+<h2 id="9-database-and-index-sop">9. Database and index SOP</h2>
+<h3 id="source-of-truth">Source of truth</h3>
+<ul>
+<li>Fresh schema: <code>migrations/full_updated_schema.sql</code></li>
+<li>Existing-db compatibility: <code>db.js</code></li>
+<li>Table/relationship detail: <code>DATABASE_SCHEMA_REFERENCE.md</code></li>
+</ul>
+<p><code>db.js</code> contains compatibility statements, not a migration-history system.
+Treat every schema change as a reviewed operational release.</p>
+<h3 id="schema-change-procedure">Schema-change procedure</h3>
+<ol>
+<li>Identify affected tables, foreign keys, indexes, payloads, reports, and PDFs.</li>
+<li>Take/confirm a Dev backup or snapshot.</li>
+<li>Update the full schema file for fresh environments.</li>
+<li>Prepare a reviewed incremental SQL change for the existing Dev DB.</li>
+<li>Apply in Dev, inspect schema, then test read/write paths.</li>
+<li>Before Main, confirm a Main backup and a rollback plan.</li>
+</ol>
+<h3 id="index-procedure">Index procedure</h3>
+<p>Indexes already support frequent owner-scoped lookup, reports, invoice/customer
+search, supplier history, serial lookup, and support queues. Add an index only
+after checking a real query:</p>
+<pre class="hljs"><code><div>EXPLAIN (ANALYZE, BUFFERS)
+<span class="hljs-keyword">SELECT</span> ...;
+</div></code></pre>
+<p>To inspect usage:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">SELECT</span> relname <span class="hljs-keyword">AS</span> table_name, indexrelname <span class="hljs-keyword">AS</span> index_name, idx_scan <span class="hljs-keyword">AS</span> times_used
+<span class="hljs-keyword">FROM</span> pg_stat_user_indexes
+<span class="hljs-keyword">ORDER</span> <span class="hljs-keyword">BY</span> idx_scan <span class="hljs-keyword">DESC</span>, relname, indexrelname;
+</div></code></pre>
+<p>Do not delete a zero-use index based on one report. Stats reset on restart, and
+small tables can correctly use sequential scans.</p>
+<h3 id="database-safety-rules">Database safety rules</h3>
+<ul>
+<li>Never run unreviewed <code>DELETE</code>, <code>UPDATE</code>, <code>DROP</code>, or <code>TRUNCATE</code> in Main.</li>
+<li>Use a transaction for exploratory write SQL and inspect before <code>COMMIT</code>.</li>
+<li>Never copy Main credentials, dumps, or customer data into Dev without approval.</li>
+<li>PDF/Excel exports are not backups.</li>
+<li>Test restores in an isolated database before relying on backups.</li>
+</ul>
+<hr>
+<h2 id="10-release-sop-dev-to-main">10. Release SOP: Dev to Main</h2>
+<h3 id="dev-release-gate">Dev release gate</h3>
+<p>Complete each applicable item:</p>
+<ul>
+<li><input type="checkbox" id="checkbox0"><label for="checkbox0">Code was reviewed/read through.</label></li>
+<li><input type="checkbox" id="checkbox1"><label for="checkbox1">Changed server files pass syntax checks.</label></li>
+<li><input type="checkbox" id="checkbox2"><label for="checkbox2">Dev Railway deployment is healthy.</label></li>
+<li><input type="checkbox" id="checkbox3"><label for="checkbox3"><code>/live</code> and <code>/health</code> return expected responses.</label></li>
+<li><input type="checkbox" id="checkbox4"><label for="checkbox4">Affected owner flow passes with Dev data.</label></li>
+<li><input type="checkbox" id="checkbox5"><label for="checkbox5">Relevant staff allow/deny cases pass.</label></li>
+<li><input type="checkbox" id="checkbox6"><label for="checkbox6">Browser console and Railway logs have no unexpected errors.</label></li>
+<li><input type="checkbox" id="checkbox7"><label for="checkbox7">Stock, invoice, due, serial, or supplier balances are checked when relevant.</label></li>
+<li><input type="checkbox" id="checkbox8"><label for="checkbox8">Documentation and variables are updated.</label></li>
+<li><input type="checkbox" id="checkbox9"><label for="checkbox9">Rollback action is known.</label></li>
+</ul>
+<h3 id="main-deployment">Main deployment</h3>
+<ol>
+<li>Confirm Dev passed the release gate.</li>
+<li>Confirm the selected Railway project/database is Main.</li>
+<li>Take/confirm a backup before schema or high-risk business changes.</li>
+<li>Move only the approved change to the Main repository/branch.</li>
+<li>Deploy through the normal Railway/GitHub workflow.</li>
+<li>Monitor deployment logs until the service is healthy.</li>
+<li>Check <code>/live</code>, <code>/health</code>, login, and the changed workflow.</li>
+<li>Monitor Main logs during the initial operating period.</li>
+<li>Record deployment time, change, variables, schema action, and rollback point.</li>
+</ol>
+<h3 id="rollback">Rollback</h3>
+<ol>
+<li>Stop further change activity and capture logs/request IDs.</li>
+<li>For application-only errors, redeploy the last known-good Main commit.</li>
+<li>For schema/data errors, do not blindly restore over Main; use the reviewed
+rollback plan or first restore into isolation.</li>
+<li>Recheck health, authentication, and the affected workflow afterward.</li>
+</ol>
+<hr>
+<h2 id="11-incident-response-sop">11. Incident response SOP</h2>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>First checks</th>
+<th>Safe response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/live</code> fails</td>
+<td>Railway status/deployment/logs</td>
+<td>Restart or redeploy last known-good service</td>
+</tr>
+<tr>
+<td><code>/live</code> works but <code>/health</code> fails</td>
+<td>PostgreSQL service, <code>DATABASE_URL</code>, startup logs</td>
+<td>Fix DB connectivity; do not alter business data</td>
+</tr>
+<tr>
+<td>One mobile network fails</td>
+<td><code>/network-check</code>, domain/DNS/SSL path</td>
+<td>Investigate network/DNS before changing API code</td>
+</tr>
+<tr>
+<td>Repeated <code>503</code></td>
+<td>DB pool waiting count, slow queries</td>
+<td>Reduce load and investigate DB pressure</td>
+</tr>
+<tr>
+<td>Export fails</td>
+<td>Job status/route logs</td>
+<td>Diagnose; never expose another owner's export</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wrong-stock-invoice-or-due-balance">Wrong stock, invoice, or due balance</h3>
+<ol>
+<li>Do not manually edit several related tables first.</li>
+<li>Record owner, transaction number, timestamp, and exact wrong value.</li>
+<li>Review header, lines, stock, sales, serials, and debts together.</li>
+<li>Reproduce with Dev dummy data if possible.</li>
+<li>Prepare one reviewed corrective transaction or application fix.</li>
+<li>Back up/record affected Main rows before correction.</li>
+<li>Verify totals and reports after correction.</li>
+</ol>
+<h3 id="suspected-sessioncredential-compromise">Suspected session/credential compromise</h3>
+<ol>
+<li>Rotate the affected password/secret immediately.</li>
+<li>Rotating <code>JWT_SECRET</code> logs every session out; plan and announce this.</li>
+<li>Disable suspicious staff/developer accounts.</li>
+<li>Review logs without copying secret values into an incident note.</li>
+</ol>
+<hr>
+<h2 id="12-cache-mobile-and-browser-sop">12. Cache, mobile, and browser SOP</h2>
+<p>The service worker is a cleanup/rollback worker; it intentionally does not
+serve business API data from offline cache.</p>
+<p>For stale UI/cache reports:</p>
+<ol>
+<li>Load a normal app page once so the cleanup helper runs.</li>
+<li>Use <code>/cache-repair</code> only through the normal app flow or directed diagnosis.</li>
+<li>Change <code>APP_CACHE_VERSION</code> only for an explicit cache-repair rollout.</li>
+<li>Test Chrome desktop, Android Chrome, and Android WebView after login,
+service-worker, camera, dropdown, or upload changes.</li>
+</ol>
+<p>Serial scanning must always retain manual entry as a fallback. Test camera
+allowed and denied paths when scanner code changes.</p>
+<hr>
+<h2 id="13-manual-regression-checklist">13. Manual regression checklist</h2>
+<p>Run the relevant subset after each meaningful Dev release:</p>
+<ol>
+<li>Owner register/login/logout and current-session check.</li>
+<li>Staff login with one permitted and one blocked page.</li>
+<li>Google login/onboarding if OAuth changed.</li>
+<li>Create supplier and purchase; verify stock rises.</li>
+<li>Add serials and reject a duplicate serial.</li>
+<li>Create paid invoice; verify stock and sale movement.</li>
+<li>Create due invoice, collect payment, and verify ledger.</li>
+<li>Verify guarded delete/rollback behavior using Dev dummy data.</li>
+<li>Load stock, sales, GST, purchase, due, and expense reports.</li>
+<li>Download an invoice PDF and a report export.</li>
+<li>Send/reply to support if support changed.</li>
+<li>Check <code>/live</code>, <code>/health</code>, and <code>/network-check</code>.</li>
+</ol>
+<hr>
+<h2 id="14-change-and-incident-record-templates">14. Change and incident record templates</h2>
+<h3 id="change-record">Change record</h3>
+<pre class="hljs"><code><div>Date/time:
+Environment: Dev / Main
+Goal:
+Files/routes/tables changed:
+Environment variables changed:
+Schema/index change:
+Dev verification completed:
+Main approval:
+Rollback plan:
+Deployed by:
+</div></code></pre>
+<h3 id="incident-record">Incident record</h3>
+<pre class="hljs"><code><div>Date/time:
+Environment:
+User-visible symptom:
+Affected owner/module/record reference:
+Health status: /live, /health
+Railway request ID/log summary:
+Immediate containment:
+Root cause:
+Correction:
+Verification:
+Follow-up prevention:
+</div></code></pre>
+<hr>
+<h2 id="15-quick-decision-guide">15. Quick decision guide</h2>
+<pre class="hljs"><code><div>UI change?
+  → Update page + browser JS; verify responsive/mobile behavior.
+
+Business-rule change?
+  → Update UI validation + route validation + transaction behavior.
+
+New field/table/index?
+  → Update schema + compatibility plan + route/UI/docs; rehearse in Dev.
+
+Security/variable change?
+  → Apply in Dev Railway, verify, document, then apply in Main.
+
+Production data fix?
+  → Investigate + back up + use reviewed transaction; never improvise broad SQL.
+
+Main deployment?
+  → Pass Dev release gate, confirm project/database, deploy, monitor health/logs.
+</div></code></pre>
+<hr>
+<h2 id="16-reference-hierarchy">16. Reference hierarchy</h2>
+<p>When information differs, use this priority:</p>
+<ol>
+<li>Current application code and deployed Railway configuration.</li>
+<li><code>migrations/full_updated_schema.sql</code> for a fresh schema.</li>
+<li><code>db.js</code> for compatibility behavior on an existing database.</li>
+<li><code>COMPLETE_PROJECT_DOCUMENTATION.md</code> for technical implementation detail.</li>
+<li><code>DATABASE_SCHEMA_REFERENCE.md</code> for table/relationship detail.</li>
+<li>This SOP for operating process and release discipline.</li>
+</ol>
+<p>Update this SOP when deployment paths, high-risk workflows, security controls,
+environment variables, or recovery procedures change.</p>
+
+</body>
+</html>

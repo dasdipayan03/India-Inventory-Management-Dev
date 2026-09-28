@@ -708,6 +708,8 @@ function cacheElements() {
     loadItemReportBtn: document.getElementById("loadItemReportBtn"),
     itemReportPdfBtn: document.getElementById("itemReportPdfBtn"),
     itemReportBody: document.getElementById("itemReportBody"),
+    itemReportShowSelling: document.getElementById("itemReportShowSelling"),
+    itemReportSellingHeader: document.getElementById("itemReportSellingHeader"),
     lowStockCard: document.getElementById("lowStockCard"),
     lowStockCount: document.getElementById("lowStockCount"),
     lowStockBody: document.getElementById("lowStockBody"),
@@ -4874,11 +4876,14 @@ async function submitExpense() {
 }
 
 function renderItemReport(rows) {
+  const showSelling = dom.itemReportShowSelling.checked;
+  const columnCount = showSelling ? 5 : 4;
+  dom.itemReportSellingHeader.hidden = !showSelling;
   dom.itemReportBody.innerHTML = "";
 
   if (!rows.length) {
     dom.itemReportBody.innerHTML =
-      '<tr><td colspan="5" class="text-muted">No stock records found for this selection.</td></tr>';
+      `<tr><td colspan="${columnCount}" class="text-muted">No stock records found for this selection.</td></tr>`;
     return;
   }
 
@@ -4901,7 +4906,7 @@ function renderItemReport(rows) {
       <td>${escapeHtml(row.item_name)}</td>
       <td>${formatNumber(availableQty)}</td>
       <td>${formatCurrencyValue(buyingRate)}</td>
-      <td>${formatCurrencyValue(sellingRate)}</td>
+      ${showSelling ? `<td>${formatCurrencyValue(sellingRate)}</td>` : ""}
       <td>${formatNumber(soldQty)}</td>
     `;
     dom.itemReportBody.appendChild(tr);
@@ -4910,13 +4915,13 @@ function renderItemReport(rows) {
   const estimatedProfit = totalSellingValue - totalCostValue;
   const summaryRow = document.createElement("tr");
   summaryRow.innerHTML = `
-    <td colspan="5" class="text-end fw-bold bg-light-subtle">
+    <td colspan="${columnCount}" class="text-end fw-bold bg-light-subtle">
       <div>Total Units: ${formatNumber(totalUnits)}</div>
       <div>Total Cost Value: ${formatCurrency(totalCostValue)}</div>
-      <div>Total Selling Value: ${formatCurrency(totalSellingValue)}</div>
+      ${showSelling ? `<div>Total Selling Value: ${formatCurrency(totalSellingValue)}</div>
       <div class="${estimatedProfit >= 0 ? "text-success" : "text-danger"}">
         Estimated Profit: ${formatCurrency(estimatedProfit)}
-      </div>
+      </div>` : ""}
     </td>
   `;
   dom.itemReportBody.appendChild(summaryRow);
@@ -5786,7 +5791,11 @@ async function loadGstReport(options = {}) {
 
 async function downloadItemReportPDF() {
   const item = dom.itemReportSearch.value.trim();
-  const query = item ? `?name=${encodeURIComponent(item)}` : "";
+  const params = new URLSearchParams();
+  if (item) params.set("name", item);
+  if (!dom.itemReportShowSelling.checked) params.set("show_selling", "false");
+  const queryString = params.toString();
+  const query = queryString ? `?${queryString}` : "";
   const fallbackName = item
     ? `${sanitizeFileName(item)}-stock-report.pdf`
     : "stock-report.pdf";
@@ -8477,6 +8486,24 @@ function bindPurchaseEvents() {
 }
 
 function bindReportEvents() {
+  const preferenceKey = "stockReport.showSelling";
+  try {
+    dom.itemReportShowSelling.checked =
+      localStorage.getItem(preferenceKey) !== "false";
+  } catch (_error) {
+    // The switch still works when browser storage is unavailable.
+  }
+  dom.itemReportSellingHeader.hidden = !dom.itemReportShowSelling.checked;
+  dom.itemReportBody.querySelector("td[colspan]").colSpan =
+    dom.itemReportShowSelling.checked ? 5 : 4;
+  dom.itemReportShowSelling.addEventListener("change", () => {
+    try {
+      localStorage.setItem(preferenceKey, String(dom.itemReportShowSelling.checked));
+    } catch (_error) {
+      // Keep the current preference for this page even if it cannot be saved.
+    }
+    renderItemReport(state.currentItemReportRows);
+  });
   setupFilterInput(dom.itemReportSearch, dom.itemReportDropdown, (value) => {
     dom.itemReportSearch.value = value;
   });

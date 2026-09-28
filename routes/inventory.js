@@ -847,6 +847,7 @@ router.get(
     try {
       const user_id = getUserId(req);
       const { name } = req.query;
+      const showSelling = req.query.show_selling !== "false";
       const shopName = await getShopName(user_id);
 
       let params = [user_id];
@@ -886,12 +887,18 @@ router.get(
         name && name.trim()
           ? `Filtered for: ${name.trim()}`
           : "Full stock catalog";
-      const stockColumns = [
+      const stockColumns = showSelling ? [
         { label: "Sl", x: 46, width: 28 },
         { label: "Item Name", x: 78, width: 180 },
         { label: "Available", x: 262, width: 72, align: "right" },
         { label: "Buying", x: 338, width: 72, align: "right" },
         { label: "Selling", x: 414, width: 72, align: "right" },
+        { label: "Sold", x: 490, width: 54, align: "right" },
+      ] : [
+        { label: "Sl", x: 46, width: 28 },
+        { label: "Item Name", x: 78, width: 256 },
+        { label: "Available", x: 338, width: 72, align: "right" },
+        { label: "Buying", x: 414, width: 72, align: "right" },
         { label: "Sold", x: 490, width: 54, align: "right" },
       ];
 
@@ -912,7 +919,6 @@ router.get(
       drawPdfTableHeader(doc, stockColumns);
 
       // ---- Rows ----
-      const startX = 40;
       let totalCostValue = 0;
       let totalSellingValue = 0;
 
@@ -933,7 +939,7 @@ router.get(
 
         // 👉 Dynamic height based on item name
         const itemHeight = doc.heightOfString(r.item_name || "", {
-          width: 150,
+          width: stockColumns[1].width,
           align: "left",
         });
 
@@ -946,23 +952,19 @@ router.get(
         }
 
         doc.fillColor(PDF_THEME.ink).font("Helvetica").fontSize(10);
-        doc.text(i + 1, startX, y, { width: 30 });
-        doc.text(r.item_name || "", startX + 30, y, { width: 190 });
-        doc.text(qty.toFixed(2), startX + 220, y, {
-          width: 70,
-          align: "right",
-        });
-        doc.text(formatCurrency(buy), startX + 290, y, {
-          width: 80,
-          align: "right",
-        });
-        doc.text(formatCurrency(sell), startX + 370, y, {
-          width: 80,
-          align: "right",
-        });
-        doc.text(Number(r.sold_qty).toFixed(2), startX + 450, y, {
-          width: 65,
-          align: "right",
+        const values = [
+          String(i + 1),
+          r.item_name || "",
+          qty.toFixed(2),
+          formatCurrency(buy),
+        ];
+        if (showSelling) values.push(formatCurrency(sell));
+        values.push(Number(r.sold_qty).toFixed(2));
+        stockColumns.forEach((column, index) => {
+          doc.text(values[index], column.x, y, {
+            width: column.width,
+            align: column.align || "left",
+          });
         });
         doc
           .moveTo(40, y + Math.max(itemHeight, 18) + 2)
@@ -974,7 +976,7 @@ router.get(
       });
 
       const profit = totalSellingValue - totalCostValue;
-      const summaryHeight = 88;
+      const summaryHeight = showSelling ? 88 : 58;
 
       ensurePdfSpace(doc, summaryHeight + 16, () => {
         drawPdfBanner(
@@ -1002,19 +1004,21 @@ router.get(
         326,
         summaryY + 34,
       );
-      doc.text(
-        `Total Selling Value: Rs. ${formatCurrency(totalSellingValue)}`,
-        326,
-        summaryY + 50,
-      );
-      doc
-        .font("Helvetica-Bold")
-        .fillColor(profit >= 0 ? PDF_THEME.success : PDF_THEME.danger)
-        .text(
-          `Estimated Profit: Rs. ${formatCurrency(profit)}`,
+      if (showSelling) {
+        doc.text(
+          `Total Selling Value: Rs. ${formatCurrency(totalSellingValue)}`,
           326,
-          summaryY + 66,
+          summaryY + 50,
         );
+        doc
+          .font("Helvetica-Bold")
+          .fillColor(profit >= 0 ? PDF_THEME.success : PDF_THEME.danger)
+          .text(
+            `Estimated Profit: Rs. ${formatCurrency(profit)}`,
+            326,
+            summaryY + 66,
+          );
+      }
 
       doc.fillColor(PDF_THEME.ink);
       doc.end();
