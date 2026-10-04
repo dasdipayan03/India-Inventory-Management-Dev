@@ -1,17 +1,35 @@
 <!doctype html>
+<!-- Browser-কে invoice page modern HTML5 হিসেবে parse করতে বলে। -->
 <html lang="en" data-csp-nonce="__CSP_NONCE__">
+  <!-- Root tag page language ও server-generated CSP nonce বহন করে। -->
   <head>
+    <!-- Head metadata, app icons, external icon CSS ও invoice styles রাখে। -->
     <meta charset="utf-8" />
+    <!-- UTF-8 encoding invoice text ও symbols সঠিকভাবে দেখায়। -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Mobile width অনুযায়ী responsive viewport চালু করে। -->
     <title>Invoice Studio</title>
-    <link rel="icon" type="image/png" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
-    <link rel="apple-touch-icon" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
+    <!-- Browser tab-এ invoice workspace title দেখায়। -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
+    <!-- Browser favicon হিসেবে application logo ব্যবহার করে। -->
+    <link
+      rel="apple-touch-icon"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
+    <!-- Apple home-screen shortcut icon হিসেবে logo ব্যবহার করে। -->
     <link rel="manifest" href="/site.webmanifest" />
+    <!-- Installable web-app manifest-এর সঙ্গে invoice page যুক্ত করে। -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
+    <!-- Font Awesome invoice controls-এর icons সরবরাহ করে। -->
     <style nonce="__CSP_NONCE__">
+      /* CSP-approved style block invoice builder-এর সম্পূর্ণ visual layout নিয়ন্ত্রণ করে। */
       :root {
         --navy: #17315d;
         --sky: #0ea5e9;
@@ -25,16 +43,19 @@
         --shadow: 0 22px 48px rgba(17, 29, 58, 0.12);
         --radius: 24px;
       }
+      /* Shared colors, surfaces, status tones, shadow ও radius design tokens রাখে। */
 
       *,
       *::before,
       *::after {
         box-sizing: border-box;
       }
+      /* সব element/pseudo-element-এ predictable border-box sizing প্রয়োগ করে। */
 
       [hidden] {
         display: none !important;
       }
+      /* JavaScript-controlled hidden dropdown/modal/content নিশ্চিতভাবে লুকায়। */
 
       img {
         display: block;
@@ -62,6 +83,7 @@
           ),
           linear-gradient(180deg, #eef6ff 0%, #f7fbff 42%, #f4f9ff 100%);
       }
+      /* Full viewport invoice workspace, base font ও layered background নির্ধারণ করে। */
 
       a {
         color: inherit;
@@ -88,11 +110,13 @@
         width: min(1320px, calc(100% - 378px));
         margin: 20px 28px 36px calc(322px + max(28px, (100vw - 1642px) / 2));
       }
+      /* Sidebar-এর পাশে invoice page-এর responsive width ও margins সেট করে। */
 
       .grid {
         display: grid;
         gap: 18px;
       }
+      /* Reusable layout container-এ CSS grid ও consistent gap দেয়। */
 
       .glass {
         background: linear-gradient(
@@ -105,6 +129,7 @@
         box-shadow: var(--shadow);
         backdrop-filter: blur(14px);
       }
+      /* Main invoice panels-এ shared translucent surface, border ও shadow দেয়। */
 
       .topbar {
         top: 16px;
@@ -115,6 +140,7 @@
         align-items: center;
         padding: 15px 18px;
       }
+      /* Invoice title, shop identity ও session status topbar-এ সাজায়। */
 
       .topbar-left {
         display: flex;
@@ -225,6 +251,8 @@
         color: var(--navy);
       }
 
+      /* HERO BLOCK: Live Session ও Invoice Pulse-কে দুই-column grid-এ রাখে; নিচের stats rules
+         invoice number, GST, row count, search mode ও draft state-কে compact summary cards হিসেবে সাজায়। */
       .hero {
         display: grid;
         grid-template-columns: minmax(0, 1.42fr) minmax(340px, 1.02fr);
@@ -310,12 +338,15 @@
         gap: 18px;
         align-items: start;
       }
+      /* Invoice customer, items ও checkout workspaces-এর primary layout নিয়ন্ত্রণ করে। */
 
       #checkoutCard {
         position: sticky;
         top: 18px;
       }
 
+      /* SHOP PROFILE BLOCK: details/summary দিয়ে collapsible business profile বানায় এবং open state-এ
+         chevron ঘোরায়। এই panel-এর values invoice header, GST, bank ও UPI output-এ ব্যবহৃত হয়। */
       .shop-panel {
         padding: 0;
       }
@@ -367,6 +398,8 @@
         padding: 0 18px 18px;
       }
 
+      /* FORM CONTROL BLOCK: label, input, textarea ও দুই-column field grid-এর shared spacing, border,
+         focus ring এবং invalid state নির্ধারণ করে; customer, payment ও shop form একই rules ব্যবহার করে। */
       .field-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -403,6 +436,8 @@
         resize: vertical;
       }
 
+      /* BUTTON BLOCK: সব action button-এর size, icon alignment ও interaction transition দেয়;
+         primary/ghost/danger variants দিয়ে submit, secondary ও destructive action আলাদা করে। */
       .btn {
         display: inline-flex;
         align-items: center;
@@ -460,6 +495,7 @@
       .table-wrap {
         overflow-x: auto;
       }
+      /* Wide item table ছোট screen-এ safely scroll করতে দেয়। */
 
       #lineItemsCard .table-wrap {
         overflow-x: auto;
@@ -698,6 +734,8 @@
         white-space: nowrap;
       }
 
+      /* AUTOCOMPLETE BLOCK: customer, item, serial ও invoice suggestion list input-এর নিচে overlay করে।
+         Max-height scrolling, hover state ও rich title/meta rows keyboard/mobile-friendly ফলাফল দেখায়। */
       .dropdown-wrap {
         position: relative;
       }
@@ -806,6 +844,8 @@
         background: rgba(220, 38, 38, 0.08);
       }
 
+      /* SERIAL SCANNER BLOCK: camera preview-কে full-screen modal layer-এ দেখায়; card, close button,
+         live video ও status message scan শুরু, result পাওয়া এবং error state বোঝাতে ব্যবহৃত হয়। */
       .serial-scanner-modal {
         position: fixed;
         inset: 0;
@@ -932,6 +972,8 @@
         background: rgba(254, 242, 242, 0.98) !important;
       }
 
+      /* TOTALS BLOCK: subtotal, GST ও grand total-কে vertical summary হিসেবে সাজায় এবং grand row-কে
+         visual emphasis দেয়, যাতে recalculation-এর ফল checkout-এ সহজে পড়া যায়। */
       .totals {
         display: grid;
         gap: 12px;
@@ -958,6 +1000,8 @@
         font-weight: 800;
       }
 
+      /* PAYMENT BLOCK: mode ও paid input-এর সঙ্গে collected/outstanding readout সাজায়। Paid, partial,
+         due, return ও draft status-chip-এর আলাদা রং payment snapshot-এর state দৃশ্যমান করে। */
       .payment-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1045,6 +1089,8 @@
         background: rgba(219, 234, 254, 0.74);
       }
 
+      /* HISTORY SEARCH BLOCK: invoice query field ও search button পাশাপাশি রাখে; নিচের result area-তে
+         latest list, filtered cards অথবা একটি invoice-এর পূর্ণ detail render হয়। */
       .search-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto auto;
@@ -1111,6 +1157,8 @@
       }
 
       .empty,
+      /* INVOICE PREVIEW BLOCK: history result-কে paper-style invoice বানায়—brand header, customer info,
+         item grid, totals ও action buttons একই printable visual hierarchy অনুসরণ করে। */
       .result,
       .history-grid {
         display: grid;
@@ -1332,6 +1380,8 @@
         text-align: center;
       }
 
+      /* SETTLEMENT BLOCK: বকেয়া payment receive form এবং আগের collection entries আলাদা card/list-এ
+         দেখায়; amount, mode, date ও note-এর metadata responsive grid-এ থাকে। */
       .settlement-card {
         display: grid;
         gap: 12px;
@@ -1454,10 +1504,12 @@
         padding: 24px;
         z-index: 120;
       }
+      /* Download ও save-confirm modal default hidden full-screen layer হিসেবে তৈরি করে। */
 
       .modal.open {
         display: flex;
       }
+      /* JavaScript open class দিলে modal visible করে। */
 
       .modal-bg {
         position: absolute;
@@ -1484,6 +1536,7 @@
         justify-content: center;
         padding: 22px;
       }
+      /* Common success/error popup full-screen accessible overlay হিসেবে প্রস্তুত রাখে। */
 
       .popup-shell.active {
         display: flex;
@@ -1608,7 +1661,9 @@
         color: var(--sky);
         cursor: pointer;
         font-size: 24px;
-        transition: transform 0.2s ease, filter 0.2s ease;
+        transition:
+          transform 0.2s ease,
+          filter 0.2s ease;
       }
 
       .popup-icon:hover {
@@ -1668,6 +1723,8 @@
         }
       }
 
+      /* RESPONSIVE BLOCK: নিচের breakpoints desktop থেকে tablet/mobile-এ grid collapse, table-card view,
+         spacing, modal এবং checkout action size বদলায়; কোনো business logic পরিবর্তন করে না। */
       @media (max-width: 1380px) {
         .workspace {
           grid-template-columns: 1fr;
@@ -2225,11 +2282,17 @@
           padding: 10px;
         }
       }
+      /* Tablet/mobile screen-এ sidebar offset সরিয়ে invoice workspace full-width করে। */
     </style>
+    <!-- Invoice page-এর large responsive CSS block শেষ। -->
   </head>
+  <!-- Metadata, icon library ও invoice CSSসহ document head শেষ। -->
   <body>
+    <!-- Body visible invoice builder, modals এবং inline application logic ধরে। -->
     <div class="page grid">
+      <!-- Main page wrapper invoice panels center করে ও shared grid spacing দেয়। -->
       <header class="glass topbar">
+        <!-- Topbar invoice title, shop name এবং current session role/scope দেখায়। -->
         <div class="topbar-left">
           <div>
             <div class="eyebrow">Invoice Studio</div>
@@ -2250,8 +2313,10 @@
           </div>
         </div>
       </header>
+      <!-- Invoice Studio topbar শেষ। -->
 
       <section class="hero">
+        <!-- Hero area current invoice metadata ও pre-submit quick summary দেখায়। -->
         <div class="hero-main" id="heroMain">
           <div id="liveSessionCard" class="glass card">
             <div class="eyebrow">Live Session</div>
@@ -2265,6 +2330,7 @@
             </div>
           </div>
         </div>
+        <!-- Live Session card current invoice number ও date দেখায়। -->
 
         <aside id="invoicePulseCard" class="glass card summary-box">
           <div>
@@ -2294,11 +2360,15 @@
             <span id="draftBadgeText">No draft saved yet</span>
           </div>
         </aside>
+        <!-- Invoice Pulse card GST, line counts, search mode ও draft state দেখায়। -->
       </section>
+      <!-- Invoice hero/session summary section শেষ। -->
 
       <section class="workspace">
+        <!-- Main workspace customer billing, line items এবং checkout controls ধরে। -->
         <div class="grid">
           <section id="billingDetailsCard" class="glass card items-panel">
+            <!-- Customer billing card name, phone ও address input নেয়। -->
             <div class="toolbar">
               <div>
                 <div class="eyebrow">Customer</div>
@@ -2341,8 +2411,10 @@
               ></textarea>
             </div>
           </section>
+          <!-- Customer billing details card শেষ। -->
 
           <section id="lineItemsCard" class="glass card">
+            <!-- Item builder card invoice line rows, stock serial এবং rate calculations ধরে। -->
             <div class="toolbar">
               <div>
                 <div class="eyebrow">Line Items</div>
@@ -2352,6 +2424,7 @@
 
             <div class="table-wrap">
               <table>
+                <!-- Item, quantity, serial, rate, discount, GST ও total columns-এর invoice table। -->
                 <thead>
                   <tr>
                     <th>Item</th>
@@ -2366,7 +2439,9 @@
                   </tr>
                 </thead>
                 <tbody id="itemsTbody"></tbody>
+                <!-- Inline JavaScript dynamic item rows এখানে যোগ করে। -->
               </table>
+              <!-- Invoice line-item table শেষ। -->
             </div>
 
             <div class="actions stack-top-16">
@@ -2376,14 +2451,17 @@
               </button>
             </div>
           </section>
+          <!-- Invoice line-item builder card শেষ। -->
         </div>
 
         <div class="grid">
           <section id="checkoutCard" class="glass card">
+            <!-- Checkout card subtotal, GST, total, payment status ও submit controls দেখায়। -->
             <div class="eyebrow">Checkout</div>
             <h2>Invoice summary</h2>
 
             <div class="totals stack-top-16">
+              <!-- JavaScript-calculated subtotal, GST ও grand-total values group করে। -->
               <div>
                 <span>Subtotal</span>
                 <strong id="subtotal">0.00</strong>
@@ -2397,8 +2475,10 @@
                 <strong id="grandTotal">0.00</strong>
               </div>
             </div>
+            <!-- Invoice total summary শেষ। -->
 
             <div class="payment-grid">
+              <!-- Payment mode, collected amount, due amount ও status controls grid-এ রাখে। -->
               <div class="payment-field payment-field--full">
                 <label for="paymentMode">Payment Mode</label>
                 <select id="paymentMode" class="input">
@@ -2450,8 +2530,10 @@
                 </div>
               </div>
             </div>
+            <!-- Payment detail/preview grid শেষ। -->
 
             <div class="checkout-actions">
+              <!-- Submit Invoice ও Clear Invoice primary actions group করে। -->
               <button id="saveInvoiceBtn" class="btn primary" type="button">
                 <i class="fa-solid fa-file-circle-check"></i>
                 Submit Invoice
@@ -2461,13 +2543,18 @@
                 Clear Invoice
               </button>
             </div>
+            <!-- Checkout action buttons শেষ। -->
           </section>
+          <!-- Invoice checkout card শেষ। -->
         </div>
       </section>
+      <!-- Customer/item/checkout main workspace শেষ। -->
 
       <section id="shopProfileCard" class="glass shop-panel">
+        <!-- Collapsible shop profile invoice header, GST, bank ও UPI settings ধরে। -->
         <details id="shopDetails" class="shop-details">
           <summary class="shop-summary">
+            <!-- Summary row click করলে Business and Tax Setup panel expand/collapse হয়। -->
             <div class="shop-summary-copy">
               <div class="eyebrow">Shop Profile</div>
               <h2>Business and tax setup</h2>
@@ -2476,8 +2563,10 @@
               <i class="fa-solid fa-chevron-down"></i>
             </span>
           </summary>
+          <!-- Shop Profile collapsible heading শেষ। -->
 
           <div class="shop-body">
+            <!-- Shop name, GST, address, bank account ও UPI editable form body। -->
             <p id="shopProfileHelper" class="helper stack-bottom-16">
               Shop profile is used in invoice preview, GST calculation, account
               details, and PDF output.
@@ -2582,10 +2671,14 @@
               </button>
             </div>
           </div>
+          <!-- Shop profile settings form শেষ। -->
         </details>
+        <!-- Collapsible shop profile details element শেষ। -->
       </section>
+      <!-- Shop Profile panel শেষ। -->
 
       <section class="glass card invoice-history-panel">
+        <!-- Invoice history panel invoice number/customer/contact/date search পরিচালনা করে। -->
         <div class="toolbar">
           <div>
             <div class="eyebrow">Invoice History</div>
@@ -2609,10 +2702,14 @@
         </div>
 
         <div id="searchResult" class="search-result"></div>
+        <!-- Matching invoice cards/details JavaScript এখানে render করে। -->
       </section>
+      <!-- Invoice History search panel শেষ। -->
     </div>
+    <!-- Main invoice page wrapper শেষ। -->
 
     <div id="downloadModal" class="modal">
+      <!-- Successful invoice save-এর পরে PDF download confirmation modal। -->
       <div class="modal-bg" data-close-download="true"></div>
       <div class="modal-box">
         <h3>Download invoice PDF?</h3>
@@ -2621,9 +2718,12 @@
           <button id="modalNo" class="btn ghost" type="button">No</button>
         </div>
       </div>
+      <!-- Download confirmation dialog box শেষ। -->
     </div>
+    <!-- PDF download modal shell শেষ। -->
 
     <div id="saveConfirmModal" class="modal">
+      <!-- Stock reduction ও sales save-এর আগে final invoice confirmation modal। -->
       <div class="modal-bg" data-close-save="true"></div>
       <div class="modal-box">
         <h3>Submit this invoice?</h3>
@@ -2640,7 +2740,9 @@
           </button>
         </div>
       </div>
+      <!-- Save-confirm dialog box শেষ। -->
     </div>
+    <!-- Invoice submission confirmation modal shell শেষ। -->
 
     <div
       id="commonPopup"
@@ -2650,6 +2752,7 @@
       aria-modal="true"
       aria-labelledby="popupTitle"
     >
+      <!-- Shared accessible popup success, error ও informational feedback দেখায়। -->
       <div id="popupOverlay" class="popup-overlay"></div>
       <div id="popupBox" class="popup-box">
         <button
@@ -2663,14 +2766,26 @@
         <h4 id="popupTitle"></h4>
         <p id="popupMessage"></p>
       </div>
+      <!-- Dynamic popup icon, title ও message box শেষ। -->
     </div>
+    <!-- Common popup shell শেষ। -->
     <script src="js/permission-contract.js"></script>
+    <!-- Shared owner/staff page permission contract আগে load করে। -->
     <script src="js/app-core.js"></script>
+    <!-- API base, session/permission helpers ও shared application config load করে। -->
     <script src="js/app-shell.js"></script>
+    <!-- Responsive sidebar ও invoice/dashboard navigation behavior চালু করে। -->
     <script nonce="__CSP_NONCE__">
+      // নিচের CSP-approved inline script invoice authentication, draft, items, totals, payment, search ও submit logic চালায়।
+      // ==================== BLOCK 01: APP CONFIGURATION ও FORMAT HELPERS ====================
+      // এই block shared app configuration নেয়, API base path ও draft key ঠিক করে এবং date/money/text
+      // নিরাপদভাবে format করার reusable helper তৈরি করে। পরের সব invoice block এই helpers ব্যবহার করে।
       const appConfig = window.InventoryApp || {};
+      // app-core.js থেকে shared API ও permission configuration নেয়।
       const API_PREFIX = appConfig.apiBase || "/api";
+      // সব invoice API request-এর base URL নির্ধারণ করে।
       const DRAFT_KEY = "invoice_page_draft_v4";
+      // Browser localStorage-এ unsaved invoice draft রাখার versioned key।
       const ACCESS_DENIED_MESSAGE =
         "This staff account does not have access to this action. Ask owner to update access or login again.";
       let invoicePermissionRefreshHandler = null;
@@ -2679,13 +2794,16 @@
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       });
+      // Invoice amountগুলো India locale-এ দুই decimal format করার formatter।
 
       const exactDate = (value) =>
+        // এই functionটি exact Date সম্পর্কিত invoice logic পরিচালনা করে।
         new Date(value).toLocaleDateString("en-IN", {
           timeZone: "Asia/Kolkata",
         });
 
       const safeDate = (value) => {
+        // এই functionটি safe Date সম্পর্কিত invoice logic পরিচালনা করে।
         const raw =
           value && /^\d{4}-\d{2}-\d{2}$/.test(value)
             ? `${value}T00:00:00`
@@ -2697,6 +2815,7 @@
       };
 
       const percent = (value) => {
+        // এই functionটি percent সম্পর্কিত invoice logic পরিচালনা করে।
         const num = Number(value) || 0;
         return (
           (Number.isInteger(num)
@@ -2716,6 +2835,7 @@
             .replace(/'/g, "&#39;"));
 
       const formatMoney = (value) => money.format(Number(value) || 0);
+      // এই functionটি format Money সম্পর্কিত invoice logic পরিচালনা করে।
 
       const PAYMENT_MODE_LABELS = {
         cash: "Cash",
@@ -2753,6 +2873,7 @@
       };
 
       const normalizeMobileNumber = (value) => {
+        // এই functionটি normalize Mobile Number সম্পর্কিত invoice logic পরিচালনা করে।
         const digits = String(value || "").replace(/\D+/g, "");
 
         if (digits.length === 12 && digits.startsWith("91")) {
@@ -2767,6 +2888,7 @@
       };
 
       const formatPaymentMode = (value) =>
+        // এই functionটি format Payment Mode সম্পর্কিত invoice logic পরিচালনা করে।
         PAYMENT_MODE_LABELS[
           String(value || "")
             .trim()
@@ -2774,6 +2896,7 @@
         ] || "Cash";
 
       const getPaymentModeOptionsMarkup = (selected = "cash") =>
+        // এই functionটি get Payment Mode Options Markup সম্পর্কিত invoice logic পরিচালনা করে।
         Object.entries(PAYMENT_MODE_LABELS)
           .map(
             ([value, label]) =>
@@ -2782,6 +2905,7 @@
           .join("");
 
       const getPaymentStatusMeta = (status) =>
+        // এই functionটি get Payment Status Meta সম্পর্কিত invoice logic পরিচালনা করে।
         PAYMENT_STATUS_META[
           String(status || "")
             .trim()
@@ -2789,6 +2913,7 @@
         ] || PAYMENT_STATUS_META.paid;
 
       const getStatusChipMarkup = (status) => {
+        // এই functionটি get Status Chip Markup সম্পর্কিত invoice logic পরিচালনা করে।
         const normalized = String(status || "paid")
           .trim()
           .toLowerCase();
@@ -2802,6 +2927,8 @@
       };
 
       const buildPaymentSnapshot = (
+        // মোট টাকা, user-এর দেওয়া paid amount এবং payment mode নিয়ে একটি normalized payment snapshot বানায়।
+        // Paid amount total-এর মধ্যে সীমাবদ্ধ রেখে amountPaid, amountDue, status ও display label return করে।
         totalAmount,
         amountPaidInput,
         paymentModeInput,
@@ -2847,6 +2974,8 @@
       };
 
       const saveBlobDownload = async (response, fallbackName) => {
+        // API response-এর Content-Disposition header থেকে filename পড়ে; filename না থাকলে fallbackName নেয়।
+        // Response blob-এর temporary object URL বানিয়ে hidden link click করায় এবং শেষে URL release করে।
         const disposition = response.headers.get("content-disposition") || "";
         const match = disposition.match(/filename="?([^"]+)"?/i);
         const filename = match?.[1] || fallbackName;
@@ -2873,6 +3002,9 @@
         });
 
       async function authFetch(url, options = {}) {
+        // ==================== BLOCK 02: AUTHENTICATED API ও EXPORT QUEUE ====================
+        // Cookieসহ API request পাঠায় এবং permission failure হলে একবার session permission refresh করে retry করে।
+        // Login/session শেষ হলে stored session পরিষ্কার করে; caller raw Response পায় যাতে নিজে status/body handle করতে পারে।
         const {
           permissionRetry = false,
           skipPermissionRefresh = false,
@@ -2921,6 +3053,7 @@
       }
 
       const appendAsyncExportFlag = (url) => {
+        // এই functionটি append Async Export Flag সম্পর্কিত invoice logic পরিচালনা করে।
         const normalizedUrl = String(url || "");
         if (!/\/(?:pdf|excel)(?:\?|$)/i.test(normalizedUrl)) {
           return normalizedUrl;
@@ -2930,9 +3063,12 @@
       };
 
       const wait = (ms) =>
+        // এই functionটি wait সম্পর্কিত invoice logic পরিচালনা করে।
         new Promise((resolve) => window.setTimeout(resolve, ms));
 
       const waitForQueuedExport = async (job, fallbackName) => {
+        // Server export job queue করলে status endpoint poll করে completed/failed state-এর জন্য অপেক্ষা করে।
+        // Job completed হলে protected download endpoint থেকে PDF blob এনে saveBlobDownload দিয়ে file save করায়।
         const jobId = job?.id;
         if (!jobId) {
           throw new Error("Export job could not be started.");
@@ -2999,9 +3135,13 @@
       };
 
       document.addEventListener("DOMContentLoaded", () => {
+        // ==================== BLOCK 03: PAGE BOOTSTRAP ও DOM REFERENCE MAP ====================
+        // HTML parse শেষ হলে sidebar render করে এবং বারবার querySelector না চালিয়ে প্রয়োজনীয় element reference
+        // একটি dom object-এ cache করে। পরের handlers ও render functions এই একই reference ব্যবহার করে।
         window.InventoryAppShell?.renderSidebar("invoice");
 
         const $ = (id) => document.getElementById(id);
+        // এই functionটি $ সম্পর্কিত invoice logic পরিচালনা করে।
         const dom = {
           invoiceNavBtn: $("invoiceNavBtn"),
           sessionRolePill: $("sessionRolePill"),
@@ -3087,18 +3227,21 @@
         ].filter(Boolean);
 
         const hideElement = (element) => {
+          // এই functionটি hide Element সম্পর্কিত invoice logic পরিচালনা করে।
           if (element) {
             element.hidden = true;
           }
         };
 
         const showElement = (element) => {
+          // এই functionটি show Element সম্পর্কিত invoice logic পরিচালনা করে।
           if (element) {
             element.hidden = false;
           }
         };
 
         const setNavigationAccessLocked = (locked = true) => {
+          // এই functionটি set Navigation Access Locked সম্পর্কিত invoice logic পরিচালনা করে।
           if (dom.invoiceNavBtn) {
             dom.invoiceNavBtn.hidden = true;
             dom.invoiceNavBtn.disabled = Boolean(locked);
@@ -3113,6 +3256,7 @@
         setNavigationAccessLocked(true);
 
         const renderHeroShopName = (name = "") => {
+          // এই functionটি render Hero Shop Name সম্পর্কিত invoice logic পরিচালনা করে।
           if (!dom.heroShopName) return;
           const value = String(name || "").trim();
           dom.heroShopName.hidden = !value;
@@ -3124,6 +3268,8 @@
         let cardLayoutMode = null;
 
         const syncMobileCardLayout = (force = false) => {
+          // Desktop/mobile breakpoint বদলালে billing, line-item, checkout ও pulse card-কে উপযুক্ত parent-এ সরায়।
+          // Keyboard resize-এর মতো একই breakpoint-এর resize-এ অপ্রয়োজনীয় DOM re-parenting এড়ায়।
           if (
             !dom.heroMain ||
             !dom.liveSessionCard ||
@@ -3185,15 +3331,18 @@
         let invoiceNumbersPromise = null;
 
         const authHeaders = () => ({
+          // এই functionটি auth Headers সম্পর্কিত invoice logic পরিচালনা করে।
           "Content-Type": "application/json",
         });
 
         const normalizeSearchKey = (value) =>
+          // এই functionটি normalize Search Key সম্পর্কিত invoice logic পরিচালনা করে।
           String(value || "")
             .trim()
             .toLowerCase();
 
         const buildStringSearchIndex = (values) =>
+          // এই functionটি build String Search Index সম্পর্কিত invoice logic পরিচালনা করে।
           (Array.isArray(values) ? values : [])
             .map((value) => String(value || "").trim())
             .filter(Boolean)
@@ -3203,6 +3352,7 @@
             }));
 
         const buildStringLookup = (searchIndex) => {
+          // এই functionটি build String Lookup সম্পর্কিত invoice logic পরিচালনা করে।
           const lookup = new Map();
 
           searchIndex.forEach((entry) => {
@@ -3215,6 +3365,7 @@
         };
 
         const getSearchMatches = (searchIndex, query, limit = 10) => {
+          // এই functionটি get Search Matches সম্পর্কিত invoice logic পরিচালনা করে।
           const normalizedQuery = normalizeSearchKey(query);
           const matches = [];
 
@@ -3234,6 +3385,7 @@
         };
 
         const debounce = (callback, delay = 180) => {
+          // এই functionটি debounce সম্পর্কিত invoice logic পরিচালনা করে।
           let timerId = 0;
 
           return (...args) => {
@@ -3252,6 +3404,7 @@
           (() => window.matchMedia("(max-width: 991px)").matches);
 
         const isOwnerSession = () =>
+          // এই functionটি is Owner Session সম্পর্কিত invoice logic পরিচালনা করে।
           typeof appConfig.isOwnerUser === "function"
             ? appConfig.isOwnerUser(sessionUser)
             : ["owner", "admin"].includes(
@@ -3261,31 +3414,37 @@
               );
 
         const getPermissionSummary = (permissions, options = {}) => {
+          // এই functionটি get Permission Summary সম্পর্কিত invoice logic পরিচালনা করে।
           return typeof appConfig.formatPermissionSummary === "function"
             ? appConfig.formatPermissionSummary(permissions, options)
             : "No assigned pages";
         };
 
         const canAccessPermission = (...permissions) => {
+          // এই functionটি can Access Permission সম্পর্কিত invoice logic পরিচালনা করে।
           return typeof appConfig.canAccessPermission === "function"
             ? appConfig.canAccessPermission(sessionUser, ...permissions)
             : false;
         };
 
         const canAccessInvoicePage = () => canAccessPermission("sale_invoice");
+        // এই functionটি can Access Invoice Page সম্পর্কিত invoice logic পরিচালনা করে।
 
         const canAccessDashboardSection = (sectionId) => {
+          // এই functionটি can Access Dashboard Section সম্পর্কিত invoice logic পরিচালনা করে।
           return typeof appConfig.canAccessSection === "function"
             ? appConfig.canAccessSection(sessionUser, sectionId)
             : false;
         };
 
         const getFirstAccessibleDashboardSection = () =>
+          // এই functionটি get First Accessible Dashboard Section সম্পর্কিত invoice logic পরিচালনা করে।
           dom.dashboardNavButtons
             .map((button) => button.dataset.navSection)
             .find((sectionId) => canAccessDashboardSection(sectionId)) || null;
 
         const keepShopProfileFieldVisible = (event) => {
+          // এই functionটি keep Shop Profile Field Visible সম্পর্কিত invoice logic পরিচালনা করে।
           if (!window.matchMedia("(max-width: 991px)").matches) {
             return;
           }
@@ -3304,6 +3463,7 @@
         };
 
         const setShopProfileEditable = (editable) => {
+          // এই functionটি set Shop Profile Editable সম্পর্কিত invoice logic পরিচালনা করে।
           shopProfileInputs.forEach((input) => {
             input.disabled = !editable;
           });
@@ -3324,9 +3484,13 @@
         });
 
         const applySessionAccess = (user) => {
+          // ==================== BLOCK 04: SESSION, ROLE ও PERMISSION CONTROL ====================
+          // Owner/staff session থেকে permission summary বানিয়ে navigation, invoice form ও shop-profile editing চালু/বন্ধ করে।
+          // একই সঙ্গে role/scope pills update করে, যাতে user বর্তমান access level দেখতে পারে।
           sessionUser = user;
           const isStaff = user?.role === "staff";
           const ownerName = (user?.ownerName || "").trim();
+          // এই functionটি owner Name সম্পর্কিত invoice logic পরিচালনা করে।
           const accessSummary = getPermissionSummary(user?.permissions, {
             short: true,
           });
@@ -3356,6 +3520,7 @@
         };
 
         const redirectAwayFromInvoiceIfNeeded = () => {
+          // এই functionটি redirect Away From Invoice If Needed সম্পর্কিত invoice logic পরিচালনা করে।
           if (canAccessInvoicePage()) {
             return false;
           }
@@ -3414,6 +3579,8 @@
         };
 
         async function loadSession() {
+          // /auth/me থেকে বর্তমান user নেয়, session না থাকলে login page-এ পাঠায় এবং valid user হলে access rules প্রয়োগ করে।
+          // Functionটি সফল user object return করে; initialization এই result ছাড়া invoice data load করে না।
           const res = await authFetch(`${API_PREFIX}/auth/me`);
           if (!res || !res.ok) {
             return null;
@@ -3430,6 +3597,7 @@
         }
 
         const goToDashboardSection = (sectionId) => {
+          // এই functionটি go To Dashboard Section সম্পর্কিত invoice logic পরিচালনা করে।
           const safeSection = canAccessDashboardSection(sectionId)
             ? sectionId
             : getFirstAccessibleDashboardSection();
@@ -3443,6 +3611,7 @@
         };
 
         const logoutAndRedirect = async () => {
+          // এই functionটি logout And Redirect সম্পর্কিত invoice logic পরিচালনা করে।
           try {
             await authFetch(`${API_PREFIX}/auth/logout`, {
               method: "POST",
@@ -3464,8 +3633,11 @@
           }) || null;
 
         const rows = () => Array.from(dom.itemsTbody.querySelectorAll("tr"));
+        // এই functionটি rows সম্পর্কিত invoice logic পরিচালনা করে।
 
         const setBusy = (button, busy, label) => {
+          // ==================== BLOCK 05: BUTTON, MODAL, POPUP ও DOWNLOAD FEEDBACK ====================
+          // Async কাজ চলার সময় button disable করে spinner/temporary label দেখায়; কাজ শেষ হলে original HTML ফিরিয়ে দেয়।
           if (!button) {
             return;
           }
@@ -3483,6 +3655,7 @@
         };
 
         const withButtonState = async (button, label, task) => {
+          // এই functionটি with Button State সম্পর্কিত invoice logic পরিচালনা করে।
           if (!button) {
             await task();
             return;
@@ -3501,14 +3674,18 @@
         };
 
         const openModal = (el) => el.classList.add("open");
+        // এই functionটি open Modal সম্পর্কিত invoice logic পরিচালনা করে।
         const closeModal = (el) => el.classList.remove("open");
+        // এই functionটি close Modal সম্পর্কিত invoice logic পরিচালনা করে।
 
         const setDraftState = (text, mode) => {
+          // এই functionটি set Draft State সম্পর্কিত invoice logic পরিচালনা করে।
           dom.draftBadgeText.textContent = text;
           dom.draftBadge.className = `mini draft-badge ${mode}`;
         };
 
         const showPopup = (type, title, message, options = {}) => {
+          // এই functionটি show Popup সম্পর্কিত invoice logic পরিচালনা করে।
           const iconMap = {
             success: '<i class="fa-solid fa-circle-check"></i>',
             error: '<i class="fa-solid fa-circle-xmark"></i>',
@@ -3537,6 +3714,7 @@
         };
 
         const hidePopup = () => {
+          // এই functionটি hide Popup সম্পর্কিত invoice logic পরিচালনা করে।
           dom.commonPopup.classList.remove("active");
           dom.commonPopup.setAttribute("aria-hidden", "true");
           if (popupTimer) {
@@ -3546,6 +3724,8 @@
         };
 
         const downloadInvoice = async (invoiceNo, button = null) => {
+          // Invoice number encode করে PDF export request পাঠায়। সরাসরি PDF এলে save করে, queued response এলে poller চালায়।
+          // Busy button state এবং download error popup একই জায়গা থেকে নিয়ন্ত্রণ করে।
           const normalizedInvoiceNo = String(invoiceNo || "").trim();
           if (!normalizedInvoiceNo) {
             return false;
@@ -3625,6 +3805,7 @@
         };
 
         const updateSearchStatus = (modeText, countText, hintText) => {
+          // এই functionটি update Search Status সম্পর্কিত invoice logic পরিচালনা করে।
           if (dom.searchModeText) {
             dom.searchModeText.textContent = modeText;
           }
@@ -3637,12 +3818,14 @@
         };
 
         const updateInvoiceMeta = (invoiceNo, dateValue) => {
+          // এই functionটি update Invoice Meta সম্পর্কিত invoice logic পরিচালনা করে।
           const label = safeDate(dateValue);
           dom.invoiceNo.textContent = invoiceNo || "--";
           dom.invoiceDate.textContent = label;
         };
 
         const updateCounts = () => {
+          // এই functionটি update Counts সম্পর্কিত invoice logic পরিচালনা করে।
           const list = rows();
           const filled = list.filter((row) =>
             row.querySelector(".item-input")?.value.trim(),
@@ -3652,16 +3835,20 @@
         };
 
         const updateGst = () => {
+          // এই functionটি update Gst সম্পর্কিত invoice logic পরিচালনা করে।
           dom.summaryGstRate.textContent = percent(userGstRate);
           dom.gstLineLabel.textContent = `GST (${percent(userGstRate)})`;
         };
 
         const getRowSerialNumbers = (row) =>
+          // ==================== BLOCK 06: INVOICE ROW DATA ও SERIAL NUMBER SCANNER ====================
+          // নির্দিষ্ট item row-এর serial inputs থেকে trimmed, non-empty serial number array তৈরি করে।
           Array.from(row.querySelectorAll(".serial-input"))
             .map((input) => normalizeSerialEntry(input.value))
             .filter(Boolean);
 
         const rowData = (row) => ({
+          // এই functionটি row Data সম্পর্কিত invoice logic পরিচালনা করে।
           description: row.querySelector(".item-input")?.value.trim() || "",
           quantity:
             parseFloat(row.querySelector(".qty-input")?.value || "0") || 0,
@@ -3675,17 +3862,20 @@
         });
 
         const normalizeSerialEntry = (value) =>
+          // এই functionটি normalize Serial Entry সম্পর্কিত invoice logic পরিচালনা করে।
           String(value || "")
             .replace(/\s+/g, " ")
             .trim();
 
         const parseSerialNumbersInput = (value) =>
+          // এই functionটি parse Serial Numbers Input সম্পর্কিত invoice logic পরিচালনা করে।
           String(value || "")
             .split(/[\n\r,]+/)
             .map(normalizeSerialEntry)
             .filter(Boolean);
 
         const findDuplicateSerialNumber = (serialNumbers = []) => {
+          // এই functionটি find Duplicate Serial Number সম্পর্কিত invoice logic পরিচালনা করে।
           const seen = new Set();
           for (const serialNo of serialNumbers) {
             const key = serialNo.toLowerCase();
@@ -3706,6 +3896,7 @@
         };
 
         const stopSerialCameraScanner = () => {
+          // এই functionটি stop Serial Camera Scanner সম্পর্কিত invoice logic পরিচালনা করে।
           if (serialScannerState.frameId) {
             cancelAnimationFrame(serialScannerState.frameId);
           }
@@ -3736,6 +3927,7 @@
         };
 
         const ensureSerialScannerModal = () => {
+          // এই functionটি ensure Serial Scanner Modal সম্পর্কিত invoice logic পরিচালনা করে।
           if (serialScannerState.modal) {
             return serialScannerState.modal;
           }
@@ -3778,6 +3970,7 @@
         };
 
         const createSerialBarcodeDetector = async () => {
+          // এই functionটি create Serial Barcode Detector সম্পর্কিত invoice logic পরিচালনা করে।
           if (!("BarcodeDetector" in window)) {
             throw new Error(
               "Camera barcode scan is not supported in this browser. Use Chrome/Edge or enter the serial manually.",
@@ -3800,7 +3993,9 @@
           ];
           let formats = preferredFormats;
 
-          if (typeof window.BarcodeDetector.getSupportedFormats === "function") {
+          if (
+            typeof window.BarcodeDetector.getSupportedFormats === "function"
+          ) {
             const supportedFormats =
               await window.BarcodeDetector.getSupportedFormats();
             formats = preferredFormats.filter((format) =>
@@ -3814,6 +4009,8 @@
         };
 
         const startSerialCameraScan = async (onDetected) => {
+          // Camera permission, BarcodeDetector support ও video stream প্রস্তুত করে frame-by-frame barcode scan চালায়।
+          // Serial পাওয়া গেলে scanner বন্ধ করে detected value callback-এ পাঠায়; unsupported/error state modal-এ দেখায়।
           if (!window.isSecureContext) {
             showPopup(
               "error",
@@ -3861,6 +4058,7 @@
             status.textContent = "Scanning...";
 
             const scanFrame = async () => {
+              // এই functionটি scan Frame সম্পর্কিত invoice logic পরিচালনা করে।
               if (!serialScannerState.stream || modal.hidden) {
                 return;
               }
@@ -3898,6 +4096,8 @@
         };
 
         const getCurrentPaymentSnapshot = () =>
+          // ==================== BLOCK 07: PAYMENT PREVIEW, DRAFT ও TOTAL CALCULATION ====================
+          // Checkout-এর current grand total, paid input ও mode পড়ে canonical payment snapshot return করে।
           buildPaymentSnapshot(
             parseFloat(dom.grandTotal.textContent || "0") || 0,
             dom.amountPaid.value,
@@ -3905,6 +4105,7 @@
           );
 
         const getPaymentPreviewSnapshot = () => {
+          // এই functionটি get Payment Preview Snapshot সম্পর্কিত invoice logic পরিচালনা করে।
           const payment = getCurrentPaymentSnapshot();
           const hasFilledItems = rows().some((row) =>
             row.querySelector(".item-input")?.value.trim(),
@@ -3924,6 +4125,7 @@
         };
 
         const updateSaveConfirmCopy = (
+          // এই functionটি update Save Confirm Copy সম্পর্কিত invoice logic পরিচালনা করে।
           payment = getCurrentPaymentSnapshot(),
         ) => {
           if (!dom.saveConfirmMessage) {
@@ -3951,6 +4153,7 @@
         };
 
         const updatePaymentPreview = () => {
+          // এই functionটি update Payment Preview সম্পর্কিত invoice logic পরিচালনা করে।
           const preview = getPaymentPreviewSnapshot();
           dom.amountPaidDisplay.textContent = formatMoney(preview.amountPaid);
           dom.amountDue.textContent = formatMoney(preview.amountDue);
@@ -3974,6 +4177,8 @@
         };
 
         const buildDraft = () => {
+          // Customer fields, GST, payment এবং কেবল পূরণ করা item rows নিয়ে localStorage-ready draft object বানায়।
+          // Draft-এ temporary UI state নয়, invoice পুনরুদ্ধারের জন্য প্রয়োজনীয় business input-গুলো রাখা হয়।
           const items = rows()
             .map(rowData)
             .filter(
@@ -4001,6 +4206,7 @@
         };
 
         const saveDraft = () => {
+          // এই functionটি save Draft সম্পর্কিত invoice logic পরিচালনা করে।
           if (suppressDraft) return;
           const draft = buildDraft();
           if (!draft) {
@@ -4022,11 +4228,14 @@
         };
 
         const queueDraft = () => {
+          // এই functionটি queue Draft সম্পর্কিত invoice logic পরিচালনা করে।
           if (draftTimer) clearTimeout(draftTimer);
           draftTimer = setTimeout(saveDraft, 220);
         };
 
         const recalcTotals = () => {
+          // সব row-এর base-cell যোগ করে subtotal, configured GST rate থেকে tax এবং grand total হিসাব করে।
+          // তারপর checkout values, hero counts, payment preview ও queued draft একসঙ্গে refresh করে।
           const subtotal = rows().reduce(
             (sum, row) =>
               sum +
@@ -4046,11 +4255,15 @@
         };
 
         const hideDropdowns = () =>
+          // এই functionটি hide Dropdowns সম্পর্কিত invoice logic পরিচালনা করে।
           document.querySelectorAll(".dropdown-list").forEach((el) => {
             hideElement(el);
           });
 
         const setupScrollableDropdown = (host) => {
+          // ==================== BLOCK 08: REUSABLE AUTOCOMPLETE/DROPDOWN BEHAVIOR ====================
+          // Pointer/touch interaction চলাকালে dropdown blur হয়ে বন্ধ হওয়া আটকায় এবং interaction শেষে state release করে।
+          // এই functionটি setup Scrollable Dropdown সম্পর্কিত invoice logic পরিচালনা করে।
           if (!host || host.dataset.scrollGuardBound === "true") {
             return;
           }
@@ -4058,12 +4271,14 @@
           host.dataset.scrollGuardBound = "true";
           let interactionTimer = 0;
           const markInteracting = () => {
+            // এই functionটি mark Interacting সম্পর্কিত invoice logic পরিচালনা করে।
             host.dataset.interacting = "true";
             if (interactionTimer) {
               clearTimeout(interactionTimer);
             }
           };
           const releaseInteracting = () => {
+            // এই functionটি release Interacting সম্পর্কিত invoice logic পরিচালনা করে।
             if (interactionTimer) {
               clearTimeout(interactionTimer);
             }
@@ -4092,6 +4307,7 @@
         };
 
         const scheduleDropdownHide = (host, delay = 160) => {
+          // এই functionটি schedule Dropdown Hide সম্পর্কিত invoice logic পরিচালনা করে।
           if (!host) {
             return;
           }
@@ -4106,6 +4322,7 @@
         };
 
         const renderDropdown = (host, items, onSelect) => {
+          // এই functionটি render Dropdown সম্পর্কিত invoice logic পরিচালনা করে।
           if (!items.length) {
             host.innerHTML = "";
             hideElement(host);
@@ -4133,6 +4350,8 @@
         };
 
         const loadCustomerSuggestions = async (query) => {
+          // Typed customer name API-তে পাঠিয়ে matching customer records আনে; request ব্যর্থ হলে empty list দেয়।
+          // Returned name/contact/address renderCustomerDropdown ব্যবহার করে form-এ বসানো যায়।
           const value = String(query || "").trim();
           if (!value) return [];
 
@@ -4152,6 +4371,7 @@
         };
 
         const renderCustomerDropdown = (customers) => {
+          // এই functionটি render Customer Dropdown সম্পর্কিত invoice logic পরিচালনা করে।
           if (!dom.customerDropdown) return;
 
           if (!customers.length) {
@@ -4215,6 +4435,7 @@
         };
 
         const showCustomerSuggestions = async () => {
+          // এই functionটি show Customer Suggestions সম্পর্কিত invoice logic পরিচালনা করে।
           const query = dom.custName.value.trim();
           if (!query) {
             renderCustomerDropdown([]);
@@ -4227,6 +4448,7 @@
         };
 
         const renderInvoiceSuggestionDropdown = (
+          // এই functionটি render Invoice Suggestion Dropdown সম্পর্কিত invoice logic পরিচালনা করে।
           host,
           suggestions,
           onSelect,
@@ -4274,6 +4496,7 @@
         };
 
         async function loadItemNames() {
+          // এই functionটি load Item Names সম্পর্কিত invoice কাজ পরিচালনা করে।
           if (itemNamesPromise) {
             return itemNamesPromise;
           }
@@ -4302,10 +4525,13 @@
         }
 
         async function loadInvoiceNumbers() {
+          // এই functionটি load Invoice Numbers সম্পর্কিত invoice কাজ পরিচালনা করে।
           return loadInvoiceNumbersInternal();
         }
 
         async function loadInvoiceNumbersInternal(force = false) {
+          // Invoice numbers একবার load করে normalized search index/lookup cache বানায়; force=true হলে cache refresh করে।
+          // Primary endpoint ব্যর্থ হলে compatible fallback endpoint ব্যবহার করে search feature সচল রাখে।
           if (force) {
             invoiceNumbersPromise = null;
           }
@@ -4355,6 +4581,7 @@
         }
 
         async function loadInvoiceSuggestions(query = "") {
+          // এই functionটি load Invoice Suggestions সম্পর্কিত invoice কাজ পরিচালনা করে।
           const res = await authFetch(
             `${API_PREFIX}/invoices/suggestions?q=${encodeURIComponent(query)}&limit=10`,
             {
@@ -4371,6 +4598,7 @@
         }
 
         async function showInvoiceNumberSuggestions(query = "") {
+          // এই functionটি show Invoice Number Suggestions সম্পর্কিত invoice কাজ পরিচালনা করে।
           const requestId = ++invoiceSuggestionRequestId;
           const suggestions = await loadInvoiceSuggestions(query);
 
@@ -4409,6 +4637,7 @@
         }
 
         const resolveExactInvoiceNo = (query) => {
+          // এই functionটি resolve Exact Invoice No সম্পর্কিত invoice logic পরিচালনা করে।
           const normalizedQuery = String(query || "")
             .trim()
             .toLowerCase();
@@ -4432,6 +4661,7 @@
         };
 
         async function loadShopInfo() {
+          // এই functionটি load Shop Info সম্পর্কিত invoice কাজ পরিচালনা করে।
           const res = await authFetch(API_PREFIX + "/shop-info", {
             headers: authHeaders(),
           });
@@ -4471,6 +4701,7 @@
         }
 
         async function loadNewInvoice() {
+          // এই functionটি load New Invoice সম্পর্কিত invoice কাজ পরিচালনা করে।
           const res = await authFetch(API_PREFIX + "/invoices/new", {
             headers: authHeaders(),
           });
@@ -4481,6 +4712,9 @@
         }
 
         function addItemRow(
+          // ==================== BLOCK 09: ITEM ROW, STOCK, SERIAL ও PRICE CALCULATION ====================
+          // একটি পূর্ণ editable invoice row তৈরি করে এবং item autocomplete, quantity, serial slots, rate,
+          // discount/profit ও remove action-এর listeners bind করে। Existing draft data দিয়েও row restore করা যায়।
           item = { description: "", quantity: 1, rate: 0 },
           silent = false,
         ) {
@@ -4558,6 +4792,7 @@
               : "";
 
           const validateQty = () => {
+            // এই functionটি validate Qty সম্পর্কিত invoice logic পরিচালনা করে।
             qtyInput.classList.remove("invalid");
             stockInfo.classList.remove("blink");
             if (
@@ -4570,6 +4805,7 @@
           };
 
           const clearStock = () => {
+            // এই functionটি clear Stock সম্পর্কিত invoice logic পরিচালনা করে।
             availableQty = 0;
             hasStock = false;
             stockInfo.textContent = "";
@@ -4578,9 +4814,11 @@
           };
 
           const serialKey = (value) =>
+            // এই functionটি serial Key সম্পর্কিত invoice logic পরিচালনা করে।
             normalizeSerialEntry(value).toLowerCase();
 
           const readSerialRate = (serial) => {
+            // এই functionটি read Serial Rate সম্পর্কিত invoice logic পরিচালনা করে।
             const rate = Number.parseFloat(
               serial?.sale_rate ?? serial?.selling_rate ?? "",
             );
@@ -4590,6 +4828,7 @@
           };
 
           const rememberSerialMeta = (serial) => {
+            // এই functionটি remember Serial Meta সম্পর্কিত invoice logic পরিচালনা করে।
             const serialNo = normalizeSerialEntry(serial?.serial_no ?? serial);
             if (!serialNo) {
               return null;
@@ -4605,10 +4844,14 @@
           };
 
           const serialInputs = () =>
+            // এই functionটি serial Inputs সম্পর্কিত invoice logic পরিচালনা করে।
             Array.from(tr.querySelectorAll(".serial-input"));
 
           const renderSerialDropdown = (dropdownHost, input, serials = []) => {
-            const dropdownItems = serials.map(rememberSerialMeta).filter(Boolean);
+            // এই functionটি render Serial Dropdown সম্পর্কিত invoice logic পরিচালনা করে।
+            const dropdownItems = serials
+              .map(rememberSerialMeta)
+              .filter(Boolean);
 
             if (!dropdownItems.length) {
               dropdownHost.innerHTML = "";
@@ -4648,6 +4891,7 @@
           };
 
           const applySerialRateFromCache = (serialNumbers) => {
+            // এই functionটি apply Serial Rate From Cache সম্পর্কিত invoice logic পরিচালনা করে।
             const rates = serialNumbers.map((serialNo) => {
               const record = serialMetaByKey.get(serialKey(serialNo));
               return record ? readSerialRate(record) : null;
@@ -4679,6 +4923,9 @@
           };
 
           const updateSerialState = () => {
+            // Row quantity অনুযায়ী serial input count sync করে, duplicate/missing serial state দেখায় এবং row validity update করে।
+            // Serial-rate cache থেকে buying rate নিয়ে profit calculation refresh করাও এই flow-এর অংশ।
+            // এই functionটি update Serial State সম্পর্কিত invoice logic পরিচালনা করে।
             const inputs = serialInputs();
             const serialNumbers = getRowSerialNumbers(tr);
             const qty = parseFloat(qtyInput.value || "0") || 0;
@@ -4737,16 +4984,16 @@
             serialInfo.dataset.state =
               rateState.state === "ready" ? "ready" : "idle";
             serialInfo.dataset.rateState = rateState.state;
-            serialInfo.textContent =
-              rateState.custom
-                ? `SN ready: ${serialNumbers.length} | Custom rate`
-                : rateState.state === "ready"
+            serialInfo.textContent = rateState.custom
+              ? `SN ready: ${serialNumbers.length} | Custom rate`
+              : rateState.state === "ready"
                 ? `SN ready: ${serialNumbers.length} | Rate ${Number(rateState.rate).toFixed(2)}`
                 : `SN ready: ${serialNumbers.length} | checking rate`;
             fromRate();
           };
 
           const fetchSerialMeta = async (serialNo) => {
+            // এই functionটি fetch Serial Meta সম্পর্কিত invoice logic পরিচালনা করে।
             const itemName = itemInput.value.trim();
             const normalized = normalizeSerialEntry(serialNo);
             if (!normalized) {
@@ -4773,6 +5020,7 @@
 
               const data = await res.json();
               const matched = (Array.isArray(data.serials) ? data.serials : [])
+                // এই functionটি matched সম্পর্কিত invoice logic পরিচালনা করে।
                 .map(rememberSerialMeta)
                 .find(
                   (serial) =>
@@ -4793,6 +5041,7 @@
           };
 
           const syncSerialRates = async () => {
+            // এই functionটি sync Serial Rates সম্পর্কিত invoice logic পরিচালনা করে।
             const serialNumbers = getRowSerialNumbers(tr);
             if (!serialNumbers.length) {
               updateSerialState();
@@ -4820,6 +5069,7 @@
           };
 
           const scheduleSerialRateSync = () => {
+            // এই functionটি schedule Serial Rate Sync সম্পর্কিত invoice logic পরিচালনা করে।
             if (serialRateSyncTimer) {
               clearTimeout(serialRateSyncTimer);
             }
@@ -4830,7 +5080,12 @@
           };
           tr.syncSerialRates = syncSerialRates;
 
-          const appendSerialNumber = (serialValue, targetInput, dropdownHost) => {
+          const appendSerialNumber = (
+            serialValue,
+            targetInput,
+            dropdownHost,
+          ) => {
+            // এই functionটি append Serial Number সম্পর্কিত invoice logic পরিচালনা করে।
             const serialRecord = rememberSerialMeta(serialValue);
             const normalized = normalizeSerialEntry(
               serialRecord?.serial_no ?? serialValue,
@@ -4841,7 +5096,9 @@
 
             const input =
               targetInput ||
-              serialInputs().find((field) => !normalizeSerialEntry(field.value)) ||
+              serialInputs().find(
+                (field) => !normalizeSerialEntry(field.value),
+              ) ||
               serialInputs()[serialInputs().length - 1];
 
             if (input) {
@@ -4857,6 +5114,7 @@
           };
 
           const loadSerialSuggestions = async (input, dropdownHost) => {
+            // এই functionটি load Serial Suggestions সম্পর্কিত invoice logic পরিচালনা করে।
             const itemName = itemInput.value.trim();
             if (!itemName) {
               hideElement(dropdownHost);
@@ -4886,6 +5144,7 @@
           };
 
           const renderSerialSlots = (values = getRowSerialNumbers(tr)) => {
+            // এই functionটি render Serial Slots সম্পর্কিত invoice logic পরিচালনা করে।
             const qty = parseFloat(qtyInput.value || "0") || 0;
             serialSlots.innerHTML = "";
 
@@ -4934,10 +5193,12 @@
           };
 
           const syncItemTitle = () => {
+            // এই functionটি sync Item Title সম্পর্কিত invoice logic পরিচালনা করে।
             itemInput.title = itemInput.value.trim();
           };
 
           const setBuyingRate = (value) => {
+            // এই functionটি set Buying Rate সম্পর্কিত invoice logic পরিচালনা করে।
             const nextBuyingRate = Number.parseFloat(value);
             buyingRate =
               Number.isFinite(nextBuyingRate) && nextBuyingRate > 0
@@ -4947,15 +5208,14 @@
           };
 
           const clearBuyingRate = () => {
+            // এই functionটি clear Buying Rate সম্পর্কিত invoice logic পরিচালনা করে।
             setBuyingRate(0);
             profitInput.value = "";
           };
 
           const syncProfitFromRate = (options = {}) => {
-            if (
-              !options.force &&
-              document.activeElement === profitInput
-            ) {
+            // এই functionটি sync Profit From Rate সম্পর্কিত invoice logic পরিচালনা করে।
+            if (!options.force && document.activeElement === profitInput) {
               return;
             }
 
@@ -4966,12 +5226,15 @@
             }
 
             const profitPercent = ((rate - buyingRate) / buyingRate) * 100;
+            // এই functionটি profit Percent সম্পর্কিত invoice logic পরিচালনা করে।
             profitInput.value = Number.isFinite(profitPercent)
               ? profitPercent.toFixed(2)
               : "";
           };
 
           const fromRate = (options = {}) => {
+            // Quantity × rate থেকে base total হিসাব করে, sale discount প্রয়োগ করে এবং row-এর base/GST display update করে।
+            // Manual rate edit হলে buying-rate ভিত্তিক profit percentage-ও পুনরায় sync করে।
             const q = parseFloat(qtyInput.value || "0") || 0;
             const r = parseFloat(rateInput.value || "0") || 0;
             const base = +(q * r).toFixed(4);
@@ -4988,6 +5251,7 @@
           };
 
           const fromTotal = () => {
+            // এই functionটি from Total সম্পর্কিত invoice logic পরিচালনা করে।
             const q = parseFloat(qtyInput.value || "0") || 0;
             const total = parseFloat(totalInput.value || "0") || 0;
             if (!q || !total) {
@@ -5009,6 +5273,7 @@
           };
 
           const fromProfit = () => {
+            // এই functionটি from Profit সম্পর্কিত invoice logic পরিচালনা করে।
             const profitPercent = Number.parseFloat(profitInput.value);
             if (!buyingRate || !Number.isFinite(profitPercent)) {
               return;
@@ -5023,6 +5288,8 @@
           };
 
           const loadItemInfo = async (name) => {
+            // নির্বাচিত item-এর current stock, buying/selling rate ও serial metadata API থেকে আনে।
+            // Response দিয়ে row rate, stock hint, serial controls ও profit calculation populate করে।
             const res = await authFetch(
               `${API_PREFIX}/items/info?name=${encodeURIComponent(name)}`,
               { headers: authHeaders() },
@@ -5045,6 +5312,7 @@
           };
 
           const showItemSuggestions = async () => {
+            // এই functionটি show Item Suggestions সম্পর্কিত invoice logic পরিচালনা করে।
             syncItemTitle();
             clearStock();
             let q = itemInput.value.trim().toLowerCase();
@@ -5145,6 +5413,8 @@
         }
 
         const resetInvoice = () => {
+          // ==================== BLOCK 10: RESET, DRAFT RESTORE ও INVOICE HISTORY RENDER ====================
+          // Customer/payment/item inputs initial state-এ ফেরায়, saved draft সরায় এবং একটি fresh empty row তৈরি করে।
           suppressDraft = true;
           dom.custName.value = "";
           dom.custContact.value = "";
@@ -5160,6 +5430,8 @@
         };
 
         const restoreDraft = () => {
+          // Versioned localStorage draft parse করে customer, payment ও item rows পুনরায় form-এ বসায়।
+          // Invalid JSON বা unusable draft হলে safeভাবে false দেয়; successful restore-এর পরে totals refresh করে।
           const raw = localStorage.getItem(DRAFT_KEY);
           if (!raw) {
             setDraftState("No draft saved yet", "clear");
@@ -5199,10 +5471,12 @@
         };
 
         const renderEmpty = (title, message) => {
+          // এই functionটি render Empty সম্পর্কিত invoice logic পরিচালনা করে।
           dom.searchResult.innerHTML = `<div class="empty"><i class="fa-regular fa-folder-open"></i><h3>${escapeHtml(title)}</h3><p class="sub">${escapeHtml(message)}</p></div>`;
         };
 
         const renderSettlementEntries = (entries) => {
+          // এই functionটি render Settlement Entries সম্পর্কিত invoice logic পরিচালনা করে।
           if (!entries.length) {
             return `<div class="settlement-help">No linked due entries are available for this invoice yet.</div>`;
           }
@@ -5247,6 +5521,8 @@
         };
 
         const renderDetail = (invoice, options = {}) => {
+          // একটি invoice object-কে printable detail card-এ রূপ দেয়: shop/customer header, item rows, totals,
+          // payment status, settlement history এবং বকেয়া থাকলে receive-payment form render করে।
           const shopName =
             dom.shopName.value.trim() || "Shop Inventory Management";
           const shopAddress = dom.shopAddress.value.trim() || "-";
@@ -5256,14 +5532,13 @@
             ? invoice.collections
             : [];
           const itemsHtml = invoice.items
-            .map(
-              (item, index) => {
-                const serialNumbers = Array.isArray(item.serial_numbers)
-                  ? item.serial_numbers
-                      .map((serial) => serial?.serial_no || "")
-                      .filter(Boolean)
-                  : [];
-                return `
+            .map((item, index) => {
+              const serialNumbers = Array.isArray(item.serial_numbers)
+                ? item.serial_numbers
+                    .map((serial) => serial?.serial_no || "")
+                    .filter(Boolean)
+                : [];
+              return `
                 <div class="paper-item">
                   <div class="paper-cell paper-cell--item">
                     <span>Item</span>
@@ -5289,8 +5564,7 @@
                   </div>
                   </div>
               `;
-              },
-            )
+            })
             .join("");
 
           const settlementMarkup =
@@ -5483,6 +5757,7 @@
         };
 
         const bindHistory = () => {
+          // এই functionটি bind History সম্পর্কিত invoice logic পরিচালনা করে।
           dom.searchResult
             .querySelectorAll(".invoice-open")
             .forEach((btn) =>
@@ -5505,6 +5780,7 @@
         };
 
         const renderList = (list, query) => {
+          // এই functionটি render List সম্পর্কিত invoice logic পরিচালনা করে।
           if (!list.length) {
             renderEmpty(
               "No invoices found",
@@ -5569,6 +5845,7 @@
         };
 
         async function loadExact(invoiceNo, options = {}) {
+          // এই functionটি load Exact সম্পর্কিত invoice কাজ পরিচালনা করে।
           const res = await authFetch(
             `${API_PREFIX}/invoices/${encodeURIComponent(invoiceNo)}`,
             {
@@ -5584,6 +5861,8 @@
         }
 
         async function receiveInvoicePayment(invoiceNo) {
+          // History detail-এর due payment form validate করে collection API-তে amount, mode ও remark পাঠায়।
+          // Save সফল হলে একই invoice নতুন settlement dataসহ reload করে এবং list/count refresh করে।
           const amountField =
             dom.searchResult.querySelector("#settlementAmount");
           const modeField = dom.searchResult.querySelector("#settlementMode");
@@ -5659,6 +5938,9 @@
         }
 
         async function performSearch(forced = null) {
+          // ==================== BLOCK 11: HISTORY SEARCH ও SHOP PROFILE SAVE ====================
+          // Query exact invoice number হলে detail endpoint খোলে; অন্যথায় customer/contact/date matching list আনে।
+          // Empty query latest invoices দেখায় এবং search status/count/hint একই সঙ্গে update করে।
           const query =
             typeof forced === "string"
               ? forced.trim()
@@ -5700,6 +5982,8 @@
         }
 
         async function saveShopProfile() {
+          // Editable shop/tax/bank/UPI fields সংগ্রহ করে /shop-info endpoint-এ save করে।
+          // Success response form, hero shop name, GST calculation ও readonly/edit state-এ পুনরায় প্রয়োগ করে।
           if (!isOwnerSession()) {
             showPopup(
               "error",
@@ -5756,6 +6040,9 @@
         }
 
         const payload = () => {
+          // ==================== BLOCK 12: FINAL PAYLOAD, VALIDATION ও INVOICE SUBMISSION ====================
+          // Current form থেকে backend contract অনুযায়ী customer, items, totals এবং payment fields-এর request body বানায়।
+          // rowData() ব্যবহার করায় serial numbers ও per-row calculated values একই normalized shape-এ থাকে।
           const payment = getCurrentPaymentSnapshot();
           return {
             customer_name: dom.custName.value.trim(),
@@ -5780,9 +6067,12 @@
         };
 
         async function preCheck() {
-          const filled = rows().filter((row) =>
-            row.querySelector(".item-input")?.value.trim() ||
-            getRowSerialNumbers(row).length,
+          // Submit-এর আগে customer, item, quantity, rate, serial uniqueness, stock availability ও paid amount যাচাই করে।
+          // Invalid field mark/focus করে নির্দিষ্ট popup দেখায়; সব check pass করলে confirmation modal-এর copy update করে true দেয়।
+          const filled = rows().filter(
+            (row) =>
+              row.querySelector(".item-input")?.value.trim() ||
+              getRowSerialNumbers(row).length,
           );
           dom.custContact.classList.remove("invalid");
           dom.amountPaid.classList.remove("invalid");
@@ -5798,7 +6088,9 @@
           for (const row of filled) {
             const itemInput = row.querySelector(".item-input");
             const qtyInput = row.querySelector(".qty-input");
-            const serialInputs = Array.from(row.querySelectorAll(".serial-input"));
+            const serialInputs = Array.from(
+              row.querySelectorAll(".serial-input"),
+            );
             const serialInfo = row.querySelector(".serial-stock");
             const rateInput = row.querySelector(".rate-input");
             [itemInput, qtyInput, rateInput, ...serialInputs].forEach((el) =>
@@ -5807,7 +6099,10 @@
 
             const quantity = parseFloat(qtyInput.value || "0") || 0;
             let serialNumbers = getRowSerialNumbers(row);
-            if (serialNumbers.length && typeof row.syncSerialRates === "function") {
+            if (
+              serialNumbers.length &&
+              typeof row.syncSerialRates === "function"
+            ) {
               await row.syncSerialRates();
               serialNumbers = getRowSerialNumbers(row);
             }
@@ -5853,7 +6148,9 @@
 
             if (
               serialNumbers.length &&
-              (!Number.isInteger(quantity) || quantity <= 0 || serialNumbers.length !== quantity)
+              (!Number.isInteger(quantity) ||
+                quantity <= 0 ||
+                serialNumbers.length !== quantity)
             ) {
               serialInputs
                 .filter((input) => !normalizeSerialEntry(input.value))
@@ -5955,6 +6252,8 @@
         }
 
         async function submitInvoice() {
+          // Confirm হওয়ার পর payload POST করে invoice save ও stock reduction সম্পন্ন করে।
+          // Success হলে draft মুছে form reset করে, invoice/search cache refresh করে এবং PDF download prompt খোলে।
           if (
             dom.confirmSaveYes?.dataset.busy === "true" ||
             dom.confirmSaveYes?.disabled
@@ -6031,6 +6330,10 @@
           closeModal(dom.saveConfirmModal),
         );
         dom.confirmSaveYes.addEventListener("click", submitInvoice);
+
+        // ==================== BLOCK 13: USER EVENT BINDINGS ====================
+        // নিচের listeners modal close, customer/invoice suggestions, payment/GST recalculation, add/clear/save actions,
+        // keyboard shortcuts এবং page unload-এর আগে draft save—এই সব user interaction-কে উপরের functions-এর সঙ্গে যুক্ত করে।
 
         document
           .querySelectorAll("[data-close-download='true']")
@@ -6167,6 +6470,9 @@
         window.addEventListener("beforeunload", saveDraft);
 
         (async function init() {
+          // ==================== BLOCK 14: INITIAL DATA LOAD ====================
+          // প্রথমে session/access যাচাই করে; তারপর initial row ও totals বানিয়ে item names, shop profile এবং নতুন invoice number parallel load করে।
+          // শেষে saved draft থাকলে restore করে, না থাকলে নিশ্চিতভাবে একটি fresh row রেখে page-কে ব্যবহারযোগ্য অবস্থায় আনে।
           const user = await loadSession();
           if (!user) {
             return;

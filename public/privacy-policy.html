@@ -1,4 +1,9 @@
 <!doctype html>
+<!--
+  FILE OVERVIEW: এই static legal page web app ও Android app-এর privacy practices ব্যাখ্যা করে।
+  Page-এ authentication বা data submission script নেই; navigation links policy sections, login এবং deletion page-এ নেয়।
+  নিচের comments visual CSS blocks এবং প্রতিটি legal-content section-এর উদ্দেশ্য ব্যাখ্যা করে; policy text অপরিবর্তিত।
+-->
 <html lang="en" data-csp-nonce="__CSP_NONCE__">
   <head>
     <meta charset="utf-8" />
@@ -7,6 +12,9 @@
     <link rel="icon" type="image/png" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
     <link rel="apple-touch-icon" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
     <style nonce="__CSP_NONCE__">
+      /* ==================== CSS BLOCK 01: DESIGN TOKENS ও GLOBAL PAGE FOUNDATION ====================
+         Policy page-এর shared colors, surface, border, shadow ও light color scheme variables রাখে। Global box sizing,
+         typography, layered background এবং common link interaction পুরো document-এর visual base তৈরি করে। */
       :root {
         color-scheme: light;
         --navy: #122744;
@@ -56,6 +64,9 @@
         text-underline-offset: 4px;
       }
 
+      /* ==================== CSS BLOCK 02: CONTENT WIDTH ও GLASS SURFACES ====================
+         পুরো legal document readable maximum width-এ center করে। Topbar, hero, content card ও notice একই translucent
+         surface, border, blur এবং shadow ব্যবহার করে consistent legal-page hierarchy তৈরি করে। */
       .page {
         width: min(calc(100% - 28px), 1120px);
         margin: 18px auto 42px;
@@ -71,6 +82,9 @@
         backdrop-filter: blur(18px);
       }
 
+      /* ==================== CSS BLOCK 03: BRAND HEADER ও LEGAL NAVIGATION ====================
+         App logo/name বাম পাশে এবং login/account-deletion pill links ডান পাশে রাখে। Flexible wrapping ছোট width-এ
+         navigation overflow আটকায় এবং brand link user-কে login page-এ ফেরায়। */
       .topbar {
         display: flex;
         align-items: center;
@@ -132,6 +146,9 @@
         font-weight: 800;
       }
 
+      /* ==================== CSS BLOCK 04: POLICY HERO ও DOCUMENT METADATA ====================
+         Policy title, scope description এবং effective date/app/contact summary prominent header card-এ সাজায়।
+         Meta grid তিনটি policy fact দ্রুত scan করার জন্য পৃথক bordered cells ব্যবহার করে। */
       .hero {
         margin-top: 18px;
         padding: clamp(28px, 5vw, 52px);
@@ -201,6 +218,9 @@
         line-height: 1.45;
       }
 
+      /* ==================== CSS BLOCK 05: TABLE OF CONTENTS ও POLICY DOCUMENT LAYOUT ====================
+         Desktop-এ sticky section navigation এবং main content দুই-column grid-এ রাখে। Anchor links overview থেকে
+         contact পর্যন্ত target section-এ যায়; content-card legal copy-এর readable line length বজায় রাখে। */
       .layout {
         display: grid;
         grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
@@ -210,6 +230,9 @@
       }
 
       .toc,
+      /* ==================== CSS BLOCK 06: POLICY TYPOGRAPHY ও SECTION SEPARATION ====================
+         Section headings, paragraphs, lists এবং section boundaries-এর spacing/line-height নির্ধারণ করে। প্রতিটি policy
+         topic visually আলাদা হলেও একই content card-এর ধারাবাহিক document flow বজায় থাকে। */
       .content-card {
         border-radius: 28px;
       }
@@ -280,6 +303,9 @@
         margin-top: 7px;
       }
 
+      /* ==================== CSS BLOCK 07: DATA CATEGORY CARDS ও SECURITY NOTICE ====================
+         Collected data-কে account, business, staff ও technical categories-এ card grid হিসেবে দেখায়। Notice component
+         security limitation-এর মতো গুরুত্বপূর্ণ সতর্কতা soft highlighted surface-এ আলাদা করে। */
       .info-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -308,6 +334,9 @@
         background: rgba(240, 253, 249, 0.86);
       }
 
+      /* ==================== CSS BLOCK 08: FOOTER ও RESPONSIVE OVERRIDES ====================
+         Footer copyright align করে। Tablet/mobile breakpoints two-column layout ও metadata cards stack করে,
+         sticky TOC normal flow-তে আনে এবং topbar/navigation touch-friendly full-width layout নেয়। */
       .footer {
         margin-top: 20px;
         padding: 20px;
@@ -356,7 +385,13 @@
     </style>
   </head>
   <body>
+    <!-- ==================== HTML BLOCK 01: LEGAL PAGE SHELL ====================
+         page wrapper brand navigation, privacy document এবং copyright footer-কে একটি centered readable column-এ রাখে।
+         এই page কোনো user data collect/submit করে না; শুধু policy information ও related navigation দেয়। -->
     <div class="page">
+      <!-- ==================== HTML BLOCK 02: BRAND ও RELATED LEGAL NAVIGATION ====================
+           Brand link login page-এ ফেরায়। ডান পাশের actions login এবং account-deletion request page-এর direct পথ দেয়,
+           যাতে policy পড়া user authentication বা deletion workflow সহজে খুঁজে পায়। -->
       <header class="topbar">
         <a
           class="brand"
@@ -381,6 +416,9 @@
       </header>
 
       <main>
+        <!-- ==================== HTML BLOCK 03: POLICY TITLE, SCOPE ও METADATA ====================
+             Hero স্পষ্ট করে যে policy web app ও Android app—দুটোর data collection/use/protection/deletion cover করে।
+             Effective date, covered product এবং privacy contact review-এর জন্য structured summary হিসেবে দেওয়া আছে। -->
         <article class="hero">
           <span class="eyebrow">Privacy Policy</span>
           <h1>How Shop Inventory Management handles business data</h1>
@@ -410,6 +448,9 @@
           </div>
         </article>
 
+        <!-- ==================== HTML BLOCK 04: POLICY NAVIGATION ও CONTENT STRUCTURE ====================
+             aside table-of-contents anchor links দিয়ে ৯টি policy topic-এ দ্রুত যেতে দেয়। content-card একই order-এ
+             পূর্ণ legal explanation রাখে, তাই navigation label ও section id একে অপরের সঙ্গে যুক্ত। -->
         <div class="layout">
           <aside class="toc" aria-label="Privacy policy sections">
             <strong>On this page</strong>
@@ -425,6 +466,9 @@
           </aside>
 
           <div class="content-card">
+            <!-- ==================== POLICY SECTION 01: OVERVIEW ====================
+                 Product কোন operational features চালায় এবং data ব্যবহারের high-level সীমা কী তা বলে। এখানে মূল
+                 commitment হলো service operation/security/support-এর জন্য data use এবং personal/business data বিক্রি না করা। -->
             <section id="overview">
               <h2>1. Overview</h2>
               <p>
@@ -440,6 +484,9 @@
               </p>
             </section>
 
+            <!-- ==================== POLICY SECTION 02: DATA WE COLLECT ====================
+                 চারটি category cover করে: owner/login identity ও session, inventory/purchase/sale/customer business records,
+                 staff credentials/permissions এবং support/security logs। Google login করলে provider identity data-ও অন্তর্ভুক্ত। -->
             <section id="data">
               <h2>2. Data We Collect</h2>
               <div class="info-grid">
@@ -507,6 +554,9 @@
               </div>
             </section>
 
+            <!-- ==================== POLICY SECTION 03: HOW DATA IS USED ====================
+                 Collected data account security, shop records, invoices/reports, password recovery, customer support এবং
+                 misuse prevention-এ কেন প্রয়োজন তা purpose list হিসেবে ব্যাখ্যা করে। -->
             <section id="use">
               <h2>3. How We Use Data</h2>
               <ul>
@@ -536,6 +586,9 @@
               </ul>
             </section>
 
+            <!-- ==================== POLICY SECTION 04: SHARING ও THIRD PARTIES ====================
+                 Advertising/data sale বাদ দিয়ে hosting/database, Google OAuth, email relay এবং legally required disclosure-এর
+                 সীমিত processing ব্যাখ্যা করে। External Google privacy policy নতুন tab-এ নিরাপদ rel attributeসহ খোলে। -->
             <section id="sharing">
               <h2>4. Sharing and Third Parties</h2>
               <p>
@@ -575,6 +628,9 @@
               </p>
             </section>
 
+            <!-- ==================== POLICY SECTION 05: SECURITY SAFEGUARDS ====================
+                 Password hashing, secure HTTP-only session cookies, staff role checks এবং shop-wise data separation-এর
+                 safeguards উল্লেখ করে। Highlighted notice absolute security guarantee না থাকার practical limitation জানায়। -->
             <section id="security">
               <h2>5. Security</h2>
               <ul>
@@ -602,6 +658,9 @@
               </div>
             </section>
 
+            <!-- ==================== POLICY SECTION 06: RETENTION ও ACCOUNT DELETION ====================
+                 Active account/operational/legal প্রয়োজন অনুযায়ী records কতদিন রাখা হতে পারে তা বোঝায়। Verified deletion-এর
+                 পরে delete/anonymize করার সঙ্গে backup, log, security বা dispute retention exception উল্লেখ করে। -->
             <section id="retention">
               <h2>6. Data Retention and Deletion</h2>
               <p>
@@ -622,6 +681,9 @@
               </p>
             </section>
 
+            <!-- ==================== POLICY SECTION 07: ANDROID ও DEVICE PERMISSIONS ====================
+                 Internet/Google deep-link flow এবং optional camera/notification permission-এর উদ্দেশ্য ব্যাখ্যা করে। Contacts,
+                 SMS, call log, microphone, precise location ও payment-card data core inventory কাজের জন্য নেওয়া হয় না বলে জানায়। -->
             <section id="permissions">
               <h2>7. Android App and Device Permissions</h2>
               <p>
@@ -653,6 +715,9 @@
               </ul>
             </section>
 
+            <!-- ==================== POLICY SECTION 08: CHILDREN ====================
+                 Serviceটি shop owner, staff ও authorized business users-এর productivity tool এবং শিশুদের উদ্দেশ্যে তৈরি নয়—
+                 এই intended-audience boundary সংক্ষেপে ঘোষণা করে। -->
             <section id="children">
               <h2>8. Children</h2>
               <p>
@@ -662,6 +727,9 @@
               </p>
             </section>
 
+            <!-- ==================== POLICY SECTION 09: PRIVACY CONTACT ও VERIFICATION ====================
+                 Privacy question, data access বা deletion request-এর জন্য in-app support/email channel দেয়। Account data change-এর
+                 আগে registered email, shop name ও mobile দিয়ে ownership verification প্রয়োজন হবে বলে জানায়। -->
             <section id="contact">
               <h2>9. Contact</h2>
               <p>
@@ -681,6 +749,8 @@
         </div>
       </main>
 
+      <!-- ==================== HTML BLOCK 05: COPYRIGHT FOOTER ====================
+           Policy document-এর শেষে product ownership ও প্রকাশনার বছর দেখায়; কোনো interactive behavior নেই। -->
       <footer class="footer">
         &copy; 2026 Shop Inventory Management. All rights reserved.
       </footer>

@@ -1,3 +1,17 @@
+/**
+ * =========================================================
+ * FILE: routes/business.js
+ * PURPOSE: PURCHASE, SUPPLIER LEDGER ও EXPENSE ROUTES
+ * =========================================================
+ * এই Express router supplier lookup, purchase entry/report/detail, stock-safe purchase deletion,
+ * supplier repayment/ledger এবং expense entry/report পরিচালনা করে। সব routes authenticated user-এর
+ * account scope ব্যবহার করে; permission middleware feature access সীমিত করে। Purchase mutations transaction,
+ * row/advisory locking ও cache invalidation ব্যবহার করে যাতে stock, serial এবং due totals consistent থাকে।
+ */
+
+// ==================== BLOCK 01: DEPENDENCIES ও SHARED BUSINESS INFRASTRUCTURE ====================
+// Database pool SQL/transaction চালায়। Auth helpers user scope ও permissions দেয়; concurrency helpers normalized lookup key
+// এবং scoped lock দেয়; response cache read-heavy reports দ্রুত করে; mutation শেষে user cache invalidation stale data সরায়।
 const express = require("express");
 const pool = require("../db");
 const {
@@ -19,6 +33,9 @@ const router = express.Router();
 
 const PAYMENT_MODES = new Set(["cash", "upi", "bank", "mixed", "credit"]);
 
+// ==================== BLOCK 02: NUMBER, MOBILE, PAYMENT ও IST DATE NORMALIZATION ====================
+// Amount/quantity parser invalid value-এ null দেয়, mobile Indian prefix/leading zero পরিষ্কার করে এবং payment mode allow-list enforce করে।
+// Date helpers YYYY-MM-DD fallback হিসেবে current Asia/Kolkata date নেয় এবং report filters-এর inclusive IST range তৈরি করে।
 function parseNonNegativeNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
@@ -76,6 +93,9 @@ function toIstDateRange(from, to) {
   };
 }
 
+// ==================== BLOCK 03: PURCHASE PAYMENT SNAPSHOT ====================
+// Subtotal, optional paid amount ও mode থেকে bounded amountPaid/amountDue এবং paid/partial/due state বানায়। Blank paid value
+// non-credit purchase-এ full payment, credit mode-এ zero payment ধরে; paid amount কখনও subtotal-এর নিচে/উপরে যেতে পারে না।
 function buildPaymentSnapshot(subtotal, paidInput, fallbackMode = "cash") {
   const total = Number(subtotal) || 0;
   const paymentMode = normalizePaymentMode(fallbackMode, "cash");
@@ -130,6 +150,9 @@ function buildPurchasePaymentStatus(amountPaid, amountDue) {
   return "paid";
 }
 
+// ==================== BLOCK 04: SERIAL NUMBER NORMALIZATION ও DUPLICATE CHECK ====================
+// Display value length সীমিত করে এবং case/whitespace-insensitive lookup key বানায়। Array অথবা comma/newline text parse করে;
+// blank values বাদ দেয় এবং একই purchase payload-এর duplicate serial দেখলে transaction শুরু হওয়ার আগেই error দেয়।
 function normalizeSerialNumber(value) {
   return normalizeDisplayText(value).slice(0, 160);
 }
@@ -165,6 +188,9 @@ function parseSerialNumbers(value) {
   return serials;
 }
 
+// ==================== BLOCK 05: PURCHASE DELETE-এ STOCK REVERSAL ====================
+// Purchase items-এর serial আগে sold হয়েছে কি না যাচাই করে; sold serial থাকলে deletion আটকায়। Items normalized name দিয়ে group করে,
+// account-scoped stock lock ও FOR UPDATE নেয়, purchased quantity current stock থেকে বাদ দেয় এবং negative stock হলে rollback-triggering error দেয়।
 async function applyPurchaseStockReversal(client, userId, purchaseItems) {
   const groupedItems = new Map();
   const purchaseItemIds = purchaseItems
@@ -256,6 +282,9 @@ async function applyPurchaseStockReversal(client, userId, purchaseItems) {
   }
 }
 
+// ==================== BLOCK 06: MULTIPLE PURCHASE DELETE HELPER ====================
+// Positive unique purchase ids normalize করে, owner-scoped purchase items lock করে, stock reversal চালায় এবং parent purchases delete করে।
+// Foreign-key cascade related purchase items/serial rows সরাতে পারে; caller একই transaction-এ commit/rollback ও cache invalidation করে।
 async function deletePurchaseBillsWithStockRollback(client, userId, purchaseIds) {
   const normalizedIds = Array.from(
     new Set(
@@ -300,6 +329,9 @@ async function deletePurchaseBillsWithStockRollback(client, userId, purchaseIds)
   };
 }
 
+// ==================== BLOCK 07: SUPPLIER LOOKUP / UPDATE / CREATE ====================
+// Supplier name/mobile/address normalize ও validate করে, mobile থাকলে সেটি না হলে normalized name দিয়ে account-scoped lock নেয়।
+// Existing supplier mobile/name match হলে missing/current details update করে; match না হলে নতুন supplier insert করে এবং row return করে।
 async function findOrCreateSupplier(client, userId, payload) {
   const supplierName = normalizeDisplayText(payload.name);
   const supplierMobile = normalizeMobileNumber(payload.mobile_number);
@@ -388,8 +420,14 @@ async function findOrCreateSupplier(client, userId, payload) {
   return inserted.rows[0];
 }
 
+// ==================== BLOCK 08: ROUTER-WIDE AUTHENTICATION BOUNDARY ====================
+// এই line-এর পরের প্রতিটি business endpoint valid session ছাড়া চলবে না। getUserId(req) middleware-verified owner scope দেয়;
+// individual routes requirePermission অথবা requireOwner দিয়ে আরও কঠোর feature/action authorization যোগ করে।
 router.use(authMiddleware);
 
+// ==================== BLOCK 09: SUPPLIER AUTOCOMPLETE SEARCH ====================
+// purchase_entry permission এবং current user scope-এর মধ্যে supplier name/mobile query করে। Optional q normalized pattern-এ filter হয়;
+// result compact suggestion fields দেয় এবং 15-second cache typing-এর সময় repeated identical lookup query কমায়।
 router.get(
   "/suppliers",
   requirePermission("purchase_entry"),
@@ -435,6 +473,11 @@ router.get(
   },
 );
 
+// ==================== BLOCK 10: CREATE PURCHASE TRANSACTION ====================
+// purchase_entry permission-এর user supplier/bill/payment/items payload পাঠায়। Handler supplier resolve/create করে, settings থেকে GST নেয়,
+// প্রতিটি item/quantity/rate/serial normalize করে, duplicate/existing available serial আটকায় এবং subtotal/payment snapshot হিসাব করে।
+// Transaction-এর মধ্যে purchase ও purchase_items insert, inventory row lock/update-or-create এবং item_serials insert হয়। সব সফল হলে COMMIT,
+// user cache invalidate ও saved purchase response; validation/constraint/stock failure হলে ROLLBACK এবং client release নিশ্চিত হয়।
 router.post(
   "/purchases",
   requirePermission("purchase_entry"),
@@ -468,8 +511,10 @@ router.post(
           .json({ error: "Add at least one purchase item." });
       }
 
+      // TRANSACTION PHASE A — সব supplier, purchase, stock ও serial mutation একই atomic unit-এ শুরু হয়।
       await client.query("BEGIN");
 
+      // TRANSACTION PHASE B — user settings থেকে fallback profit percentage নিয়ে missing buying/selling rate derive করা হয়।
       const settingsResult = await client.query(
         `
         SELECT default_profit_percent
@@ -483,6 +528,7 @@ router.post(
       const defaultProfitPercent =
         Number(settingsResult.rows[0]?.default_profit_percent) || 30;
 
+      // TRANSACTION PHASE C — প্রতিটি payload row validate/normalize করে stable item name, quantity, rates, total ও serial list বানায়।
       const normalizedItems = items.map((item, index) => {
         const itemName = normalizeDisplayText(item.item_name || item.name);
         const lookupKey = normalizeLookupText(itemName);
@@ -533,6 +579,7 @@ router.post(
         };
       });
 
+      // TRANSACTION PHASE D — পুরো purchase-এর serial keys একত্র করে payload duplicate এবং database-এ existing available serial আটকায়।
       const allSerials = [];
       const seenSerialKeys = new Set();
       normalizedItems.forEach((item) => {
@@ -577,6 +624,7 @@ router.post(
         }
       }
 
+      // TRANSACTION PHASE E — normalized line totals থেকে subtotal এবং bounded paid/due/status snapshot হিসাব করা হয়।
       const subtotal = Number(
         normalizedItems
           .reduce((sum, item) => sum + item.lineTotal, 0)
@@ -595,6 +643,7 @@ router.post(
         address: supplierAddress,
       });
 
+      // TRANSACTION PHASE F — supplier-linked purchase header প্রথমে insert হয়, যাতে পরের item/serial rows parent id পায়।
       const purchaseResult = await client.query(
         `
         INSERT INTO purchases (
@@ -628,6 +677,7 @@ router.post(
 
       const purchase = purchaseResult.rows[0];
 
+      // TRANSACTION PHASE G — প্রতিটি line insert করে matching inventory row lock/update-or-create এবং serial records attach করা হয়।
       for (const item of normalizedItems) {
         const purchaseItemResult = await client.query(
           `
@@ -733,6 +783,7 @@ router.post(
         }
       }
 
+      // TRANSACTION PHASE H — সব writes সফল হলেই commit; এরপর cached reports/suggestions invalid করে fresh data নিশ্চিত করা হয়।
       await client.query("COMMIT");
       invalidateUserCache(userId);
 
@@ -781,6 +832,9 @@ router.post(
   },
 );
 
+// ==================== BLOCK 11: PURCHASE REPORT LIST ====================
+// Date range, free-text query ও pagination parse করে owner-scoped purchase rows supplier/payment totalsসহ আনে। Optional count query
+// pagination metadata বানায়; short-lived JSON cache একই filter query বারবার চললে database load কমায়।
 router.get(
   "/purchases/report",
   requirePermission("purchase_entry"),
@@ -883,6 +937,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 12: PRODUCT PURCHASE HISTORY ====================
+// Selected product name/search key অনুযায়ী previous purchase lines supplier, bill date, quantity ও buying rateসহ return করে।
+// purchase_entry permission, account scope ও cached response product autocomplete/history view-কে নিরাপদ ও দ্রুত রাখে।
 router.get(
   "/purchases/product-history",
   requirePermission("purchase_entry"),
@@ -951,6 +1008,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 13: SINGLE PURCHASE DETAIL ====================
+// Positive purchaseId validate করে owner-scoped purchase header, supplier/payment information ও ordered item/serial details load করে।
+// Record না থাকলে 404 দেয়; result purchase detail panel ও repayment availability render করতে ব্যবহৃত হয়।
 router.get(
   "/purchases/:purchaseId",
   requirePermission("purchase_entry"),
@@ -1039,6 +1099,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 14: DELETE COMPLETE PURCHASE WITH STOCK ROLLBACK ====================
+// Owner-only transaction target purchase lock করে এবং helper দিয়ে sold-serial/available-stock safety যাচাই করে purchased quantity reverse করে।
+// Purchase delete সফল হলে COMMIT ও cache invalidation; invalid id/not found/conflict/error হলে ROLLBACK করে stock ও bill atomic রাখে।
 router.delete(
   "/purchases/:purchaseId",
   requireOwner,
@@ -1111,6 +1174,9 @@ router.delete(
   },
 );
 
+// ==================== BLOCK 15: DELETE ONE PURCHASE ITEM ও RECOMPUTE BILL ====================
+// Owner-only transaction item ও parent purchase lock করে। একমাত্র item delete করা আটকায়; selected item stock reversal করে row delete করে,
+// remaining lines থেকে subtotal/GST/total পুনরায় হিসাব এবং paid amount clamp করে due/status update করে। Commit-এর পরে cache invalid হয়।
 router.delete(
   "/purchase-items/:itemId",
   requireOwner,
@@ -1253,6 +1319,10 @@ router.delete(
   },
 );
 
+// ==================== BLOCK 16: SUPPLIER PURCHASE REPAYMENT ====================
+// purchase_entry permission-এর user outstanding bill-এ positive repayment, mode ও optional remark পাঠায়। Transaction purchase lock করে,
+// amount current due-এর বেশি হতে দেয় না, payment ledger entry insert করে এবং purchase paid/due/status update করে। Commit/cache refresh শেষে
+// নতুন payment snapshot return হয়; fully-paid/invalid/not-found/overpayment branch rollback করে।
 router.post(
   "/purchases/:purchaseId/repayment",
   requirePermission("purchase_entry"),
@@ -1417,6 +1487,9 @@ router.post(
   },
 );
 
+// ==================== BLOCK 17: SUPPLIER SUMMARY LIST ====================
+// Supplier identity-এর সঙ্গে purchase count, total purchase value, amount paid ও outstanding due aggregate করে। Search/pagination support
+// ledger workspace-এর supplier list চালায়; cached account-scoped result current filter-এর summary ও pagination metadata return করে।
 router.get(
   "/suppliers/summary",
   requirePermission("purchase_entry"),
@@ -1511,6 +1584,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 18: DELETE SUPPLIER LEDGER WITH PURCHASE ROLLBACK ====================
+// Owner-only transaction supplier row ও related purchases lock করে। Purchase না থাকলে destructive action reject করে; থাকলে সব bill ids
+// bulk helper-এ পাঠিয়ে sold serial/stock safetyসহ reverse/delete করে। Commit-এর পরে cache invalidate হয়; কোনো conflict হলে সব rollback হয়।
 router.delete(
   "/suppliers/:supplierId/ledger",
   requireOwner,
@@ -1601,6 +1677,9 @@ router.delete(
   },
 );
 
+// ==================== BLOCK 19: SUPPLIER-SPECIFIC LEDGER DETAIL ====================
+// Supplier ownership verify করে, date/pagination filters অনুযায়ী bills ও repayment history load করে এবং ledger totals/rows return করে।
+// purchase_entry permission ও short cache supplier detail view-কে account-isolated রাখে এবং repeated browsing query কমায়।
 router.get(
   "/suppliers/:supplierId/ledger",
   requirePermission("purchase_entry"),
@@ -1696,6 +1775,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 20: CREATE EXPENSE ENTRY ====================
+// expense_tracking permission-এর user title/category/positive amount/date/mode/note পাঠায়। Normalized validated values owner scope-এ insert হয়;
+// mutation শেষে user cache invalidate করে saved row return করা হয়, যাতে expense report ও dashboard totals stale না থাকে।
 router.post(
   "/expenses",
   requirePermission("expense_tracking"),
@@ -1761,6 +1843,9 @@ router.post(
   },
 );
 
+// ==================== BLOCK 21: EXPENSE AUTOCOMPLETE SUGGESTIONS ====================
+// Owner-এর previous expense titles/categories থেকে normalized query matching suggestions আনে। Compact distinct values ও 15-second cache
+// expense form typing দ্রুত রাখে; অন্য account-এর values userId filter-এর কারণে result-এ আসে না।
 router.get(
   "/expenses/suggestions",
   requirePermission("expense_tracking"),
@@ -1809,6 +1894,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 22: EXPENSE REPORT, SUMMARY ও PAGINATION ====================
+// IST date range, text/category filters ও pagination দিয়ে expense rows আনে এবং matching records-এর aggregate summary হিসাব করে।
+// buildPaginationMeta total/page/limit navigation দেয়; cached JSON report expense table ও KPI cards একই filtered dataset থেকে পূরণ করে।
 router.get(
   "/expenses/report",
   requirePermission("expense_tracking"),
@@ -1969,4 +2057,6 @@ router.get(
   },
 );
 
+// ==================== BLOCK 23: PUBLIC ROUTER EXPORT ====================
+// CommonJS export configured authenticated business router-কে server application-এর business API base path-এ mount করার সুযোগ দেয়।
 module.exports = router;

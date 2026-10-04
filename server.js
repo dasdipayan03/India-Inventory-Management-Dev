@@ -1,22 +1,19 @@
 /**
  * =========================================================
  * FILE: server.js
- * ENTRY POINT: Application Bootstrap File
- *
- * PURPOSE:
- *  - Initialize Express app
- *  - Configure global middleware
- *  - Register API routes
- *  - Serve frontend
- *  - Handle errors
- *  - Start HTTP server
- *  - Handle graceful shutdown
+ * PURPOSE: EXPRESS APPLICATION BOOTSTRAP, REQUEST PIPELINE ও PROCESS LIFECYCLE
  * =========================================================
+ * এই entry point application config পড়ে, Express middleware সঠিক order-এ বসায়, API/frontend routes mount এবং HTTP server চালু করে।
+ * Security headers, CORS, request metrics/logging, rate limiting, DB backpressure, queued exports, maintenance mode ও health checks এখানেই যুক্ত হয়।
+ * Startup-এর পরে background jobs চলে; SIGTERM/SIGINT-এ HTTP server ও PostgreSQL pool controlledভাবে বন্ধ হয়।
  */
 
 // =========================================================
 // 📦 CORE DEPENDENCIES
 // =========================================================
+// ==================== BLOCK 01: CORE, SECURITY ও INFRASTRUCTURE DEPENDENCIES ====================
+// Express HTTP routing দেয়; fs/path assets পড়ে; crypto request id/CSP nonce বানায়। Security/performance middleware এবং database, token,
+// monitoring, export, logging ও background-job modules application-এর shared infrastructure দেয়।
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -51,6 +48,9 @@ const {
 // =========================================================
 // 🚀 CREATE EXPRESS APP
 // =========================================================
+// ==================== BLOCK 02: EXPRESS APP, CONSTANTS ও ENVIRONMENT-DERIVED CONFIG ====================
+// Express instance, rate-limit compatibility helpers, public template cache, body/static limits, request logging/backpressure, maintenance settings
+// ও health aliases initialize হয়। Server handle এবং shutdown flag process lifecycle control করে।
 const app = express();
 const rateLimit = rateLimitPackage.rateLimit || rateLimitPackage;
 const ipKeyGenerator =
@@ -113,10 +113,12 @@ const LIVENESS_ROUTE_PATHS = new Set([
 let server = null;
 let isShuttingDown = false;
 
-// Required for deployment platforms like Railway / Render
+// Reverse proxy-এর প্রথম hop trust করায় req.ip/protocol hosted platforms-এ সঠিক হয়; framework signature header গোপন রাখা হয়।
 app.set("trust proxy", 1);
 app.disable("x-powered-by");
 
+// ==================== BLOCK 03: BOOTSTRAP DIAGNOSTIC EVENT ====================
+// Process/node/environment/port/public-assets ও effective operational flags log করে; secret/database URL value log করা হয় না।
 logEvent("info", "app_bootstrap_started", {
   pid: process.pid,
   nodeVersion: process.version,
@@ -137,6 +139,9 @@ logEvent("info", "app_bootstrap_started", {
  * Enable CORS
  * Allows frontend to send cookies & requests
  */
+// ==================== BLOCK 04: NUMERIC CONFIG ও CORS ORIGIN HELPERS ====================
+// Positive integer parser invalid limits/timeouts-এ fallback দেয়। Origin normalizer valid URL-এর scheme+host নেয়; explicit comma-separated allow-list
+// priority পায়, development-এ localhost ports এবং production-এ BASE_URL origin fallback হয়।
 function readPositiveInt(value, fallback) {
   const parsed = Number.parseInt(value, 10);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
@@ -186,9 +191,13 @@ function buildAllowedOrigins() {
   return [];
 }
 
+// Set fast origin membership check দেয়; nonce directive প্রতি response-এর generated CSP nonce Helmet config-এ পাঠায়।
 const allowedOrigins = new Set(buildAllowedOrigins());
 const nonceDirective = (_req, res) => `'nonce-${res.locals.cspNonce}'`;
 
+// ==================== BLOCK 05: REQUEST PATH, HTML ESCAPE ও BASIC METRIC HELPERS ====================
+// Query/trailing slash বাদ দিয়ে route matching stable করে, untrusted text HTML-escape করে এবং canonical request path নির্বাচন করে।
+// Numeric rounding ও process memory conversion health payload/logging-এ reusable diagnostics দেয়।
 function normalizePathname(value) {
   const pathname = String(value || "")
     .split("?")[0]
@@ -235,6 +244,13 @@ function getMemoryUsageMb() {
   };
 }
 
+/*
+ * =========================================================
+ * BLOCK 06: LIVENESS ও READINESS PAYLOAD
+ * =========================================================
+ * Database pool-এর readiness state থেকে safe DB summary তৈরি করে। Liveness শুধু process shutdown না হওয়া দেখে; readiness-এর জন্য DB ready-ও লাগে।
+ * Response service/process/server/memory contextসহ 200 অথবা degraded 503 দেয় এবং health response cache বন্ধ রাখে।
+ */
 function buildDbHealth() {
   const dbState = pool.dbState || {};
   const isReady = typeof pool.isReady === "function" ? pool.isReady() : false;
@@ -274,6 +290,13 @@ function sendHealthResponse(res, kind) {
   res.status(payload.status === "ok" ? 200 : 503).json(payload);
 }
 
+/*
+ * =========================================================
+ * BLOCK 07: HTML TEMPLATE CACHE ও PERFORMANCE BOOTSTRAP INJECTION
+ * =========================================================
+ * Development-এ প্রতিবার disk থেকে HTML পড়ে, production-এ memory cache reuse করে। HTML response no-store থাকে এবং missing হলে CDN preconnect ও
+ * versioned service-worker repair script inject হয়; placeholder CSP nonce response-specific value দিয়ে প্রতিস্থাপিত হয়।
+ */
 function getHtmlTemplate(fileName) {
   if (process.env.NODE_ENV !== "production") {
     return fs.readFileSync(path.join(publicDir, fileName), "utf8");
@@ -312,6 +335,13 @@ function injectPerformanceBootstrap(html) {
   return html.replace("</head>", `    ${bootstrapTags}\n  </head>`);
 }
 
+/*
+ * =========================================================
+ * BLOCK 08: LOGIN BANNER DISCOVERY ও HTML SLIDE GENERATION
+ * =========================================================
+ * Public images directory থেকে strict numbered filename pattern-এর সর্বোচ্চ ১০টি image নেয়। File mtime/size cache-busting version হয়;
+ * invalid/unreadable entries warning logসহ বাদ যায়। প্রথম slide eager, বাকিগুলো lazy-loading markup হয়ে login placeholder-এ inject হয়।
+ */
 function getLoginBannerFiles() {
   const imagesDir = path.join(publicDir, "images");
 
@@ -384,6 +414,13 @@ function injectLoginBanners(html) {
   return html.replace(LOGIN_BANNER_PLACEHOLDER, buildLoginBannerSlides());
 }
 
+/*
+ * =========================================================
+ * BLOCK 09: STATIC ASSET CACHE POLICY ও HTML DELIVERY
+ * =========================================================
+ * Service worker, logo, login banner ও HTML fresh/revalidated থাকে; production image/font assets এক দিন cache হতে পারে; অন্য files no-cache।
+ * HTML sender login banners/performance bootstrap/CSP nonce প্রয়োগ করে status ও content typeসহ response পাঠায়।
+ */
 function setStaticAssetCacheHeaders(res, filePath) {
   if (path.basename(filePath) === "service-worker.js") {
     res.set("Cache-Control", "no-cache, max-age=0, must-revalidate");
@@ -434,6 +471,13 @@ function sendHtmlTemplate(res, fileName, statusCode = 200) {
   res.status(statusCode).type("html").send(html);
 }
 
+/*
+ * =========================================================
+ * BLOCK 10: MAINTENANCE-MODE RESPONSE
+ * =========================================================
+ * No-store ও Retry-After headers দিয়ে API/JSON clients-কে structured 503 এবং browser navigation-কে CSP-nonce-protected standalone HTML page দেয়।
+ * Configured message HTML-escaped হওয়ায় environment text markup/script inject করতে পারে না।
+ */
 function sendMaintenancePage(req, res) {
   const message = MAINTENANCE_MESSAGE;
   res.set("Cache-Control", "no-store, max-age=0, must-revalidate");
@@ -506,6 +550,8 @@ function sendMaintenancePage(req, res) {
 </html>`);
 }
 
+// ==================== BLOCK 11: CLIENT CACHE-REPAIR ENDPOINT RESPONSE ====================
+// Browser-কে site cache clear করার `Clear-Site-Data` নির্দেশ, current repair version ও timestamp no-store JSON-এ পাঠায়।
 function sendCacheRepairResponse(res) {
   res.set("Cache-Control", "no-store, max-age=0, must-revalidate");
   res.set("Pragma", "no-cache");
@@ -518,6 +564,13 @@ function sendCacheRepairResponse(res) {
   });
 }
 
+/*
+ * =========================================================
+ * BLOCK 12: STANDALONE NETWORK DIAGNOSTIC PAGE
+ * =========================================================
+ * No-store/noindex first-party HTML page current URL, online flag, service-worker state এবং live/readiness endpoints-এর latency/status পরীক্ষা করে।
+ * Inline style/script response nonce ব্যবহার করে; DOM output escape হয় এবং user Run Again button দিয়ে checks পুনরায় চালাতে পারেন।
+ */
 function sendNetworkCheckPage(req, res) {
   const nonce = escapeHtml(res.locals.cspNonce || "");
 
@@ -756,6 +809,13 @@ function sendNetworkCheckPage(req, res) {
 </html>`);
 }
 
+/*
+ * =========================================================
+ * BLOCK 13: REQUEST ID, ACTIVE GAUGE, DURATION METRICS ও CONDITIONAL LOGGING
+ * =========================================================
+ * Incoming/provided request id response-এ echo করে এবং high-resolution start time নেয়। Finish/close দুটো event guarded completion function চালায়,
+ * তাই aborted response-সহ প্রতিটি request একবার record হয়। সব request metrics-এ যায়; configured logs, 5xx, slow বা failed health request log হয়।
+ */
 app.use((req, res, next) => {
   const startedAt = process.hrtime.bigint();
   const requestId = req.get("x-request-id") || crypto.randomUUID();
@@ -765,6 +825,7 @@ app.use((req, res, next) => {
   markHttpRequestStarted();
 
   let completionRecorded = false;
+  /* REQUEST PHASE A: duplicate finish/close callback আটকিয়ে duration/path/aborted state derive করা। */
   const recordRequestCompletion = () => {
     if (completionRecorded) {
       return;
@@ -774,6 +835,7 @@ app.use((req, res, next) => {
     const durationMs = Number(process.hrtime.bigint() - startedAt) / 1e6;
     const pathName = getRequestPath(req);
     const aborted = !res.writableEnded;
+    /* REQUEST PHASE B: active gauge release ও aggregate monitoring recorder update। */
     markHttpRequestFinished();
     recordHttpRequest({
       method: req.method,
@@ -782,6 +844,7 @@ app.use((req, res, next) => {
       durationMs,
       slowThresholdMs: REQUEST_LOG_SLOW_MS,
     });
+    /* REQUEST PHASE C: routine traffic log policy ও severity নির্ধারণ; metrics logging flag-এর উপর নির্ভর করে না। */
     const shouldLog =
       ENABLE_REQUEST_LOGS ||
       res.statusCode >= 500 ||
@@ -819,6 +882,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// ==================== BLOCK 14: CSP NONCE, CORS, BODY/COOKIE PARSING ও COMPRESSION ====================
+// প্রতি response random nonce পায়। CORS no-origin ও exact allow-list origin-কে credentialsসহ অনুমতি দেয়। JSON/form limits oversized payload আটকায়;
+// cookie parser auth cookies দেয় এবং 1KB-এর বড় response compression পায়।
 app.use((req, res, next) => {
   res.locals.cspNonce = crypto.randomBytes(16).toString("base64");
   next();
@@ -845,8 +911,13 @@ app.use(express.urlencoded({ extended: false, limit: URLENCODED_BODY_LIMIT }));
 app.use(cookieParser()); // Parse cookies from client
 app.use(compression({ threshold: 1024 })); // Compress larger responses only
 
-// Keep all health aliases ahead of /api middleware and routers so Railway and
-// load balancers can check readiness without a user session.
+/*
+ * =========================================================
+ * BLOCK 15: PUBLIC HEALTH ROUTE ALIASES
+ * =========================================================
+ * Railway/load balancer user session ছাড়াই probe করতে পারে বলে এগুলো API limiter/backpressure/auth routers-এর আগে থাকে।
+ * Readiness DB dependency পরীক্ষা করে; liveness process shutdown state বোঝায়।
+ */
 app.get(Array.from(READINESS_ROUTE_PATHS), (req, res) => {
   sendHealthResponse(res, "readiness");
 });
@@ -855,6 +926,13 @@ app.get(Array.from(LIVENESS_ROUTE_PATHS), (req, res) => {
   sendHealthResponse(res, "liveness");
 });
 
+/*
+ * =========================================================
+ * BLOCK 16: AUTH-AWARE RATE-LIMIT IDENTITY
+ * =========================================================
+ * Cookie token আগে, তারপর Bearer token নেয়। Valid session থেকে owner+actor+role compound key হয়, তাই shared IP-এর staff accounts আলাদা quota পায়।
+ * Missing/invalid token IP key-তে fallback হয়; authentication middleware পরে invalid token reject করে।
+ */
 function getAuthTokenFromRequest(req) {
   if (req.cookies?.token) {
     return req.cookies.token;
@@ -889,6 +967,13 @@ function getRateLimitKey(req) {
 
 // Rate Limiter
 // Authenticated users are limited by account/actor, anonymous requests by IP.
+/*
+ * =========================================================
+ * BLOCK 17: API RATE LIMIT, DATABASE BACKPRESSURE ও EXPORT QUEUE
+ * =========================================================
+ * ১৫ মিনিটের bounded request limit authenticated actor/IP অনুযায়ী প্রয়োগ হয় এবং health probes skip হয়। DB waiting queue threshold ছুঁলে
+ * নতুন non-health API request 503/Retry-After পায়। তারপর export middleware eligible download-কে asynchronous queue flow-তে নিতে পারে।
+ */
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: readPositiveInt(process.env.API_RATE_LIMIT_MAX, 500),
@@ -934,6 +1019,13 @@ app.use("/api", createQueuedExportMiddleware({ port: PORT }));
 // 🛡 CONTENT SECURITY POLICY (Helmet)
 // Allows required CDN for Bootstrap & FontAwesome
 // =========================================================
+/*
+ * =========================================================
+ * BLOCK 18: CONTENT SECURITY ও BROWSER HARDENING HEADERS
+ * =========================================================
+ * Helmet CSP self-only defaults, per-response nonce এবং প্রয়োজনীয় CDN sources allow করে। Inline attributes, frames ও objects নিষিদ্ধ;
+ * frameguard, no-sniff এবং same-origin referrer policy clickjacking/MIME/referrer exposure কমায়।
+ */
 app.use(
   helmet.contentSecurityPolicy({
     useDefaults: true,
@@ -976,6 +1068,12 @@ app.use(helmet.frameguard({ action: "deny" }));
 app.use(helmet.noSniff());
 app.use(helmet.referrerPolicy({ policy: "same-origin" }));
 
+/*
+ * =========================================================
+ * BLOCK 19: MAINTENANCE GATE
+ * =========================================================
+ * Enabled state startup log হয়। Health probes সবসময় gate পার হয় যাতে platform deployment যাচাই করতে পারে; অন্য route configured 503 page/JSON পায়।
+ */
 if (MAINTENANCE_MODE) {
   logEvent("warn", "maintenance_mode_enabled", {
     retryAfterSeconds: MAINTENANCE_RETRY_AFTER_SECONDS,
@@ -993,6 +1091,9 @@ app.use((req, res, next) => {
 // =========================================================
 // 📡 API ROUTES REGISTRATION
 // =========================================================
+// ==================== BLOCK 20: API ROUTER REGISTRATION ORDER ====================
+// Auth নিজের prefix পায়; support, exports, owner ops, inventory, business এবং invoices common `/api` prefix-এ mount হয়।
+// উপরের security, limiter, backpressure ও maintenance middleware প্রতিটি router-এর আগে কার্যকর হয়।
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api", require("./routes/support"));
 app.use("/api", require("./routes/exports"));
@@ -1004,6 +1105,13 @@ app.use("/api", require("./routes/invoices"));
 // =========================================================
 // 🛠 DEBUG ROUTES (Only in Development Mode)
 // =========================================================
+/*
+ * =========================================================
+ * BLOCK 21: DEVELOPMENT-ONLY DEBUG ROUTES
+ * =========================================================
+ * Production-এর বাইরে explicit flag থাকলেই environment presence summary ও database `SELECT NOW()` test endpoints পাওয়া যায়।
+ * Secret values প্রকাশ না করে শুধু configured/missing status দেখায়।
+ */
 if (
   process.env.NODE_ENV !== "production" &&
   process.env.ENABLE_DEBUG_ROUTES === "true"
@@ -1035,6 +1143,13 @@ if (
 // =========================================================
 // 🌍 FRONTEND STATIC FILE SERVING
 // =========================================================
+/*
+ * =========================================================
+ * BLOCK 22: EXPLICIT FRONTEND HTML ও DIAGNOSTIC ROUTES
+ * =========================================================
+ * Login/dashboard/invoice/reset/policy/deletion/developer/health-report pages template sender দিয়ে serve হয়। Cache repair ও network-check dedicated
+ * response builders ব্যবহার করে; extensionসহ ও clean aliases যেখানে প্রয়োজন দুটোই support হয়।
+ */
 app.get("/", (req, res) => {
   sendHtmlTemplate(res, "login.html");
 });
@@ -1091,6 +1206,12 @@ app.get(["/health-report", "/health-report.html"], (req, res) => {
   sendHtmlTemplate(res, "health-report.html");
 });
 
+/*
+ * =========================================================
+ * BLOCK 23: STATIC ASSET SERVER
+ * =========================================================
+ * Public directory ETag/Last-Modifiedসহ serve হয়; environment-based max age এবং per-file header callback service worker/HTML/banner freshness নিয়ন্ত্রণ করে।
+ */
 app.use(
   express.static(publicDir, {
     etag: true,
@@ -1105,6 +1226,12 @@ app.use(
  * - If API → return JSON 404
  * - Else → return login page
  */
+/*
+ * =========================================================
+ * BLOCK 24: FINAL 404 FALLBACK
+ * =========================================================
+ * কোনো mounted API route match না করলে JSON 404 দেয়। অন্য unknown browser path login template-এ ফেরে, যাতে static frontend entry recover করতে পারে।
+ */
 app.use((req, res) => {
   if (req.path.startsWith("/api")) {
     return res.status(404).json({ error: "API route not found" });
@@ -1116,6 +1243,13 @@ app.use((req, res) => {
 // 🔥 GLOBAL ERROR HANDLER
 // Catches unhandled errors from anywhere in app
 // =========================================================
+/*
+ * =========================================================
+ * BLOCK 25: GLOBAL EXPRESS ERROR HANDLER
+ * =========================================================
+ * Route/middleware থেকে forward হওয়া unhandled error console ও structured runtime log-এ request contextসহ লেখে।
+ * Status থাকলে সেটি, নাহলে 500; development-এ original message এবং production-এ generic safe message ফেরায়।
+ */
 app.use((err, req, res, next) => {
   console.error("🔥 Global Error:", err);
 
@@ -1138,6 +1272,12 @@ app.use((err, req, res, next) => {
 // =========================================================
 // 🚀 START SERVER
 // =========================================================
+/*
+ * =========================================================
+ * BLOCK 26: HTTP SERVER START
+ * =========================================================
+ * Configured port-এ সব network interfaces bind করে। Listening callback startup duration ও allowed-origin count log এবং console status দেখায়।
+ */
 server = app.listen(PORT, "0.0.0.0", () => {
   logEvent("info", "http_server_listening", {
     host: "0.0.0.0",
@@ -1152,6 +1292,13 @@ server = app.listen(PORT, "0.0.0.0", () => {
 // 🛑 GRACEFUL SHUTDOWN
 // Handles container shutdown safely
 // =========================================================
+/*
+ * =========================================================
+ * BLOCK 27: BACKGROUND JOBS, SERVER ERRORS ও SOCKET TIMEOUTS
+ * =========================================================
+ * Shared DB pool দিয়ে cleanup/heartbeat/invoice-counter jobs শুরু হয়। HTTP server-level error structured log হয়। Keep-alive/header/request timeouts
+ * proxy compatibility বজায় রেখে hanging connections সীমিত করে।
+ */
 startBackgroundJobs({ pool });
 
 server.on("error", (error) => {
@@ -1166,6 +1313,13 @@ server.keepAliveTimeout = 65 * 1000;
 server.headersTimeout = 66 * 1000;
 server.requestTimeout = 120 * 1000;
 
+/*
+ * =========================================================
+ * BLOCK 28: DATABASE DEPENDENCY READINESS NOTIFICATION
+ * =========================================================
+ * db.js-এর one-time connection/migration promise resolve হলে application-ready timing log হয়; reject হলে dependency-init failure log হয়।
+ * HTTP server health readiness meantime DB state অনুযায়ী degraded status দেখাতে পারে।
+ */
 pool.readyPromise
   .then(() => {
     logEvent("info", "application_ready", {
@@ -1180,7 +1334,15 @@ pool.readyPromise
     });
   });
 
+/*
+ * =========================================================
+ * BLOCK 29: IDEMPOTENT GRACEFUL SHUTDOWN
+ * =========================================================
+ * প্রথম SIGTERM/SIGINT shutdown flag বসায়, background jobs থামায় ও shutdown context log করে। HTTP listener নতুন connection নেওয়া বন্ধ করে;
+ * active requests শেষ হলে DB pool close এবং exit 0 হয়। ১০ সেকেন্ডে শেষ না হলে unref'd failsafe timer error log দিয়ে exit 1 করে।
+ */
 function shutdown(signal) {
+  /* SHUTDOWN PHASE A: repeated signal ignore; process state shutting-down করে scheduled jobs stop। */
   if (isShuttingDown) {
     return;
   }
@@ -1194,6 +1356,7 @@ function shutdown(signal) {
   });
   console.log(`${signal} received. Closing server...`);
 
+  /* SHUTDOWN PHASE B: graceful close আটকে গেলে container indefinite wait না করার forced timeout তৈরি। */
   const forcedShutdownTimer = setTimeout(() => {
     logEvent("error", "shutdown_forced_timeout", {
       signal,
@@ -1204,6 +1367,7 @@ function shutdown(signal) {
   }, 10 * 1000);
   forcedShutdownTimer.unref();
 
+  /* SHUTDOWN PHASE C: HTTP connections drain হলে failsafe cancel, pool end এবং success/failure exit code নির্বাচন। */
   server.close(async () => {
     clearTimeout(forcedShutdownTimer);
     logEvent("info", "http_server_closed", {
@@ -1229,6 +1393,9 @@ function shutdown(signal) {
   });
 }
 
+// ==================== BLOCK 30: PROCESS SIGNAL ও FATAL ERROR OBSERVERS ====================
+// Container SIGTERM এবং terminal SIGINT একই graceful shutdown flow চালায়। Unhandled promise rejection/exception structured log ও console-এ
+// ধরা হয়, যাতে silent process-level failure diagnostics হারিয়ে না যায়।
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 
 // =========================================================

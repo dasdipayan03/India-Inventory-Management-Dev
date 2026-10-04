@@ -1,52 +1,384 @@
 <!doctype html>
+<!-- Browser-কে documentটি modern HTML5 হিসেবে parse করতে বলে। -->
 <html lang="en" data-csp-nonce="__CSP_NONCE__">
+  <!-- Root tag page language এবং server-generated CSP nonce বহন করে। -->
   <head>
+    <!-- Head metadata, favicon ও page-specific CSS ধরে। -->
     <meta charset="utf-8" />
+    <!-- UTF-8 encoding text এবং symbols সঠিকভাবে দেখায়। -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Mobile screen অনুযায়ী responsive viewport চালু করে। -->
     <title>System Health Report | Shop Inventory</title>
+    <!-- Browser tab-এ system health report page title দেখায়। -->
     <link rel="icon" type="image/png" href="/images/app_logo.png" />
+    <!-- Browser favicon হিসেবে app logo ব্যবহার করে। -->
     <style nonce="__CSP_NONCE__">
-      :root { --ink:#183153; --muted:#64748b; --line:#dbe5f0; --surface:#fff; --page:#f3f7fc; --good:#15803d; --warn:#b45309; --bad:#b91c1c; --blue:#2563eb; }
-      * { box-sizing:border-box; }
-      body { margin:0; font:15px/1.5 "Segoe UI",sans-serif; color:var(--ink); background:var(--page); }
-      .wrap { width:min(1120px,calc(100% - 28px)); margin:30px auto 48px; }
-      .top { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:20px; }
-      h1 { font-size:clamp(24px,4vw,34px); margin:0 0 4px; } h2 { font-size:18px; margin:0 0 14px; }
-      p { margin:0; color:var(--muted); } .actions { display:flex; gap:8px; flex-wrap:wrap; }
-      button,a.btn { border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:9px; padding:9px 13px; font:inherit; text-decoration:none; cursor:pointer; }
-      button.primary { color:#fff; border-color:var(--blue); background:var(--blue); }
-      .summary,.grid { display:grid; gap:14px; } .summary { grid-template-columns:repeat(4,1fr); margin:18px 0; } .grid { grid-template-columns:repeat(2,1fr); }
-      .card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:18px; box-shadow:0 3px 12px #163c6610; }
-      .label { font-size:12px; font-weight:700; letter-spacing:.06em; color:var(--muted); text-transform:uppercase; } .value { margin-top:5px; font-size:25px; font-weight:750; } .note { margin-top:4px; font-size:13px; }
-      .status { display:inline-flex; align-items:center; gap:7px; border-radius:999px; padding:6px 11px; background:#dcfce7; color:var(--good); font-weight:700; } .dot { width:8px;height:8px;border-radius:50%;background:currentColor; }
-      .details { display:grid; grid-template-columns:1fr 1fr; gap:10px 22px; } .detail { border-bottom:1px solid #eef2f7; padding:7px 0; display:flex; justify-content:space-between; gap:12px; } .detail span:last-child { font-weight:650; text-align:right; }
-      table { width:100%; border-collapse:collapse; font-size:14px; } th,td { padding:10px 8px; text-align:left; border-bottom:1px solid #eef2f7; } th { color:var(--muted); font-size:12px; text-transform:uppercase; } .right{text-align:right}.error{color:var(--bad)} .foot { font-size:12px;margin-top:16px; }
-      #problem { margin-top:18px; padding:14px; border-radius:10px; color:var(--bad); background:#fef2f2; border:1px solid #fecaca; }
-      @media(max-width:720px){.top{display:block}.actions{margin-top:14px}.summary,.grid,.details{grid-template-columns:1fr 1fr}.card{padding:14px}} @media(max-width:460px){.summary,.grid,.details{grid-template-columns:1fr}.value{font-size:22px}}
+      /* CSP-approved style block health-report page-এর layout ও colors নিয়ন্ত্রণ করে। */
+      :root {
+        --ink: #183153;
+        --muted: #64748b;
+        --line: #dbe5f0;
+        --surface: #fff;
+        --page: #f3f7fc;
+        --good: #15803d;
+        --warn: #b45309;
+        --bad: #b91c1c;
+        --blue: #2563eb;
+      }
+      /* Shared text, surface, status ও action colors CSS variables-এ রাখে। */
+      * {
+        box-sizing: border-box;
+      }
+      /* Padding ও border-কে declared element size-এর মধ্যে অন্তর্ভুক্ত করে। */
+      body {
+        margin: 0;
+        font:
+          15px/1.5 "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+        background: var(--page);
+      }
+      /* Body-তে base font, text color এবং light report background প্রয়োগ করে। */
+      .wrap {
+        width: min(1120px, calc(100% - 28px));
+        margin: 30px auto 48px;
+      }
+      /* Report content center করে এবং responsive maximum width ও margins দেয়। */
+      .top {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: flex-start;
+        margin-bottom: 20px;
+      }
+      /* Page heading এবং action controls horizontal flex layout-এ সাজায়। */
+      h1 {
+        font-size: clamp(24px, 4vw, 34px);
+        margin: 0 0 4px;
+      }
+      /* Main report heading-এর responsive font size ও spacing নির্ধারণ করে। */
+      h2 {
+        font-size: 18px;
+        margin: 0 0 14px;
+      }
+      /* Card section heading-এর size ও bottom spacing নির্ধারণ করে। */
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+      /* Paragraph-এর default margin সরিয়ে muted color দেয়। */
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      /* Dashboard এবং Refresh actions wrapping flex row-এ রাখে। */
+      button,
+      a.btn {
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--ink);
+        border-radius: 9px;
+        padding: 9px 13px;
+        font: inherit;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      /* Button ও button-style link-এর shared border, padding ও typography দেয়। */
+      button.primary {
+        color: #fff;
+        border-color: var(--blue);
+        background: var(--blue);
+      }
+      /* Refresh report button-কে blue primary action হিসেবে দেখায়। */
+      .summary,
+      .grid {
+        display: grid;
+        gap: 14px;
+      }
+      /* Summary ও detail sections shared CSS grid এবং gap ব্যবহার করে। */
+      .summary {
+        grid-template-columns: repeat(4, 1fr);
+        margin: 18px 0;
+      }
+      /* Desktop-এ চারটি health metric card একই row-তে রাখে। */
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      /* Traffic এবং background-services card দুই-column grid-এ রাখে। */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 18px;
+        box-shadow: 0 3px 12px #163c6610;
+      }
+      /* প্রতিটি report section-কে bordered white card ও subtle shadow দেয়। */
+      .label {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        text-transform: uppercase;
+      }
+      /* Metric label uppercase muted compact typography-তে দেখায়। */
+      .value {
+        margin-top: 5px;
+        font-size: 25px;
+        font-weight: 750;
+      }
+      /* Live health metric value বড় emphasized typography-তে দেখায়। */
+      .note {
+        margin-top: 4px;
+        font-size: 13px;
+      }
+      /* Secondary explanation/status text ছোট muted style-এ দেখায়। */
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border-radius: 999px;
+        padding: 6px 11px;
+        background: #dcfce7;
+        color: var(--good);
+        font-weight: 700;
+      }
+      /* Overall health state-কে rounded green status pill হিসেবে দেখায়। */
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      /* Status pill-এর current color ব্যবহার করে ছোট circular indicator আঁকে। */
+      .details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 22px;
+      }
+      /* Traffic/service/event details দুই-column grid-এ সাজায়। */
+      .detail {
+        border-bottom: 1px solid #eef2f7;
+        padding: 7px 0;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      /* প্রতিটি name/value detail row flex layout ও separator-সহ দেখায়। */
+      .detail span:last-child {
+        font-weight: 650;
+        text-align: right;
+      }
+      /* Detail value bold করে ডান পাশে align করে। */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      /* API route table full width ও collapsed borders ব্যবহার করে। */
+      th,
+      td {
+        padding: 10px 8px;
+        text-align: left;
+        border-bottom: 1px solid #eef2f7;
+      }
+      /* Header/data cell-এর padding, alignment ও row separator দেয়। */
+      th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+      /* Table column headers uppercase muted typography-তে দেখায়। */
+      .right {
+        text-align: right;
+      }
+      /* Numeric table columns ডান পাশে align করে। */
+      .error {
+        color: var(--bad);
+      }
+      /* Error value red status color-এ highlight করে। */
+      .foot {
+        font-size: 12px;
+        margin-top: 16px;
+      }
+      /* Owner-only monitoring note ছোট footer text হিসেবে দেখায়। */
+      #problem {
+        margin-top: 18px;
+        padding: 14px;
+        border-radius: 10px;
+        color: var(--bad);
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+      }
+      /* Report load/auth failure red warning panel-এ দেখায়। */
+      @media (max-width: 720px) {
+        .top {
+          display: block;
+        }
+        .actions {
+          margin-top: 14px;
+        }
+        .summary,
+        .grid,
+        .details {
+          grid-template-columns: 1fr 1fr;
+        }
+        .card {
+          padding: 14px;
+        }
+      }
+      /* Tablet screen-এ header stack এবং report grids দুই-column layout-এ মানিয়ে নেয়। */
+      @media (max-width: 460px) {
+        .summary,
+        .grid,
+        .details {
+          grid-template-columns: 1fr;
+        }
+        .value {
+          font-size: 22px;
+        }
+      }
+      /* Small mobile screen-এ সব grids single-column ও metric font compact করে। */
     </style>
+    <!-- Health report-এর page-specific CSS শেষ। -->
   </head>
+  <!-- Metadata, favicon ও stylingসহ document head শেষ। -->
   <body>
+    <!-- Body owner-visible live system health interface ধরে। -->
     <main class="wrap">
-      <header class="top"><div><h1>System Health Report</h1><p id="updated">Loading live system data…</p></div><div class="actions"><a class="btn" href="/index.html">Dashboard</a><button id="refresh" class="primary">Refresh report</button></div></header>
+      <!-- Main wrapper report content center করে ও page width নিয়ন্ত্রণ করে। -->
+      <header class="top">
+        <!-- Header report title, last-update text এবং navigation actions রাখে। -->
+        <div>
+          <!-- Report title ও dynamic refresh timestamp group করে। -->
+          <h1>System Health Report</h1>
+          <!-- Main heading page-এর monitoring purpose জানায়। -->
+          <p id="updated">Loading live system data…</p>
+        </div>
+        <!-- Heading/timestamp group শেষ। -->
+        <div class="actions">
+          <!-- Dashboard navigation ও manual refresh controls group করে। -->
+          <a class="btn" href="/index.html">Dashboard</a
+          ><button id="refresh" class="primary">Refresh report</button>
+        </div>
+        <!-- Header action controls শেষ। -->
+      </header>
+      <!-- Health report top header শেষ। -->
       <div id="report" hidden>
-        <div class="card"><span id="overall" class="status"><i class="dot"></i> System healthy</span><p id="headline" class="note"></p></div>
-        <section class="card" style="margin-top:14px"><h2>Alerts, warnings & security risks</h2><div id="alerts"></div><p id="noAlerts" class="note" hidden>No active critical alerts or warnings.</p></section>
+        <!-- Successful API response না আসা পর্যন্ত সম্পূর্ণ report container hidden থাকে। -->
+        <div class="card">
+          <!-- Overall system health status ও summary headline card। -->
+          <span id="overall" class="status"
+            ><i class="dot"></i> System healthy</span
+          >
+          <p id="headline" class="note"></p>
+          <!-- Current system condition-এর readable summary এখানে বসে। -->
+        </div>
+        <!-- Overall status card শেষ। -->
+        <section class="card" style="margin-top: 14px">
+          <!-- Active health checks, warnings ও security risk list দেখায়। -->
+          <h2>Alerts, warnings & security risks</h2>
+          <div id="alerts"></div>
+          <!-- JavaScript non-healthy check rows এখানে render করে। -->
+          <p id="noAlerts" class="note" hidden>
+            No active critical alerts or warnings.
+          </p>
+        </section>
+        <!-- Alerts/warnings card শেষ। -->
         <section class="summary">
-          <div class="card"><div class="label">App uptime</div><div class="value" id="uptime">—</div><p class="note">Continuous running time</p></div>
-          <div class="card"><div class="label">Database</div><div class="value" id="database">—</div><p class="note" id="dbNote">PostgreSQL connection</p></div>
-          <div class="card"><div class="label">Average API response</div><div class="value" id="response">—</div><p class="note" id="slow">Slow requests: —</p></div>
-          <div class="card"><div class="label">Memory used</div><div class="value" id="memory">—</div><p class="note" id="memoryNote">Server process memory</p></div>
+          <!-- চারটি primary system metric summary card group করে। -->
+          <div class="card">
+            <!-- Application process কতক্ষণ চলছে তার metric card। -->
+            <div class="label">App uptime</div>
+            <div class="value" id="uptime">—</div>
+            <p class="note">Continuous running time</p>
+          </div>
+          <!-- App uptime metric card শেষ। -->
+          <div class="card">
+            <!-- PostgreSQL connection/pool readiness metric card। -->
+            <div class="label">Database</div>
+            <div class="value" id="database">—</div>
+            <p class="note" id="dbNote">PostgreSQL connection</p>
+          </div>
+          <!-- Database metric card শেষ। -->
+          <div class="card">
+            <!-- Average API latency ও slow-request count metric card। -->
+            <div class="label">Average API response</div>
+            <div class="value" id="response">—</div>
+            <p class="note" id="slow">Slow requests: —</p>
+          </div>
+          <!-- API response metric card শেষ। -->
+          <div class="card">
+            <!-- Server process RSS এবং heap memory metric card। -->
+            <div class="label">Memory used</div>
+            <div class="value" id="memory">—</div>
+            <p class="note" id="memoryNote">Server process memory</p>
+          </div>
+          <!-- Memory metric card শেষ। -->
         </section>
+        <!-- Primary health summary grid শেষ। -->
         <section class="grid">
-          <div class="card"><h2>Traffic & errors</h2><div class="details" id="traffic"></div></div>
-          <div class="card"><h2>Background services</h2><div class="details" id="services"></div></div>
+          <!-- Traffic/error ও background-service details পাশাপাশি রাখে। -->
+          <div class="card">
+            <!-- Request totals, status classes ও error rate card। -->
+            <h2>Traffic & errors</h2>
+            <div class="details" id="traffic"></div>
+          </div>
+          <!-- Traffic/error detail card শেষ। -->
+          <div class="card">
+            <!-- Database, jobs, export queue ও cache state card। -->
+            <h2>Background services</h2>
+            <div class="details" id="services"></div>
+          </div>
+          <!-- Background-service detail card শেষ। -->
         </section>
-        <section class="card" style="margin-top:14px"><h2>Most used API routes</h2><div style="overflow:auto"><table><thead><tr><th>Route</th><th class="right">Requests</th><th class="right">Average</th><th class="right">Errors</th></tr></thead><tbody id="routes"></tbody></table></div></section>
-        <section class="card" style="margin-top:14px"><h2>Recent application events</h2><div id="events" class="details"></div></section>
-        <p class="foot">This page is visible only to the signed-in Owner. It refreshes data from the protected live monitoring service.</p>
+        <!-- Two-column service detail grid শেষ। -->
+        <section class="card" style="margin-top: 14px">
+          <!-- Most frequently used API route statistics card। -->
+          <h2>Most used API routes</h2>
+          <div style="overflow: auto">
+            <!-- Narrow screen-এ route table horizontal scroll করতে দেয়। -->
+            <table>
+              <!-- Route, request count, average duration ও errors table। -->
+              <thead>
+                <tr>
+                  <th>Route</th>
+                  <th class="right">Requests</th>
+                  <th class="right">Average</th>
+                  <th class="right">Errors</th>
+                </tr>
+              </thead>
+              <!-- Static table column heading শেষ। -->
+              <tbody id="routes"></tbody>
+              <!-- JavaScript top API route rows এখানে render করে। -->
+            </table>
+            <!-- API route metrics table শেষ। -->
+          </div>
+          <!-- Scrollable route-table wrapper শেষ। -->
+        </section>
+        <!-- Most-used-routes card শেষ। -->
+        <section class="card" style="margin-top: 14px">
+          <!-- Recent warning/error runtime events card। -->
+          <h2>Recent application events</h2>
+          <div id="events" class="details"></div>
+          <!-- JavaScript recent event rows এখানে render করে। -->
+        </section>
+        <!-- Recent application events card শেষ। -->
+        <p class="foot">
+          <!-- Access scope ও protected live monitoring source-এর note। -->
+          This page is visible only to the signed-in Owner. It refreshes data
+          from the protected live monitoring service.
+        </p>
+        <!-- Owner-only report note শেষ। -->
       </div>
+      <!-- Successful health report content container শেষ। -->
       <div id="problem" hidden></div>
+      <!-- Authentication/network/report error হলে JavaScript এখানে message দেখায়। -->
     </main>
+    <!-- Main health report wrapper শেষ। -->
     <script src="/js/health-report.js"></script>
+    <!-- External script protected metrics fetch করে এবং dynamic elements populate করে। -->
   </body>
+  <!-- Visible health report document body শেষ। -->
 </html>
+<!-- সম্পূর্ণ health-report HTML document শেষ। -->

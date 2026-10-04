@@ -1,21 +1,40 @@
 <!doctype html>
+<!-- Browser-কে documentটি modern HTML5 হিসেবে parse করতে বলে। -->
 <html lang="en" data-csp-nonce="__CSP_NONCE__">
+  <!-- Root tag page language ও server-generated CSP nonce বহন করে। -->
   <head>
+    <!-- Head metadata, app icons, external libraries ও page styles রাখে। -->
     <meta charset="utf-8" />
+    <!-- UTF-8 encoding text ও symbols সঠিকভাবে দেখায়। -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Mobile screen অনুযায়ী responsive viewport চালু করে। -->
     <title>Developer Support Inbox</title>
-    <link rel="icon" type="image/png" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
-    <link rel="apple-touch-icon" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
+    <!-- Browser tab-এ developer inbox page title দেখায়। -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
+    <!-- Browser favicon হিসেবে application logo ব্যবহার করে। -->
+    <link
+      rel="apple-touch-icon"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
+    <!-- Apple device home-screen icon হিসেবে logo ব্যবহার করে। -->
     <link rel="manifest" href="/site.webmanifest" />
+    <!-- Installable web-app metadata manifest-এর সঙ্গে page যুক্ত করে। -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
     />
+    <!-- Font Awesome developer inbox-এর icons সরবরাহ করে। -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     />
+    <!-- Bootstrap basic cross-browser component styling সরবরাহ করে। -->
     <style nonce="__CSP_NONCE__">
+      /* এই CSP-approved style block support inbox-এর সম্পূর্ণ visual layout নিয়ন্ত্রণ করে। */
       :root {
         --ink-strong: #10213f;
         --ink-main: #27406b;
@@ -35,18 +54,22 @@
         --radius-xl: 28px;
         --radius-lg: 22px;
       }
+      /* Shared colors, shadows ও radius design tokens এক জায়গায় সংজ্ঞায়িত করে। */
 
       * {
         box-sizing: border-box;
       }
+      /* Padding ও border-কে declared element size-এর মধ্যে রাখে। */
 
       [hidden] {
         display: none !important;
       }
+      /* hidden attribute থাকা dropdown/section নিশ্চিতভাবে লুকায়। */
 
       html {
         color-scheme: light;
       }
+      /* Native browser controls-এর light color scheme নির্বাচন করে। */
 
       body {
         margin: 0;
@@ -67,6 +90,7 @@
           ),
           linear-gradient(180deg, #eef6ff 0%, #f7fbff 38%, #f4f9ff 100%);
       }
+      /* Full viewport, app font, text color ও layered support-workspace background দেয়। */
 
       a,
       button,
@@ -74,15 +98,18 @@
       textarea {
         font: inherit;
       }
+      /* Interactive controls parent page-এর একই font inherit করে। */
 
       button {
         cursor: pointer;
       }
+      /* Clickable button-এ pointer cursor দেখায়। */
 
       .workspace {
         width: min(calc(100% - 28px), 1360px);
         margin: 14px auto 42px;
       }
+      /* Inbox-এর centered responsive maximum width ও outer spacing নির্ধারণ করে। */
 
       .topbar,
       .hero-card,
@@ -95,6 +122,7 @@
         box-shadow: var(--shadow-lg);
         backdrop-filter: blur(18px);
       }
+      /* সব main card-এ shared glass surface, border, shadow ও blur দেয়। */
 
       .topbar {
         display: flex;
@@ -104,6 +132,7 @@
         padding: 16px 20px;
         border-radius: var(--radius-xl);
       }
+      /* Brand এবং inbox actions horizontal responsive header-এ সাজায়। */
 
       .brand {
         display: flex;
@@ -112,33 +141,39 @@
         color: var(--ink-main);
         text-decoration: none;
       }
+      /* Logo ও inbox brand copy একই clickable row-এ রাখে। */
 
       .brand-mark {
         width: 54px;
         height: 54px;
       }
+      /* Logo wrapper-এর fixed dimensions নির্ধারণ করে। */
 
       .brand-mark img {
         width: 100%;
         height: 100%;
         object-fit: contain;
       }
+      /* Logo wrapper পূর্ণ করে এবং aspect ratio অক্ষুণ্ন রাখে। */
 
       .brand-copy {
         display: grid;
         gap: 4px;
       }
+      /* Brand title ও subtitle vertical grid-এ সাজায়। */
 
       .brand-copy strong {
         color: var(--ink-strong);
         font-size: 14px;
       }
+      /* Main brand title-এর color ও size নির্ধারণ করে। */
 
       .brand-copy span {
         color: var(--ink-soft);
         font-size: 11px;
         font-weight: 700;
       }
+      /* Developer inbox subtitle muted compact typography-তে দেখায়। */
 
       .topbar-actions {
         display: flex;
@@ -146,6 +181,7 @@
         gap: 12px;
         flex-wrap: wrap;
       }
+      /* Identity, refresh ও logout controls wrapping flex row-এ রাখে। */
 
       .topbar-chip,
       .summary-pill {
@@ -159,6 +195,7 @@
         font-size: 12px;
         font-weight: 800;
       }
+      /* Developer identity ও thread summary values pill badge হিসেবে দেখায়। */
 
       .ghost-btn,
       .primary-btn,
@@ -171,6 +208,7 @@
         font-weight: 800;
         transition: 0.2s ease;
       }
+      /* সব action/filter button-এর shared size, radius ও typography দেয়। */
 
       .ghost-btn,
       .filter-btn {
@@ -178,6 +216,7 @@
         background: rgba(22, 151, 208, 0.05);
         color: var(--cyan-strong);
       }
+      /* Secondary এবং filter button-এ light blue outlined appearance দেয়। */
 
       .primary-btn {
         border: 0;
@@ -185,12 +224,14 @@
         color: #ffffff;
         box-shadow: 0 12px 28px rgba(14, 165, 233, 0.22);
       }
+      /* Primary reply action-কে blue gradient emphasized button বানায়। */
 
       .danger-btn {
         border: 1px solid rgba(220, 38, 38, 0.16);
         background: rgba(220, 38, 38, 0.08);
         color: var(--danger);
       }
+      /* Logout action-কে red warning treatment দেয়। */
 
       .filter-btn.is-active {
         background: linear-gradient(
@@ -201,14 +242,17 @@
         border-color: rgba(14, 165, 233, 0.3);
         box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.08);
       }
+      /* Selected conversation filter-এ highlighted gradient state দেখায়। */
 
       .ghost-btn.is-loading i {
         animation: developer-refresh-spin 0.9s linear infinite;
       }
+      /* Refresh loading state-এ icon rotation animation চালায়। */
 
       .ghost-btn.is-loading {
         opacity: 0.92;
       }
+      /* Loading refresh button সামান্য muted করে। */
 
       #refreshInboxBtn {
         border-color: transparent;
@@ -216,6 +260,7 @@
         color: #ffffff;
         box-shadow: 0 12px 24px rgba(249, 115, 22, 0.22);
       }
+      /* Inbox refresh button-এ distinctive orange action color দেয়। */
 
       #refreshInboxBtn i {
         color: currentColor;
@@ -226,6 +271,7 @@
         color: #ffffff;
         box-shadow: 0 12px 28px rgba(22, 163, 74, 0.24);
       }
+      /* Reply send button-কে green success action হিসেবে দেখায়। */
 
       #replySendBtn i {
         color: currentColor;
@@ -240,6 +286,7 @@
           transform: rotate(360deg);
         }
       }
+      /* Refresh icon-কে 0 থেকে 360 degree continuously rotate করার animation। */
 
       .hero-card {
         display: grid;
@@ -259,6 +306,7 @@
             rgba(245, 250, 255, 0.88)
           );
       }
+      /* Inbox overview card-এর grid, padding, rounded surface ও decorative gradient দেয়। */
 
       .hero-kicker {
         display: inline-flex;
@@ -274,6 +322,7 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
+      /* Support queue label-কে iconসহ uppercase pill badge বানায়। */
 
       .hero-head {
         display: flex;
@@ -281,6 +330,7 @@
         justify-content: space-between;
         gap: 18px;
       }
+      /* Hero title/description ও page status পাশাপাশি সাজায়। */
 
       .hero-head h1 {
         margin: 12px 0 0;
@@ -289,6 +339,7 @@
         line-height: 1.02;
         letter-spacing: -0.05em;
       }
+      /* Inbox-এর primary heading responsive typography-তে দেখায়। */
 
       .hero-head p {
         margin: 12px 0 0;
@@ -297,12 +348,14 @@
         font-size: 14px;
         line-height: 1.58;
       }
+      /* Hero explanatory text readable width ও muted color-এ দেখায়। */
 
       .hero-summary {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 14px;
       }
+      /* Total, needs-reply ও open metrics তিন-column grid-এ রাখে। */
 
       .hero-stat {
         padding: 16px;
@@ -311,6 +364,7 @@
         border: 1px solid rgba(117, 142, 180, 0.14);
         box-shadow: var(--shadow-md);
       }
+      /* প্রতিটি inbox metric-কে separate summary card বানায়। */
 
       .hero-stat span {
         display: block;
@@ -320,6 +374,7 @@
         letter-spacing: 0.05em;
         text-transform: uppercase;
       }
+      /* Metric label uppercase muted typography-তে দেখায়। */
 
       .hero-stat strong {
         display: block;
@@ -328,6 +383,7 @@
         font-size: 28px;
         line-height: 1;
       }
+      /* Metric number prominent বড় typography-তে দেখায়। */
 
       .hero-stat small {
         display: block;
@@ -343,11 +399,13 @@
         gap: 18px;
         margin-top: 18px;
       }
+      /* Queue/detail column ও larger thread column main grid-এ সাজায়। */
 
       .stack {
         display: grid;
         gap: 18px;
       }
+      /* Child panels vertical grid ও consistent gap-এ রাখে। */
 
       .queue-card,
       .thread-card,
@@ -355,12 +413,14 @@
       .footer-card {
         border-radius: var(--radius-xl);
       }
+      /* Queue, thread, detail ও footer surfaces-এ shared rounded corners দেয়। */
 
       .queue-card,
       .thread-card,
       .detail-card {
         padding: 20px;
       }
+      /* Interactive workspace cards-এর inner padding নির্ধারণ করে। */
 
       .panel-heading {
         display: flex;
@@ -369,6 +429,7 @@
         gap: 14px;
         margin-bottom: 18px;
       }
+      /* Panel title ও optional action controls flex row-এ সাজায়। */
 
       .panel-kicker {
         display: block;
@@ -379,6 +440,7 @@
         letter-spacing: 0.06em;
         text-transform: uppercase;
       }
+      /* Panel category label uppercase cyan typography-তে দেখায়। */
 
       .panel-heading h2,
       .panel-heading h3 {
@@ -386,6 +448,7 @@
         color: var(--ink-strong);
         letter-spacing: -0.04em;
       }
+      /* Panel headings-এর margin, color ও letter spacing একরকম রাখে। */
 
       .panel-heading h2 {
         font-size: 22px;
@@ -409,6 +472,7 @@
       .panel-heading p:not(#threadLead) {
         display: none;
       }
+      /* Compact layout-এ secondary helper descriptions লুকিয়ে রাখে। */
 
       .search-input,
       .reply-input {
@@ -419,15 +483,18 @@
         color: var(--ink-main);
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
       }
+      /* Search ও reply controls-এর shared border, background ও text styling দেয়। */
 
       .search-input {
         min-height: 44px;
         padding: 0 14px;
       }
+      /* Conversation search field-এর height ও horizontal padding নির্ধারণ করে। */
 
       .search-shell {
         position: relative;
       }
+      /* Search dropdown absolute position করার containing block তৈরি করে। */
 
       .reply-input {
         min-height: 84px;
@@ -436,6 +503,7 @@
         box-shadow: 0 6px 16px rgba(31, 70, 84, 0.06);
         resize: vertical;
       }
+      /* Reply textarea-এর height, padding, resize behavior ও shadow নির্ধারণ করে। */
 
       .search-input:focus,
       .reply-input:focus {
@@ -445,6 +513,7 @@
           0 0 0 4px rgba(14, 165, 233, 0.12),
           inset 0 1px 0 rgba(255, 255, 255, 0.8);
       }
+      /* Focused search/reply control-এ accessible cyan focus ring দেখায়। */
 
       .search-dropdown {
         position: absolute;
@@ -463,6 +532,7 @@
         box-shadow: var(--shadow-md);
         backdrop-filter: blur(12px);
       }
+      /* Search suggestion panel input-এর নিচে scrollable floating card হিসেবে দেখায়। */
 
       .search-option {
         width: 100%;
@@ -473,11 +543,13 @@
         color: inherit;
         text-align: left;
       }
+      /* প্রতিটি search result-কে full-width left-aligned button বানায়। */
 
       .search-option:hover,
       .search-option.is-active {
         background: rgba(14, 165, 233, 0.08);
       }
+      /* Hover বা selected search result-এ highlighted background দেয়। */
 
       .search-option__title {
         display: block;
@@ -507,6 +579,7 @@
         gap: 10px;
         margin: 14px 0 18px;
       }
+      /* Needs Reply/Open/All/Closed filter buttons wrapping row-এ রাখে। */
 
       .queue-list {
         display: grid;
@@ -516,6 +589,7 @@
         padding-right: 4px;
         scrollbar-width: thin;
       }
+      /* Conversation queue-কে vertically scrollable list বানায়। */
 
       .queue-item {
         width: 100%;
@@ -527,6 +601,7 @@
         text-align: left;
         box-shadow: var(--shadow-md);
       }
+      /* প্রতিটি conversation preview-কে clickable card হিসেবে দেখায়। */
 
       .queue-item.is-active {
         border-color: rgba(14, 165, 233, 0.24);
@@ -536,6 +611,7 @@
           rgba(239, 248, 255, 0.92)
         );
       }
+      /* বর্তমানে selected conversation card-এ highlighted surface দেয়। */
 
       .queue-item__top,
       .queue-item__bottom {
@@ -590,6 +666,7 @@
         font-size: 12px;
         font-weight: 800;
       }
+      /* Unread message count amber pill badge হিসেবে দেখায়। */
 
       .queue-status {
         display: inline-flex;
@@ -605,11 +682,13 @@
         color: var(--success);
         background: rgba(22, 163, 74, 0.12);
       }
+      /* Open conversation status green tone-এ দেখায়। */
 
       .queue-status--closed {
         color: var(--amber);
         background: rgba(217, 119, 6, 0.12);
       }
+      /* Closed conversation status amber tone-এ দেখায়। */
 
       .queue-empty,
       .thread-empty {
@@ -623,6 +702,7 @@
         background: rgba(247, 251, 255, 0.72);
         text-align: center;
       }
+      /* Queue/thread empty state centered dashed placeholder card হিসেবে দেখায়। */
 
       .queue-empty i,
       .thread-empty i {
@@ -649,6 +729,7 @@
         gap: 12px;
         flex-wrap: wrap;
       }
+      /* Thread summary pills ও open/close controls responsive flex row-এ রাখে। */
 
       .summary-strip {
         display: flex;
@@ -656,6 +737,7 @@
         gap: 10px;
         margin: 18px 0;
       }
+      /* Selected thread-এর status, owner ও update pills wrapping row-এ সাজায়। */
 
       .thread-stream {
         display: grid;
@@ -672,21 +754,26 @@
         background-image:
           radial-gradient(rgba(15, 118, 110, 0.08) 1px, transparent 1px),
           radial-gradient(rgba(14, 165, 233, 0.06) 1px, transparent 1px);
-        background-position: 0 0, 11px 11px;
+        background-position:
+          0 0,
+          11px 11px;
         background-size: 22px 22px;
         scrollbar-width: thin;
         scrollbar-color: rgba(15, 118, 110, 0.38) transparent;
       }
+      /* Message history-কে patterned, vertically scrollable chat workspace বানায়। */
 
       .thread-message {
         display: grid;
         gap: 5px;
         justify-items: start;
       }
+      /* প্রতিটি chat message bubble ও metadata vertical grid-এ সাজায়। */
 
       .thread-message--developer {
         justify-items: end;
       }
+      /* Developer messages chat stream-এর ডান পাশে align করে। */
 
       .thread-message__meta {
         display: inline-flex;
@@ -698,6 +785,7 @@
         font-weight: 600;
         line-height: 1.4;
       }
+      /* Sender name ও timestamp compact metadata row-এ দেখায়। */
 
       .thread-message__meta strong {
         color: var(--ink-main);
@@ -714,6 +802,7 @@
         font-size: 14px;
         overflow-wrap: anywhere;
       }
+      /* Message text-এর maximum width, padding, radius ও wrapping নির্ধারণ করে। */
 
       .thread-message__bubble p {
         margin: 0;
@@ -725,6 +814,7 @@
         border: 1px solid rgba(117, 142, 180, 0.13);
         border-bottom-left-radius: 3px;
       }
+      /* User message-কে বাম পাশে white incoming bubble হিসেবে দেখায়। */
 
       .thread-message--user .thread-message__bubble::after {
         content: "";
@@ -742,6 +832,7 @@
         background: #d9fdd3;
         border-bottom-right-radius: 3px;
       }
+      /* Developer reply-কে ডান পাশে green outgoing bubble হিসেবে দেখায়। */
 
       .thread-message--developer .thread-message__bubble::after {
         content: "";
@@ -764,6 +855,7 @@
         background: rgba(237, 247, 243, 0.74);
         flex-wrap: wrap;
       }
+      /* Composer status ও send button responsive action row-এ রাখে। */
 
       .composer-status {
         margin: 0;
@@ -771,20 +863,24 @@
         font-size: 13px;
         line-height: 1.6;
       }
+      /* Reply validation/submission feedback muted text হিসেবে দেখায়। */
 
       .composer-status[data-tone="success"] {
         color: var(--success);
       }
+      /* Successful reply feedback green color-এ দেখায়। */
 
       .composer-status[data-tone="error"] {
         color: var(--danger);
       }
+      /* Reply failure/validation feedback red color-এ দেখায়। */
 
       .detail-list {
         display: grid;
         gap: 12px;
         margin: 0;
       }
+      /* Requester detail entries vertical grid-এ সাজায়। */
 
       .detail-list div {
         display: grid;
@@ -794,6 +890,7 @@
         background: rgba(247, 251, 255, 0.78);
         border: 1px solid rgba(117, 142, 180, 0.14);
       }
+      /* প্রতিটি requester detail item আলাদা bordered mini-card হিসেবে দেখায়। */
 
       .detail-list span {
         color: var(--ink-soft);
@@ -802,11 +899,13 @@
         letter-spacing: 0.05em;
         text-transform: uppercase;
       }
+      /* Detail field label uppercase muted text হিসেবে দেখায়। */
 
       .detail-list strong {
         color: var(--ink-strong);
         font-size: 15px;
       }
+      /* Detail-এর primary value emphasized typography-তে দেখায়। */
 
       .detail-list small {
         color: var(--ink-soft);
@@ -822,6 +921,7 @@
         margin-top: 18px;
         padding: 16px 20px;
       }
+      /* Footer note ও copyright responsive flex row-এ সাজায়। */
 
       .footer-card span {
         color: var(--ink-soft);
@@ -837,6 +937,7 @@
           grid-template-columns: 1fr;
         }
       }
+      /* Medium screen-এ workspace ও hero metrics single-column করে। */
 
       @media (max-width: 720px) {
         .workspace {
@@ -858,48 +959,70 @@
           padding: 16px;
         }
       }
+      /* Mobile screen-এ outer width, flex direction ও card padding compact করে। */
     </style>
+    <!-- Developer support inbox-এর page-specific CSS শেষ। -->
   </head>
+  <!-- Metadata, libraries ও CSSসহ document head শেষ। -->
   <body>
+    <!-- Body visible developer support inbox interface ধরে। -->
     <div class="workspace">
+      <!-- Workspace wrapper সব inbox content center করে ও maximum width দেয়। -->
       <header class="topbar">
+        <!-- Topbar developer identity, refresh এবং logout controls রাখে। -->
         <a
           class="brand"
           href="developer-support.html"
           aria-label="Developer support home"
         >
+          <!-- Brand link developer support home/current inbox-এ নিয়ে যায়। -->
           <span class="brand-mark">
-            <img src="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" alt="" />
+            <img
+              src="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+              alt=""
+            />
           </span>
+          <!-- App logo wrapper শেষ। -->
           <span class="brand-copy">
             <strong>Shop Inventory Management</strong>
             <span>Developer support inbox</span>
           </span>
+          <!-- Brand title ও developer inbox subtitle group শেষ। -->
         </a>
+        <!-- Clickable developer support brand block শেষ। -->
 
         <div class="topbar-actions">
+          <!-- Session identity, refresh ও logout button একই action group-এ রাখে। -->
           <span id="developerIdentityChip" class="topbar-chip">
             <i class="fa-solid fa-user-shield"></i>
             Developer session
           </span>
+          <!-- JavaScript developer name/email দিয়ে identity chip update করে। -->
           <button id="refreshInboxBtn" class="ghost-btn" type="button">
             <i class="fa-solid fa-rotate-right"></i>
             Refresh Inbox
           </button>
+          <!-- Refresh button inbox conversation list আবার API থেকে নেয়। -->
           <button id="developerLogoutBtn" class="danger-btn" type="button">
             <i class="fa-solid fa-right-from-bracket"></i>
             Logout
           </button>
+          <!-- Logout button developer session শেষ করে login page-এ ফেরায়। -->
         </div>
+        <!-- Topbar action controls শেষ। -->
       </header>
+      <!-- Developer inbox topbar শেষ। -->
 
       <section class="hero-card">
+        <!-- Hero card inbox purpose, current status ও summary metrics দেখায়। -->
         <span class="hero-kicker">
           <i class="fa-solid fa-headset"></i>
           Developer-managed support queue
         </span>
+        <!-- Developer-managed support queue badge শেষ। -->
 
         <div class="hero-head">
+          <!-- Hero heading এবং live page status পাশাপাশি রাখে। -->
           <div>
             <h1>Review user support threads without touching shop accounts.</h1>
             <p>
@@ -908,35 +1031,50 @@
               messages and the replies you send from here.
             </p>
           </div>
+          <!-- Inbox privacy/scope heading ও explanation group শেষ। -->
           <p id="pageStatus" class="status-note">
             The inbox refreshes quietly while you stay inside this page.
           </p>
+          <!-- JavaScript API refresh/error result এই page-status element-এ দেখায়। -->
         </div>
+        <!-- Hero heading/status row শেষ। -->
 
         <div class="hero-summary">
+          <!-- তিনটি live conversation metric card group করে। -->
           <article class="hero-stat">
+            <!-- প্রথম metric সব support thread-এর সংখ্যা দেখায়। -->
             <span>Total Threads</span>
             <strong id="statTotalThreads">0</strong>
             <small>Every private support conversation linked to users.</small>
           </article>
+          <!-- Total Threads metric card শেষ। -->
           <article class="hero-stat">
+            <!-- দ্বিতীয় metric developer reply প্রয়োজন এমন thread count দেখায়। -->
             <span>Need Reply</span>
             <strong id="statUnreadThreads">0</strong>
             <small
               >Threads with unread user messages for developer review.</small
             >
           </article>
+          <!-- Needs Reply metric card শেষ। -->
           <article class="hero-stat">
+            <!-- তৃতীয় metric currently open thread count দেখায়। -->
             <span>Open Threads</span>
             <strong id="statOpenThreads">0</strong>
             <small>Conversations currently marked open inside the queue.</small>
           </article>
+          <!-- Open Threads metric card শেষ। -->
         </div>
+        <!-- Hero summary metrics শেষ। -->
       </section>
+      <!-- Inbox overview hero card শেষ। -->
 
       <section class="workspace-grid">
+        <!-- Main grid বামে queue/details এবং ডানে selected thread workspace রাখে। -->
         <div class="stack">
+          <!-- Left column conversation queue ও requester detail vertical stack-এ রাখে। -->
           <aside class="queue-card">
+            <!-- Queue card search, filter ও conversation list ধরে। -->
             <div class="panel-heading">
               <div>
                 <span class="panel-kicker">Conversation Queue</span>
@@ -947,8 +1085,10 @@
                 </p>
               </div>
             </div>
+            <!-- Conversation Queue panel heading শেষ। -->
 
             <div class="search-shell">
+              <!-- Search input ও dynamically rendered dropdown একই positioned wrapper-এ রাখে। -->
               <input
                 id="conversationSearch"
                 class="search-input"
@@ -957,14 +1097,18 @@
                 spellcheck="false"
                 placeholder="Search by requester, owner, email, username, or preview"
               />
+              <!-- Search input requester, owner, email, username ও preview দিয়ে filter করে। -->
               <div
                 id="conversationSearchDropdown"
                 class="search-dropdown"
                 hidden
               ></div>
+              <!-- JavaScript matching conversation search options এখানে render করে। -->
             </div>
+            <!-- Conversation search control শেষ। -->
 
             <div class="filter-row" id="filterRow">
+              <!-- Needs Reply/Open/All/Closed queue filters group করে। -->
               <button
                 class="filter-btn is-active"
                 type="button"
@@ -972,6 +1116,7 @@
               >
                 Needs Reply
               </button>
+              <!-- Default active filter শুধু reply প্রয়োজন এমন thread দেখায়। -->
               <button class="filter-btn" type="button" data-filter="open">
                 Open
               </button>
@@ -982,8 +1127,10 @@
                 Closed
               </button>
             </div>
+            <!-- Conversation filter button row শেষ। -->
 
             <div id="conversationList" class="queue-list">
+              <!-- JavaScript conversation preview cards এই scrollable container-এ render করে। -->
               <div class="queue-empty">
                 <i class="fa-solid fa-inbox"></i>
                 <strong>Support queue is empty</strong>
@@ -992,10 +1139,14 @@
                   send a message.
                 </p>
               </div>
+              <!-- Initial empty queue placeholder শেষ। -->
             </div>
+            <!-- Conversation queue list container শেষ। -->
           </aside>
+          <!-- Conversation queue card শেষ। -->
 
           <aside class="detail-card">
+            <!-- Detail card selected requester, owner account ও conversation status দেখায়। -->
             <div class="panel-heading">
               <div>
                 <span class="panel-kicker">Conversation Detail</span>
@@ -1003,8 +1154,10 @@
                 <p>Quick context for the selected support thread.</p>
               </div>
             </div>
+            <!-- Requester Snapshot panel heading শেষ। -->
 
             <div id="detailList" class="detail-list">
+              <!-- JavaScript selected conversation-এর contextual details এখানে render করে। -->
               <div>
                 <span>Requester</span>
                 <strong>Select a conversation</strong>
@@ -1018,10 +1171,14 @@
                 <strong>Waiting for selection</strong>
               </div>
             </div>
+            <!-- Initial requester detail placeholder list শেষ। -->
           </aside>
+          <!-- Conversation detail card শেষ। -->
         </div>
+        <!-- Left-side queue/detail stack শেষ। -->
 
         <section class="thread-card">
+          <!-- Thread card selected conversation, status actions, messages ও reply composer ধরে। -->
           <div class="panel-heading">
             <div>
               <span class="panel-kicker">Thread Workspace</span>
@@ -1032,36 +1189,49 @@
               </p>
             </div>
           </div>
+          <!-- Thread Workspace heading ও dynamic lead text শেষ। -->
 
           <div class="thread-toolbar">
+            <!-- Selected thread summary pills এবং open/close actions একই toolbar-এ রাখে। -->
             <div class="summary-strip">
+              <!-- Thread status, owner ও last-update information pill group। -->
               <span id="threadStatusPill" class="summary-pill">
                 <i class="fa-solid fa-circle-nodes"></i>
                 No thread selected
               </span>
+              <!-- Dynamic conversation-status summary pill শেষ। -->
               <span id="threadOwnerPill" class="summary-pill">
                 <i class="fa-solid fa-building"></i>
                 Owner info pending
               </span>
+              <!-- Dynamic owner-information summary pill শেষ। -->
               <span id="threadUpdatedPill" class="summary-pill">
                 <i class="fa-solid fa-clock"></i>
                 Waiting for activity
               </span>
+              <!-- Dynamic last-activity summary pill শেষ। -->
             </div>
+            <!-- Thread summary strip শেষ। -->
 
             <div class="topbar-actions">
+              <!-- Selected thread reopen/close controls group করে। -->
               <button id="markOpenBtn" class="ghost-btn" type="button">
                 <i class="fa-solid fa-unlock"></i>
                 Mark Open
               </button>
+              <!-- Mark Open button conversation status open করে। -->
               <button id="markClosedBtn" class="ghost-btn" type="button">
                 <i class="fa-solid fa-lock"></i>
                 Mark Closed
               </button>
+              <!-- Mark Closed button conversation status closed করে। -->
             </div>
+            <!-- Thread status action group শেষ। -->
           </div>
+          <!-- Thread toolbar শেষ। -->
 
           <div id="threadMessages" class="thread-stream">
+            <!-- JavaScript selected conversation-এর message bubbles এখানে render করে। -->
             <div class="thread-empty">
               <i class="fa-solid fa-comments"></i>
               <strong>No support thread selected</strong>
@@ -1070,49 +1240,69 @@
                 here.
               </p>
             </div>
+            <!-- Initial no-thread-selected placeholder শেষ। -->
           </div>
+          <!-- Scrollable message thread container শেষ। -->
 
           <div class="panel-heading">
+            <!-- Reply composer-এর purpose ও user-visible behavior বোঝায়। -->
             <div>
               <span class="panel-kicker">Reply Composer</span>
               <h3>Send developer response</h3>
               <p>Replies will appear in the user's private support thread.</p>
             </div>
           </div>
+          <!-- Reply Composer heading শেষ। -->
 
           <div class="stack">
+            <!-- Reply textarea এবং submission controls vertical stack-এ রাখে। -->
             <textarea
               id="replyInput"
               class="reply-input"
               placeholder="Write a clear reply, next step, or troubleshooting instruction for the user."
             ></textarea>
+            <!-- Developer user-এর জন্য clear troubleshooting reply এখানে লেখে। -->
 
             <div class="reply-row">
+              <!-- Composer status এবং Send Reply button একই responsive row-এ রাখে। -->
               <p id="composerStatus" class="composer-status" data-tone="info">
                 Select a thread first, then reply from the dedicated developer
                 support identity.
               </p>
+              <!-- JavaScript validation/submission feedback composer status-এ দেখায়। -->
               <button id="replySendBtn" class="primary-btn" type="button">
                 <i class="fa-solid fa-paper-plane"></i>
                 Send Reply
               </button>
+              <!-- Send Reply button selected private thread-এ developer response পাঠায়। -->
             </div>
+            <!-- Reply action row শেষ। -->
           </div>
+          <!-- Reply composer control stack শেষ। -->
         </section>
+        <!-- Selected support thread workspace card শেষ। -->
       </section>
+      <!-- Main queue/detail/thread workspace grid শেষ। -->
 
       <footer class="footer-card">
+        <!-- Footer session-isolation note ও dynamic copyright year দেখায়। -->
         <span
           >Developer support replies stay separate from owner and staff login
           sessions.</span
         >
+        <!-- First footer text developer replies user sessions থেকে আলাদা থাকার কথা জানায়। -->
         <span
-          >&copy; <span id="currentYear"></span> Shop Inventory
-          Management</span
+          >&copy; <span id="currentYear"></span> Shop Inventory Management</span
         >
+        <!-- Second footer text current yearসহ application copyright দেখায়। -->
       </footer>
+      <!-- Developer support footer শেষ। -->
     </div>
+    <!-- Centered support workspace wrapper শেষ। -->
 
     <script src="js/developer-support.js"></script>
+    <!-- External script authentication, API loading, filters, rendering ও reply logic চালায়। -->
   </body>
+  <!-- Visible developer support inbox body শেষ। -->
 </html>
+<!-- সম্পূর্ণ developer-support HTML document শেষ। -->

@@ -1,9 +1,26 @@
+/**
+ * =========================================================
+ * FILE: public/js/dashboard.js
+ * PURPOSE: COMPLETE INVENTORY DASHBOARD UI CONTROLLER
+ * =========================================================
+ * এই browser script dashboard-এর session/permission, navigation, purchase, sales/GST reports, customer/supplier dues, expense, staff,
+ * support, account settings, charts, downloads এবং shared popup/dropdown interaction পরিচালনা করে।
+ * API data `state`-এ রাখা হয়, DOM references একবার cache হয় এবং feature-specific loader/renderer/event binder দিয়ে UI sync করা হয়।
+ * নিচের numbered block comments file-এর বড় workflow বোঝায়; function-এর কাছের comments নির্দিষ্ট line বা ছোট block-এর কাজ ব্যাখ্যা করে।
+ */
+
+// ==================== BLOCK 01: APPLICATION CONFIGURATION, API BASE ও SHARED STATE ====================
+// Global app-core configuration থেকে API URL/permission metadata নেয়। `state` object cached API rows, active views, chart instances,
+// popup promises, session user, carousel, support polling এবং request-sequence ids ধরে—যাতে asynchronous response safely coordinate হয়।
 const appConfig = window.InventoryApp || {};
+// পড়ার নিয়ম: প্রতিটি বাংলা comment তার ঠিক উপরের সম্পূর্ণ code line বা code block-এর কাজ বোঝায়।
+// এই fileটি dashboard-এর সব purchase, sale, report, due, expense, support ও account UI পরিচালনা করে।
 const apiBase =
   appConfig.apiBase ||
   (window.location.origin.includes("localhost")
     ? "http://localhost:4000/api"
     : "/api");
+// app-core-এর API config না পেলে environment অনুযায়ী fallback API URL নেয়।
 
 const state = {
   itemNames: [],
@@ -66,7 +83,11 @@ const state = {
   supportPollTimer: null,
   permissionRefreshPromise: null,
 };
+// API data, popup, charts, current session এবং UI interaction-এর shared runtime state।
 
+// ==================== BLOCK 02: STAFF PERMISSIONS, NUMBER FORMATTERS ও CHART PLUGIN ====================
+// Permission constants owner/staff feature access নির্ধারণ করে। Intl formatters Indian number/money output reuse করে এবং custom Chart.js
+// plugin hovered business-trend point বরাবর guide line আঁকে।
 const STAFF_PERMISSION_OPTIONS = appConfig.staffPermissionOptions || [];
 const DEFAULT_STAFF_PERMISSIONS = appConfig.defaultStaffPermissions || [
   "purchase_entry",
@@ -97,6 +118,7 @@ const formatters = {
     maximumFractionDigits: 1,
   }),
 };
+// India locale-এ count, decimal ও currency দেখানোর reusable formatter।
 
 const businessTrendHoverLinePlugin = {
   id: "businessTrendHoverLine",
@@ -124,8 +146,13 @@ const businessTrendHoverLinePlugin = {
     ctx.restore();
   },
 };
+// Chart hover করলে active data point-এ উল্লম্ব guide line আঁকার custom plugin।
 
+// ==================== BLOCK 03: DOM CACHE, SESSION STORAGE ও BASIC DISPLAY HELPERS ====================
+// `dom` পরে queried elements ধরে; sidebar controller navigation integration রাখে। Basic helpers element show/hide, session expiry,
+// number/currency/date/month formatting, filename sanitation, search indexing, debounce এবং input normalization পরিচালনা করে।
 const dom = {};
+// cacheElements() পরে প্রয়োজনীয় HTML element reference এখানে রাখে।
 let sidebarController = null;
 const clearStoredSession =
   appConfig.clearStoredSession ||
@@ -135,51 +162,62 @@ const clearStoredSession =
   });
 
 function hideElement(element) {
+  // দেওয়া element থাকলে hidden attribute দিয়ে UI থেকে লুকায়।
   if (element) {
     element.hidden = true;
   }
 }
 
 function showElement(element) {
+  // দেওয়া element থাকলে hidden attribute সরিয়ে UI-তে দেখায়।
   if (element) {
     element.hidden = false;
   }
 }
 
 function markDashboardReady() {
+  // এই functionটি mark Dashboard Ready সম্পর্কিত dashboard কাজ পরিচালনা করে।
   document.body.classList.remove("app-loading");
 }
 
 function authHeaders(headers = {}) {
+  // এই functionটি auth Headers সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return { ...headers };
 }
 
 function handleSessionExpiry() {
+  // Expired login session-এর cached data মুছে login page-এ redirect করে।
   clearStoredSession();
   window.location.replace("login.html");
 }
 
 function formatCount(value) {
+  // সংখ্যাকে India locale-এ ভগ্নাংশ ছাড়া count হিসেবে format করে।
   return formatters.whole.format(Number(value) || 0);
 }
 
 function formatNumber(value) {
+  // সাধারণ quantity/number-কে India locale-এ readable decimal format করে।
   return formatters.decimal.format(Number(value) || 0);
 }
 
 function formatCurrency(value) {
+  // Number-কে Indian Rupee sign-সহ two-decimal currency text বানায়।
   return `Rs. ${formatters.money.format(Number(value) || 0)}`;
 }
 
 function formatCompactCurrency(value) {
+  // বড় amount-কে সংক্ষিপ্ত Indian currency representation-এ দেখায়।
   return `Rs. ${formatters.compactMoney.format(Number(value) || 0)}`;
 }
 
 function formatCurrencyValue(value) {
+  // Table cell-এর জন্য শুধু formatted currency amount ফেরত দেয়।
   return formatters.money.format(Number(value) || 0);
 }
 
 function formatDate(value) {
+  // API date value-কে India locale-এর short readable date-এ বদলায়।
   return new Date(value).toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
@@ -189,6 +227,7 @@ function formatDate(value) {
 }
 
 function formatDateTime(value) {
+  // Timestamp-কে date ও time-সহ India locale string-এ বদলায়।
   if (!value) {
     return "-";
   }
@@ -205,14 +244,17 @@ function formatDateTime(value) {
 }
 
 function formatPercent(value) {
+  // Numeric percent-কে fixed, user-friendly percentage text বানায়।
   return `${formatters.money.format(Number(value) || 0)}%`;
 }
 
 function formatInputDate(value) {
+  // Date input element-এর YYYY-MM-DD format তৈরি করে।
   return value ? formatDate(new Date(`${value}T00:00:00`)) : "-";
 }
 
 function getMonthBucket(value) {
+  // Date থেকে year-month bucket key বের করে monthly report grouping-এ ব্যবহার করে।
   const parts = new Intl.DateTimeFormat("en-IN", {
     year: "numeric",
     month: "2-digit",
@@ -224,6 +266,7 @@ function getMonthBucket(value) {
 }
 
 function formatMonthBucket(bucket) {
+  // Year-month bucket key-কে UI-তে দেখানোর মাস ও বছরের label বানায়।
   const [year, month] = String(bucket || "0000-01")
     .split("-")
     .map((part) => Number(part) || 0);
@@ -236,10 +279,12 @@ function formatMonthBucket(bucket) {
 }
 
 function getCurrentMonthKey() {
+  // বর্তমান মাসের standard bucket key ফেরত দেয়।
   return getMonthBucket(new Date());
 }
 
 function toInputDate(date) {
+  // Date object-কে local timezone-safe HTML date input value-তে রূপান্তর করে।
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return localDate.toISOString().slice(0, 10);
 }
@@ -253,6 +298,7 @@ const prefersReducedMotionQuery =
     : { matches: false };
 
 function sanitizeFileName(value) {
+  // Download filename-এর অবৈধ character বাদ দিয়ে নিরাপদ filename বানায়।
   return String(value || "download")
     .trim()
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
@@ -263,12 +309,14 @@ function sanitizeFileName(value) {
 }
 
 function normalizeSearchKey(value) {
+  // Search text trim ও lowercase করে case-insensitive matching-এর জন্য প্রস্তুত করে।
   return String(value || "")
     .trim()
     .toLowerCase();
 }
 
 function buildStringSearchIndex(values) {
+  // Item/customer name থেকে fast searchable normalized index তৈরি করে।
   return (Array.isArray(values) ? values : [])
     .map((value) => String(value || "").trim())
     .filter(Boolean)
@@ -279,6 +327,7 @@ function buildStringSearchIndex(values) {
 }
 
 function buildStringLookup(searchIndex) {
+  // Normalized name দিয়ে original display value খোঁজার lookup map তৈরি করে।
   const lookup = new Map();
 
   searchIndex.forEach((entry) => {
@@ -291,6 +340,7 @@ function buildStringLookup(searchIndex) {
 }
 
 function getSearchMatches(searchIndex, query, limit = 50) {
+  // Search query অনুযায়ী সীমিত সংখ্যক matching suggestion ফেরত দেয়।
   const normalizedQuery = normalizeSearchKey(query);
   const matches = [];
 
@@ -310,10 +360,12 @@ function getSearchMatches(searchIndex, query, limit = 50) {
 }
 
 function findExactItemName(value) {
+  // User input-এর normalized value দিয়ে catalog-এর exact item name খুঁজে দেয়।
   return state.itemNameLookup.get(normalizeSearchKey(value)) || null;
 }
 
 function debounce(callback, delay = 180) {
+  // দ্রুত repeated input event থামিয়ে নির্দিষ্ট delay পরে একবার callback চালায়।
   let timerId = 0;
 
   return (...args) => {
@@ -337,10 +389,12 @@ const escapeHtml =
       .replace(/"/g, "&quot;"));
 
 function parseFormattedNumber(value) {
+  // Comma/currency-সহ formatted input থেকে usable numeric value বের করে।
   return Number(String(value || "").replace(/[^0-9.]/g, "")) || 0;
 }
 
 function normalizeMobileNumber(value) {
+  // Mobile input থেকে digit ছাড়া সব বাদ দিয়ে India phone validation-এর জন্য value পরিষ্কার করে।
   const digits = String(value || "").replace(/\D+/g, "");
 
   if (digits.length === 12 && digits.startsWith("91")) {
@@ -355,6 +409,7 @@ function normalizeMobileNumber(value) {
 }
 
 function formatPaymentMode(value) {
+  // Stored payment mode key-কে UI-তে readable label-এ বদলায়।
   const normalized = String(value || "")
     .trim()
     .toLowerCase();
@@ -375,6 +430,7 @@ function formatPaymentMode(value) {
 }
 
 function getStatusChipMarkup(status) {
+  // Payment/status value অনুযায়ী styled status chip HTML তৈরি করে।
   const normalized = String(status || "")
     .trim()
     .toLowerCase();
@@ -389,7 +445,11 @@ function getStatusChipMarkup(status) {
   return `<span class="status-chip status-chip--${escapeHtml(safeStatus)}">${escapeHtml(labelMap[safeStatus] || "Paid")}</span>`;
 }
 
+// ==================== BLOCK 04: DATE-RANGE, PAYMENT STATUS ও ACCESS-CONTROL HELPERS ====================
+// Report dates validate করে, payment mode/status presentation বানায় এবং current owner/staff session থেকে permission-aware section access হিসাব করে।
+// Permission refresh-এর সময় navigation lock হয়; revoked active section হলে প্রথম accessible section-এ UI সরানো হয়।
 function validateRange(fromDate, toDate, labels = {}) {
+  // Report-এর start date ও end date valid chronological range কি না যাচাই করে।
   if (!fromDate || !toDate) {
     showPopup(
       "error",
@@ -414,6 +474,7 @@ function validateRange(fromDate, toDate, labels = {}) {
 }
 
 function isOwnerSession() {
+  // Current session owner account-এর কি না app-core helper দিয়ে যাচাই করে।
   if (typeof appConfig.isOwnerUser === "function") {
     return appConfig.isOwnerUser(state.sessionUser);
   }
@@ -425,54 +486,64 @@ function isOwnerSession() {
 }
 
 function normalizeStaffPermissions(values) {
+  // Backend/session থেকে আসা staff permission list normal form-এ আনে।
   return typeof appConfig.normalizePermissions === "function"
     ? appConfig.normalizePermissions(values)
     : [];
 }
 
 function getPermissionOption(permission) {
+  // Permission key থেকে তার UI option/configuration খুঁজে দেয়।
   return typeof appConfig.getPermissionOption === "function"
     ? appConfig.getPermissionOption(permission)
     : null;
 }
 
 function formatPermissionSummary(permissions, options = {}) {
+  // Staff permission list-কে UI-তে দেখানোর সংক্ষিপ্ত text-এ বদলায়।
   return typeof appConfig.formatPermissionSummary === "function"
     ? appConfig.formatPermissionSummary(permissions, options)
     : "No assigned pages";
 }
 
 function canAccessPermission(...permissions) {
+  // Session user-এর চাওয়া permissionগুলোর অন্তত একটি আছে কি না দেখে।
   return typeof appConfig.canAccessPermission === "function"
     ? appConfig.canAccessPermission(state.sessionUser, ...permissions)
     : false;
 }
 
 function canAccessInvoicePage() {
+  // Current user sale invoice page access করতে পারবে কি না নির্ধারণ করে।
   return canAccessPermission(INVOICE_PAGE_PERMISSION);
 }
 
 function canAccessSection(sectionId) {
+  // নির্দিষ্ট dashboard section-এর access permission যাচাই করে।
   return typeof appConfig.canAccessSection === "function"
     ? appConfig.canAccessSection(state.sessionUser, sectionId)
     : false;
 }
 
 function getAccessibleSectionIds() {
+  // Sidebar থেকে session user-এর জন্য visible/allowed section ID list তৈরি করে।
   return (dom.sectionButtons || [])
     .map((button) => button.dataset.section)
     .filter((sectionId) => canAccessSection(sectionId));
 }
 
 function getFirstAccessibleSection() {
+  // User-এর প্রথম অনুমোদিত dashboard section ID ফেরত দেয়।
   return getAccessibleSectionIds()[0] || null;
 }
 
 function getActiveSectionId() {
+  // বর্তমানে page-এ active থাকা form section-এর ID বের করে।
   return document.querySelector(".form-section.active")?.id || "";
 }
 
 function setNavigationAccessLocked(locked = true) {
+  // Session load হওয়ার আগে navigation সাময়িক lock/unlock করে unauthorized click ঠেকায়।
   if (dom.invoiceBtn) {
     dom.invoiceBtn.hidden = true;
     dom.invoiceBtn.disabled = Boolean(locked);
@@ -492,6 +563,7 @@ function setNavigationAccessLocked(locked = true) {
 }
 
 function syncActiveSectionAfterPermissionRefresh() {
+  // Permission change হওয়ার পরে active section এখনও allowed কি না মিলিয়ে navigation ঠিক করে।
   const activeSectionId = getActiveSectionId();
   if (activeSectionId && canAccessSection(activeSectionId)) {
     return;
@@ -509,6 +581,7 @@ function syncActiveSectionAfterPermissionRefresh() {
 }
 
 async function refreshSessionAfterAccessDenied() {
+  // 403 পাওয়ার পর server থেকে fresh session/permission নিয়ে একবার request retry করার ব্যবস্থা করে।
   if (state.permissionRefreshPromise) {
     return state.permissionRefreshPromise;
   }
@@ -545,7 +618,11 @@ async function refreshSessionAfterAccessDenied() {
   return state.permissionRefreshPromise;
 }
 
+// ==================== BLOCK 05: LAZY CHART/SALES WORKSPACE INITIALIZATION ====================
+// Chart.js প্রয়োজন হলে একবার dynamically load করে shared promise reuse করে। Sales workspace-এর chart/report dependencies প্রস্তুত না হওয়া পর্যন্ত
+// duplicate initialization আটকায় এবং caller-কে ready state দেয়।
 async function ensureChartLibrary() {
+  // প্রয়োজন হলে Chart.js dynamically load করে এবং একই load request পুনর্ব্যবহার করে।
   if (typeof window.Chart !== "undefined") {
     return window.Chart;
   }
@@ -585,6 +662,7 @@ async function ensureChartLibrary() {
 }
 
 async function ensureSalesWorkspaceReady(options = {}) {
+  // Sales report section খোলার আগে প্রয়োজনীয় dates, report ও chart resources ready করে।
   if (!canAccessPermission("sales_report")) {
     return;
   }
@@ -597,7 +675,15 @@ async function ensureSalesWorkspaceReady(options = {}) {
   ]);
 }
 
+/*
+ * =========================================================
+ * BLOCK 06: DASHBOARD DOM ELEMENT REGISTRY
+ * =========================================================
+ * Dashboard HTML-এর navigation, cards, forms, tables, filters, modal, chart, support, staff ও account controls query করে `dom` object-এ রাখে।
+ * পরের feature functions বারবার selector চালানোর বদলে এই cached references ব্যবহার করে এবং optional element-এ safe chaining রাখে।
+ */
 function cacheElements() {
+  // Dashboard-এর সব প্রয়োজনীয় HTML element DOM থেকে নিয়ে shared dom object-এ রাখে।
   Object.assign(dom, {
     sectionButtons: Array.from(
       document.querySelectorAll(".sidebar button[data-section]"),
@@ -876,7 +962,15 @@ function cacheElements() {
   });
 }
 
+/*
+ * =========================================================
+ * BLOCK 07: AUTHENTICATED JSON API CLIENT
+ * =========================================================
+ * Base URL, credentials ও supplied request options দিয়ে API call করে; JSON/error response normalize এবং expired/denied session handle করে।
+ * Access denied হলে session permission refresh করতে পারে, আর caller একটি consistent parsed payload বা actionable error পায়।
+ */
 async function fetchJSON(path, options = {}) {
+  // Dashboard API-তে authenticated JSON request পাঠায়; 401/403 ও API error একই জায়গায় handle করে।
   const {
     permissionRetry = false,
     skipPermissionRefresh = false,
@@ -945,7 +1039,15 @@ async function fetchJSON(path, options = {}) {
   return payload;
 }
 
+/*
+ * =========================================================
+ * BLOCK 08: AUTHENTICATED FILE DOWNLOAD ও ASYNC EXPORT POLLING
+ * =========================================================
+ * Export URL-এ async flag যোগ করে, response header থেকে safe filename নেয় এবং Blob/Object URL দিয়ে browser download করায়।
+ * Server job queue response দিলে job status poll করে completed file নেয়; failed/expired/session error user-facing failure হিসেবে দেখায়।
+ */
 function appendAsyncExportFlag(path) {
+  // Export URL-এ async flag যোগ করে বড় PDF/Excel generation queue-তে পাঠানোর option দেয়।
   const normalizedPath = String(path || "");
   if (!/\/(?:pdf|excel)(?:\?|$)/i.test(normalizedPath)) {
     return normalizedPath;
@@ -956,12 +1058,14 @@ function appendAsyncExportFlag(path) {
 }
 
 function getDownloadFilename(response, fallbackName) {
+  // HTTP Content-Disposition header থেকে server-provided download filename নেয়।
   const disposition = response.headers.get("content-disposition") || "";
   const match = disposition.match(/filename="?([^"]+)"?/i);
   return match?.[1] || fallbackName;
 }
 
 async function saveDownloadResponse(response, fallbackName) {
+  // Authenticated file response browser blob বানিয়ে local download শুরু করে।
   const blob = await response.blob();
   const filename = getDownloadFilename(response, fallbackName);
   const blobUrl = window.URL.createObjectURL(blob);
@@ -979,10 +1083,12 @@ async function saveDownloadResponse(response, fallbackName) {
 }
 
 function wait(ms) {
+  // নির্দিষ্ট millisecond পরে resolve হওয়া Promise তৈরি করে polling delay-এ ব্যবহার হয়।
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 async function fetchAuthenticatedDownload(path, options = {}) {
+  // Cookie credential-সহ export/download endpoint fetch করে।
   const response = await fetch(`${apiBase}${path}`, {
     credentials: "include",
     headers: authHeaders(),
@@ -1007,6 +1113,7 @@ async function fetchAuthenticatedDownload(path, options = {}) {
 }
 
 async function waitForQueuedExport(job, fallbackName) {
+  // Asynchronous export job complete হওয়া পর্যন্ত status poll করে file download করে।
   const jobId = job?.id;
   if (!jobId) {
     throw new Error("Export job could not be started.");
@@ -1060,6 +1167,7 @@ async function waitForQueuedExport(job, fallbackName) {
 }
 
 async function downloadAuthenticatedFile(path, fallbackName) {
+  // PDF/Excel export response অথবা queued export job থেকে authenticated file download করে।
   const exportPath = appendAsyncExportFlag(path);
   const response = await fetchAuthenticatedDownload(exportPath);
 
@@ -1114,7 +1222,11 @@ async function downloadAuthenticatedFile(path, fallbackName) {
   await saveDownloadResponse(response, fallbackName);
 }
 
+// ==================== BLOCK 09: LOGOUT, BUTTON FEEDBACK ও SHARED POPUP SYSTEM ====================
+// Logout server session clear করে login page-এ ফেরায়। Button helpers loading/pressed state manage করে এবং popup system success/error,
+// confirmation ও password prompt-কে Promise-based result হিসেবে বিভিন্ন destructive/sensitive action-এ reuse করে।
 async function logoutAndRedirect() {
+  // Server logout request দিয়ে local session মুছে login page-এ পাঠায়।
   try {
     await fetchJSON("/auth/logout", { method: "POST" });
   } catch (error) {
@@ -1126,6 +1238,7 @@ async function logoutAndRedirect() {
 }
 
 async function withButtonState(button, loadingHtml, task) {
+  // Async কাজের সময় button disable/loading text দেখিয়ে শেষে আগের state ফিরিয়ে দেয়।
   if (!button) {
     await task();
     return;
@@ -1152,6 +1265,7 @@ async function withButtonState(button, loadingHtml, task) {
 }
 
 function triggerButtonFeedback(button, duration = 280) {
+  // Successful action-এর পরে button-এ অল্প সময়ের visual feedback class যোগ করে।
   if (!button) {
     return;
   }
@@ -1166,6 +1280,7 @@ function triggerButtonFeedback(button, duration = 280) {
 }
 
 function showPopup(type, title, message, options = {}) {
+  // Dashboard-এর reusable success/error/info popup UI দেখায়।
   if (!dom.commonPopup) {
     return;
   }
@@ -1202,6 +1317,7 @@ function showPopup(type, title, message, options = {}) {
 }
 
 function resolvePopupConfirm(value) {
+  // Pending confirm popup Promise-কে user-এর yes/no result দিয়ে resolve করে।
   if (typeof state.popupConfirmResolve !== "function") {
     return;
   }
@@ -1212,6 +1328,7 @@ function resolvePopupConfirm(value) {
 }
 
 function resolvePopupPassword(value) {
+  // Pending password popup Promise-কে entered password অথবা null দিয়ে resolve করে।
   if (typeof state.popupPasswordResolve !== "function") {
     return;
   }
@@ -1222,6 +1339,7 @@ function resolvePopupPassword(value) {
 }
 
 function setPopupPasswordMode(enabled) {
+  // Popup-এ password input ও corresponding layout প্রয়োজন অনুযায়ী show/hide করে।
   if (!dom.popupPasswordField) {
     return;
   }
@@ -1234,6 +1352,7 @@ function setPopupPasswordMode(enabled) {
 }
 
 function setPopupConfirmMode(enabled, options = {}) {
+  // Popup-এ confirm/cancel action button mode configure করে।
   if (!dom.popupActions) {
     return;
   }
@@ -1259,6 +1378,7 @@ function setPopupConfirmMode(enabled, options = {}) {
 }
 
 function showConfirmPopup(options = {}) {
+  // User confirmation নেওয়ার জন্য Promise-based reusable confirm dialog দেখায়।
   if (!dom.commonPopup) {
     return Promise.resolve(false);
   }
@@ -1298,6 +1418,7 @@ function showConfirmPopup(options = {}) {
 }
 
 function requestAccountPassword() {
+  // Sensitive account action-এর আগে password নেওয়ার Promise-based dialog খোলে।
   if (!dom.commonPopup || !dom.popupPasswordInput) {
     return Promise.resolve(null);
   }
@@ -1316,7 +1437,8 @@ function requestAccountPassword() {
   setPopupPasswordMode(true);
   dom.popupIcon.innerHTML = '<i class="fa-solid fa-shield-halved"></i>';
   dom.popupTitle.textContent = "Confirm account changes";
-  dom.popupMessage.textContent = "Enter your current password to save these changes.";
+  dom.popupMessage.textContent =
+    "Enter your current password to save these changes.";
   dom.commonPopup.classList.add("active");
   dom.commonPopup.setAttribute("aria-hidden", "false");
 
@@ -1327,6 +1449,7 @@ function requestAccountPassword() {
 }
 
 function hidePopup(options = {}) {
+  // Visible popup বন্ধ করে timers ও pending state নিরাপদে পরিষ্কার করে।
   if (!dom.commonPopup) {
     return;
   }
@@ -1343,7 +1466,11 @@ function hidePopup(options = {}) {
   dom.commonPopup.setAttribute("aria-hidden", "true");
 }
 
+// ==================== BLOCK 10: CUSTOMER-DUE FORM STATE ও LIVE PREVIEW ====================
+// Current date label, locked customer identity, form reset/snapshot, amount validation এবং balance preview sync করে। Due summary metadata
+// customer count/outstanding balance অনুযায়ী dashboard cards ও pills update করে।
 function updateCurrentDateLabel() {
+  // Purchase/sales workspace-এ আজকের date label refresh করে।
   dom.currentDateLabel.textContent = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
@@ -1354,20 +1481,27 @@ function updateCurrentDateLabel() {
 }
 
 function setCustomerNameLocked(locked) {
+  // এই functionটি set Customer Name Locked সম্পর্কিত dashboard কাজ পরিচালনা করে।
   dom.cdName.disabled = locked;
   dom.cdName.classList.toggle("bg-light", locked);
   updateCustomerDuePreview();
 }
 
 function resetCustomerDueForm(options = {}) {
-  ["cdName", "cdNumber", "cdAddress", "cdTotal", "cdCredit", "cdRemark"].forEach(
-    (id) => {
-      const field = document.getElementById(id);
-      if (field) {
-        field.value = "";
-      }
-    },
-  );
+  // Customer due entry form ও preview-কে default empty state-এ ফেরত দেয়।
+  [
+    "cdName",
+    "cdNumber",
+    "cdAddress",
+    "cdTotal",
+    "cdCredit",
+    "cdRemark",
+  ].forEach((id) => {
+    const field = document.getElementById(id);
+    if (field) {
+      field.value = "";
+    }
+  });
 
   setCustomerNameLocked(false);
   hideElement(dom.cdNameDropdown);
@@ -1379,6 +1513,7 @@ function resetCustomerDueForm(options = {}) {
 }
 
 function getDueFormSnapshot() {
+  // Due form-এর বর্তমান customer ও payment field থেকে normalized data snapshot নেয়।
   const customerName = dom.cdName?.value.trim() || "";
   const customerNumber = dom.cdNumber?.value.trim() || "";
   const total = Number(dom.cdTotal?.value) || 0;
@@ -1455,6 +1590,7 @@ function getDueFormSnapshot() {
 }
 
 function updateCustomerDuePreview() {
+  // Form amount পরিবর্তনের সঙ্গে সঙ্গে due balance/collection preview update করে।
   const snapshot = getDueFormSnapshot();
 
   if (dom.cdEntryType) {
@@ -1484,6 +1620,7 @@ function updateCustomerDuePreview() {
 }
 
 function getDueBalancePillClass(value) {
+  // এই functionটি get Due Balance Pill Class সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const normalizedValue = Number(value) || 0;
 
   if (normalizedValue < -0.009) {
@@ -1498,10 +1635,12 @@ function getDueBalancePillClass(value) {
 }
 
 function renderDueBalancePill(value) {
+  // এই functionটি render Due Balance Pill সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return `<span class="${getDueBalancePillClass(value)}">${formatCurrency(value)}</span>`;
 }
 
 function updateDueWorkspaceMeta() {
+  // Customer due workspace-এর summary count ও outstanding amount text update করে।
   const summaryCount = Number(state.dueSummaryCustomerCount) || 0;
   const isLedgerView =
     state.ledgerMode === "ledger" && Boolean(state.currentLedgerNumber);
@@ -1548,7 +1687,11 @@ function updateDueWorkspaceMeta() {
   }
 }
 
+// ==================== BLOCK 11: DEFAULT PROFIT-PERCENT PREFERENCE ====================
+// Profit percent sanitize/apply করে purchase rows-এর auto selling rate refresh করে। Debounced API save request-id দিয়ে stale responses আটকায়
+// এবং saved default load হলে form controls/state একসঙ্গে update হয়।
 function normalizeProfitPercentValue(value) {
+  // Profit percentage input-কে allowed numeric range-এর মধ্যে normalise করে।
   const raw = String(value ?? "").trim();
   if (!raw) {
     return null;
@@ -1563,6 +1706,7 @@ function normalizeProfitPercentValue(value) {
 }
 
 function applySharedProfitPercent(value) {
+  // Default profit percent সব active purchase row-এর suggested selling rate-এ প্রয়োগ করে।
   const normalized = normalizeProfitPercentValue(value);
   if (normalized === null) {
     return null;
@@ -1573,6 +1717,7 @@ function applySharedProfitPercent(value) {
 }
 
 async function saveProfitPercentDefault(value, options = {}) {
+  // Owner-এর shared profit default setting API-তে save করে।
   const normalized = normalizeProfitPercentValue(value);
   if (normalized === null) {
     return false;
@@ -1615,6 +1760,7 @@ async function saveProfitPercentDefault(value, options = {}) {
 }
 
 function queueProfitPercentSave(value = state.lastSavedProfitPercent) {
+  // Repeated typing-এর সময় debounce করে profit percent save request queue করে।
   const normalized = normalizeProfitPercentValue(value);
 
   window.clearTimeout(state.profitSaveTimer);
@@ -1631,6 +1777,7 @@ function queueProfitPercentSave(value = state.lastSavedProfitPercent) {
 }
 
 async function loadProfitPercentDefault() {
+  // Saved default profit percentage API থেকে নিয়ে purchase form-এ প্রয়োগ করে।
   const legacyValue = normalizeProfitPercentValue(
     localStorage.getItem("defaultProfitPercent"),
   );
@@ -1660,7 +1807,11 @@ async function loadProfitPercentDefault() {
   return state.lastSavedProfitPercent;
 }
 
+// ==================== BLOCK 12: SESSION ACCESS, HERO SUMMARY ও OVERVIEW CAROUSEL ====================
+// Dashboard headline metrics render, owner/staff permission apply এবং inaccessible panels hide করে। Overview cards responsive carousel-এ
+// dots, arrow/keyboard/touch navigation, hover/focus pause, reduced-motion preference ও timed autoplay support করে।
 function updateHeroSummary(metrics = {}) {
+  // Dashboard hero summary card-এ sales, profit ও business metrics বসায়।
   const bits = [];
   const itemCount = Number(metrics.itemCount) || 0;
   const lowStockCount = Number(metrics.lowStockCount) || 0;
@@ -1688,6 +1839,7 @@ function updateHeroSummary(metrics = {}) {
 }
 
 function applySessionAccess(user) {
+  // Logged-in owner/staff identity ও permission অনুযায়ী sidebar এবং workspace visibility সেট করে।
   state.sessionUser = user;
 
   const isStaff = user?.role === "staff";
@@ -1733,6 +1885,7 @@ function applySessionAccess(user) {
 }
 
 function updateOverviewVisibility(sectionId = "") {
+  // Active section অনুযায়ী owner overview carousel দেখা/লুকানো নিয়ন্ত্রণ করে।
   if (!dom.overviewGrid) {
     return;
   }
@@ -1750,10 +1903,12 @@ function updateOverviewVisibility(sectionId = "") {
 }
 
 function getOverviewSlideCount() {
+  // এই functionটি get Overview Slide Count সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return dom.overviewSlides?.length || 0;
 }
 
 function normalizeOverviewSlideIndex(index) {
+  // এই functionটি normalize Overview Slide Index সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const slideCount = getOverviewSlideCount();
 
   if (!slideCount) {
@@ -1764,6 +1919,7 @@ function normalizeOverviewSlideIndex(index) {
 }
 
 function clearOverviewCarouselTimer() {
+  // এই functionটি clear Overview Carousel Timer সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!state.overviewCarousel.timer) {
     return;
   }
@@ -1773,6 +1929,7 @@ function clearOverviewCarouselTimer() {
 }
 
 function syncOverviewCarouselAutoplay() {
+  // এই functionটি sync Overview Carousel Autoplay সম্পর্কিত dashboard কাজ পরিচালনা করে।
   clearOverviewCarouselTimer();
 
   if (
@@ -1794,6 +1951,7 @@ function syncOverviewCarouselAutoplay() {
 }
 
 function renderOverviewCarouselDots() {
+  // এই functionটি render Overview Carousel Dots সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.overviewDots) {
     return;
   }
@@ -1809,6 +1967,7 @@ function renderOverviewCarouselDots() {
 }
 
 function setOverviewCarouselSlide(index, options = {}) {
+  // এই functionটি set Overview Carousel Slide সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.overviewTrack || !getOverviewSlideCount()) {
     return;
   }
@@ -1851,10 +2010,12 @@ function setOverviewCarouselSlide(index, options = {}) {
 }
 
 function stepOverviewCarousel(direction) {
+  // এই functionটি step Overview Carousel সম্পর্কিত dashboard কাজ পরিচালনা করে।
   setOverviewCarouselSlide(state.overviewCarousel.index + direction);
 }
 
 function bindOverviewCarousel() {
+  // Overview card carousel-এর arrow, dot, swipe, hover ও autoplay event bind করে।
   if (
     state.overviewCarousel.isBound ||
     !dom.overviewGrid ||
@@ -1952,7 +2113,11 @@ function bindOverviewCarousel() {
   syncOverviewCarouselAutoplay();
 }
 
+// ==================== BLOCK 13: MAIN SECTION NAVIGATION ====================
+// Permission যাচাই করে requested sidebar section active করে, matching content panel দেখায়, title/ARIA/sidebar state sync করে এবং section-specific
+// lazy loader চালায়। ফলে dashboard এক page হলেও প্রতিটি workspace প্রয়োজনমতো data load করে।
 function setActiveSection(sectionId) {
+  // Permission যাচাই করে নির্বাচিত dashboard workspace section visible করে।
   if (!canAccessSection(sectionId)) {
     const fallbackSection = getFirstAccessibleSection();
     if (!fallbackSection) {
@@ -2025,11 +2190,20 @@ function setActiveSection(sectionId) {
   }
 }
 
+/*
+ * =========================================================
+ * BLOCK 14: WORKSPACE SUPPORT CHAT
+ * =========================================================
+ * Message text safely render, empty/thread state তৈরি, conversation/messages load এবং new user message submit করে।
+ * Refresh button, Enter shortcut, page visibility ও periodic poll support thread-কে current রাখে; overlapping load request-id দিয়ে নিয়ন্ত্রিত হয়।
+ */
 function formatSupportMessageText(value) {
+  // Support message নিরাপদ HTML text ও line break markup-এ রূপান্তর করে।
   return escapeHtml(value || "").replace(/\n/g, "<br />");
 }
 
 function setSupportComposerStatus(message, tone = "muted") {
+  // এই functionটি set Support Composer Status সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.supportComposerStatus) {
     return;
   }
@@ -2039,6 +2213,7 @@ function setSupportComposerStatus(message, tone = "muted") {
 }
 
 function renderSupportEmptyState(message, title = "Start your support thread") {
+  // এই functionটি render Support Empty State সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.supportThreadBody) {
     return;
   }
@@ -2053,6 +2228,7 @@ function renderSupportEmptyState(message, title = "Start your support thread") {
 }
 
 function renderSupportThread() {
+  // Customer/developer support conversation message list UI-তে render করে।
   if (!dom.supportThreadBody) {
     return;
   }
@@ -2136,6 +2312,7 @@ function renderSupportThread() {
 }
 
 function setSupportRefreshLoading(isLoading) {
+  // এই functionটি set Support Refresh Loading সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.supportRefreshBtn) {
     return;
   }
@@ -2146,6 +2323,7 @@ function setSupportRefreshLoading(isLoading) {
 }
 
 async function loadSupportThread(options = {}) {
+  // Logged-in user-এর developer support chat thread load ও render করে।
   if (!dom.supportThreadBody || !state.sessionUser) {
     return null;
   }
@@ -2208,6 +2386,7 @@ async function loadSupportThread(options = {}) {
 }
 
 async function submitSupportMessage() {
+  // User-এর support message validate করে API-তে পাঠিয়ে thread refresh করে।
   if (!dom.supportMessageInput || !dom.supportSendBtn) {
     return;
   }
@@ -2264,6 +2443,7 @@ async function submitSupportMessage() {
 }
 
 function bindSupportEvents() {
+  // এই functionটি bind Support Events সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.supportSendBtn || !dom.supportMessageInput) {
     return;
   }
@@ -2298,7 +2478,11 @@ function bindSupportEvents() {
   }
 }
 
+// ==================== BLOCK 15: REUSABLE SEARCH DROPDOWN INTERACTION ====================
+// Mouse/touch drag scroll-কে click selection থেকে আলাদা করে, delayed hide দিয়ে blur/select race আটকায় এবং generic item-name/filter dropdown
+// renderer keyboard/focus/document-click behavior share করে।
 function setupScrollableDropdown(listEl) {
+  // এই functionটি setup Scrollable Dropdown সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!listEl || listEl.dataset.scrollGuardBound === "true") {
     return;
   }
@@ -2410,6 +2594,7 @@ function setupScrollableDropdown(listEl) {
 }
 
 function scheduleDropdownHide(listEl, delay = 160) {
+  // এই functionটি schedule Dropdown Hide সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!listEl) {
     return;
   }
@@ -2425,6 +2610,7 @@ function scheduleDropdownHide(listEl, delay = 160) {
 }
 
 function renderDropdown(listEl, items, onSelect) {
+  // এই functionটি render Dropdown সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!items.length) {
     hideElement(listEl);
     listEl.innerHTML = "";
@@ -2475,6 +2661,7 @@ function renderDropdown(listEl, items, onSelect) {
 }
 
 async function renderItemNameDropdown(input, listEl, onSelect) {
+  // এই functionটি render Item Name Dropdown সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (
     !state.itemNamesLoaded &&
     canAccessPermission("purchase_entry", "sale_invoice", "stock_report")
@@ -2501,6 +2688,7 @@ async function renderItemNameDropdown(input, listEl, onSelect) {
 }
 
 function setupFilterInput(input, listEl, onSelect) {
+  // এই functionটি setup Filter Input সম্পর্কিত dashboard কাজ পরিচালনা করে।
   input.addEventListener("input", () => {
     void renderItemNameDropdown(input, listEl, onSelect);
   });
@@ -2516,7 +2704,11 @@ function setupFilterInput(input, listEl, onSelect) {
   });
 }
 
+// ==================== BLOCK 16: INITIAL AUTH, ITEM CATALOG ও OVERVIEW DATA ====================
+// Current session verify করে access rules apply, item-name search index একবার load/cache এবং dashboard overview metrics/low-stock summary আনে।
+// Optional silent/force modes repeated section activation ও background refresh-এ popup noise এবং duplicate request কমায়।
 async function checkAuth() {
+  // Page load-এর সময় current login session যাচাই করে এবং failure হলে safe redirect দেয়।
   try {
     return await fetchJSON("/auth/me");
   } catch (error) {
@@ -2539,6 +2731,7 @@ async function checkAuth() {
 }
 
 async function loadItemNames(options = {}) {
+  // Product search/autocomplete-এর জন্য item name list load ও index করে।
   if (state.itemNamesPromise) {
     return state.itemNamesPromise;
   }
@@ -2572,6 +2765,7 @@ async function loadItemNames(options = {}) {
 }
 
 async function loadDashboardOverview(options = {}) {
+  // Owner-এর dashboard summary metrics, alert এবং chart data API থেকে load করে।
   if (!isOwnerSession()) {
     return null;
   }
@@ -2658,19 +2852,25 @@ async function loadDashboardOverview(options = {}) {
   }
 }
 
+// ==================== BLOCK 17: PURCHASE ROW ও SERIAL-NUMBER SCANNING HELPERS ====================
+// Purchase table rows collect করে, serial input normalize/parse এবং duplicate খোঁজে। BarcodeDetector/camera modal supported হলে device camera
+// দিয়ে serial scan করে selected row-তে বসায়; close/error-এ media tracks অবশ্যই stop করে।
 function purchaseRows() {
+  // Purchase form table থেকে বর্তমানে থাকা সব item row element-এর list দেয়।
   return Array.from(
     dom.purchaseItemsBody?.querySelectorAll(".purchase-line-card") || [],
   );
 }
 
 function normalizeSerialEntry(value) {
+  // একটি serial number trim করে standard comparison/display value বানায়।
   return String(value || "")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 function parseSerialNumbersInput(value) {
+  // Comma বা newline দিয়ে লেখা serial input ভেঙে clean unique serial list বানায়।
   return String(value || "")
     .split(/[\n\r,]+/)
     .map(normalizeSerialEntry)
@@ -2678,6 +2878,7 @@ function parseSerialNumbersInput(value) {
 }
 
 function findDuplicateSerialNumber(serialNumbers = []) {
+  // একই purchase form-এ duplicate serial আছে কি না খুঁজে প্রথম duplicate ফেরত দেয়।
   const seen = new Set();
   for (const serialNo of serialNumbers) {
     const key = serialNo.toLowerCase();
@@ -2698,6 +2899,7 @@ let serialScannerState = {
 };
 
 function stopSerialCameraScanner() {
+  // Active camera stream ও serial scanner modal safely বন্ধ/cleanup করে।
   if (serialScannerState.frameId) {
     cancelAnimationFrame(serialScannerState.frameId);
   }
@@ -2726,6 +2928,7 @@ function stopSerialCameraScanner() {
 }
 
 function ensureSerialScannerModal() {
+  // Barcode/serial camera scan করার প্রয়োজনীয় modal HTML আছে কি না নিশ্চিত করে।
   if (serialScannerState.modal) {
     return serialScannerState.modal;
   }
@@ -2768,6 +2971,7 @@ function ensureSerialScannerModal() {
 }
 
 async function createSerialBarcodeDetector() {
+  // Browser BarcodeDetector support থাকলে serial scanning detector তৈরি করে।
   if (!("BarcodeDetector" in window)) {
     throw new Error(
       "Camera barcode scan is not supported in this browser. Use Chrome/Edge or enter the serial manually.",
@@ -2797,12 +3001,11 @@ async function createSerialBarcodeDetector() {
     );
   }
 
-  return new window.BarcodeDetector(
-    formats.length ? { formats } : undefined,
-  );
+  return new window.BarcodeDetector(formats.length ? { formats } : undefined);
 }
 
 async function startSerialCameraScan(onDetected) {
+  // Device camera খুলে barcode/serial detect হলে callback-এ detected value পাঠায়।
   if (!window.isSecureContext) {
     showPopup(
       "error",
@@ -2886,11 +3089,20 @@ async function startSerialCameraScan(onDetected) {
   }
 }
 
+/*
+ * =========================================================
+ * BLOCK 18: PURCHASE FORM CALCULATION ও DYNAMIC ITEM ROWS
+ * =========================================================
+ * Default profit, serial-aware labels, automatic selling rate, paid/due payment snapshot এবং supplier preview হিসাব করে।
+ * Dynamic row builder item autocomplete, quantity/rate/profit/serial events ও remove action bind করে; summary subtotal/payment live update হয়।
+ */
 function getPurchaseDefaultProfitPercent() {
+  // Saved/default profit percentage purchase selling rate calculation-এর জন্য নেয়।
   return state.lastSavedProfitPercent ?? 30;
 }
 
 function updatePurchaseLineLabels() {
+  // Purchase form-এর column heading payment/serial mode অনুযায়ী update করে।
   purchaseRows().forEach((row, index) => {
     const title = row.querySelector(".purchase-line-card__title");
     if (title) {
@@ -2900,6 +3112,7 @@ function updatePurchaseLineLabels() {
 }
 
 function refreshPurchaseAutoRates(options = {}) {
+  // Buy rate ও profit percentage থেকে প্রতিটি purchase row-এর suggested sell rate refresh করে।
   purchaseRows().forEach((row) => {
     if (options.originRow && row === options.originRow) {
       return;
@@ -2912,6 +3125,7 @@ function refreshPurchaseAutoRates(options = {}) {
 }
 
 function normalizePurchasePaidFieldValue(value) {
+  // Purchase paid amount input-কে safe non-negative currency numberে normalise করে।
   const raw = String(value ?? "").trim();
   if (!raw) {
     return "";
@@ -2922,6 +3136,7 @@ function normalizePurchasePaidFieldValue(value) {
 }
 
 function isPurchaseAmountPaidEditing() {
+  // User paid amount field সরাসরি edit করছে কি না UI state থেকে দেখে।
   return (
     !!dom.purchaseAmountPaid &&
     (dom.purchaseAmountPaid.dataset.editing === "true" ||
@@ -2930,6 +3145,7 @@ function isPurchaseAmountPaidEditing() {
 }
 
 function syncPurchaseAmountPaidAutofill(subtotal) {
+  // Payment status অনুযায়ী amount paid auto-fill অথবা user value preserve করে।
   if (!dom.purchaseAmountPaid) {
     return;
   }
@@ -2957,6 +3173,7 @@ function syncPurchaseAmountPaidAutofill(subtotal) {
 }
 
 function getPurchasePaymentSnapshot(subtotalValue = null) {
+  // Purchase subtotal, paid, due ও payment status-এর normalized snapshot তৈরি করে।
   const subtotal =
     subtotalValue === null
       ? purchaseRows().reduce((sum, row) => {
@@ -3004,6 +3221,7 @@ function getPurchasePaymentSnapshot(subtotalValue = null) {
 }
 
 function updatePurchaseSupplierSnapshot() {
+  // Selected supplier-এর name, mobile ও address state-এ sync করে।
   state.currentPurchaseSupplierSnapshot = {
     name: dom.supplierName?.value.trim() || "",
     mobile_number: normalizeMobileNumber(dom.supplierNumber?.value || ""),
@@ -3012,6 +3230,7 @@ function updatePurchaseSupplierSnapshot() {
 }
 
 function updatePurchaseSummary() {
+  // সব purchase item row যোগ করে subtotal, paid/due এবং summary UI update করে।
   const rows = purchaseRows();
   const subtotal = rows.reduce((sum, row) => {
     return (
@@ -3044,6 +3263,7 @@ function updatePurchaseSummary() {
 }
 
 function addPurchaseItemRow(item = {}, options = {}) {
+  // Purchase bill entry table-এ নতুন editable item row ও তার event handler যোগ করে।
   if (!dom.purchaseItemsBody) {
     return;
   }
@@ -3464,7 +3684,11 @@ function addPurchaseItemRow(item = {}, options = {}) {
   }
 }
 
+// ==================== BLOCK 19: PURCHASE FORM RESET ও SUPPLIER/PURCHASE SEARCH ====================
+// Successful/cancelled entry-এর পর form default অবস্থায় ফেরায়। Supplier autocomplete এবং purchase search API থেকে results এনে dropdown render করে,
+// selected record/supplier identity পরবর্তী ledger, bill detail বা purchase form action-এ প্রয়োগ করে।
 function resetPurchaseForm() {
+  // Current purchase bill form, supplier data ও item rows default state-এ ফেরত দেয়।
   if (!dom.purchaseItemsBody) {
     return;
   }
@@ -3494,6 +3718,7 @@ function resetPurchaseForm() {
 }
 
 async function loadSupplierSuggestions(query) {
+  // Typed supplier text-এর জন্য server থেকে matching supplier suggestion আনে।
   try {
     const rows = await fetchJSON(`/suppliers?q=${encodeURIComponent(query)}`);
     return Array.isArray(rows) ? rows : [];
@@ -3504,6 +3729,7 @@ async function loadSupplierSuggestions(query) {
 }
 
 function renderSupplierDropdown(listEl, suppliers, onSelect) {
+  // Supplier suggestion list-কে interactive dropdown-এ render করে।
   if (!listEl) {
     return;
   }
@@ -3530,6 +3756,7 @@ function renderSupplierDropdown(listEl, suppliers, onSelect) {
 }
 
 function renderSupplierDropdownItems(suppliers) {
+  // Supplier record থেকে safe dropdown option HTML তৈরি করে।
   return suppliers
     .map((supplier) => {
       const mobile = supplier.mobile_number || "";
@@ -3568,6 +3795,7 @@ function renderSupplierDropdownItems(suppliers) {
 }
 
 function readSupplierDropdownEntry(entry) {
+  // এই functionটি read Supplier Dropdown Entry সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return {
     id: Number(entry.dataset.id) || null,
     name: decodeURIComponent(entry.dataset.name || ""),
@@ -3577,6 +3805,7 @@ function readSupplierDropdownEntry(entry) {
 }
 
 async function loadPurchaseSearchSuggestions(query = "") {
+  // Purchase report search field-এর bill/supplier suggestion API থেকে load করে।
   const fromDate = dom.purchaseFromDate?.value;
   const toDate = dom.purchaseToDate?.value;
 
@@ -3603,6 +3832,7 @@ async function loadPurchaseSearchSuggestions(query = "") {
 }
 
 function renderPurchaseSearchDropdown(rows, onSelect, options = {}) {
+  // Purchase history search result-কে selectable dropdown rows-এ render করে।
   if (!dom.purchaseSearchDropdown) {
     return;
   }
@@ -3664,7 +3894,11 @@ function renderPurchaseSearchDropdown(rows, onSelect, options = {}) {
   };
 }
 
+// ==================== BLOCK 20: PURCHASE REPORT ও PRODUCT PURCHASE HISTORY ====================
+// Purchase date filters validate, bills/ledger workspace view switch এবং paged purchase rows table-এ render করে। Product history নির্দিষ্ট item-এর
+// supplier, quantity, rates ও dates load/render করে; row action থেকে purchase detail খোলা যায়।
 function validatePurchaseDates() {
+  // Purchase report-এর from/to date range valid কি না যাচাই করে।
   return validateRange(dom.purchaseFromDate.value, dom.purchaseToDate.value, {
     from: "From",
     to: "To",
@@ -3672,6 +3906,7 @@ function validatePurchaseDates() {
 }
 
 function setPurchaseWorkspaceView(view = "bills") {
+  // Purchase workspace-এ bill list, item history বা supplier ledger view switch করে।
   const normalized = view === "supplier" ? "supplier" : "bills";
 
   if (dom.purchaseHistoryView) {
@@ -3696,6 +3931,7 @@ function setPurchaseWorkspaceView(view = "bills") {
 }
 
 function renderPurchaseReport(rows) {
+  // Purchase bill row-গুলোকে table-এ render করে এবং detail/ledger interaction প্রস্তুত করে।
   dom.purchaseReportBody.innerHTML = "";
 
   if (!rows.length) {
@@ -3746,6 +3982,7 @@ function renderPurchaseReport(rows) {
 }
 
 async function loadPurchaseReport(options = {}) {
+  // Filter অনুযায়ী purchase bill report load করে table ও summary render করে।
   setPurchaseWorkspaceView("bills");
 
   if (!validatePurchaseDates()) {
@@ -3791,6 +4028,7 @@ async function loadPurchaseReport(options = {}) {
 }
 
 function resetProductPurchaseHistory() {
+  // Selected product-এর purchase history panel empty/default state-এ ফেরত দেয়।
   if (dom.productPurchaseSearchInput) {
     dom.productPurchaseSearchInput.value = "";
   }
@@ -3822,6 +4060,7 @@ function resetProductPurchaseHistory() {
 }
 
 function renderProductPurchaseHistory(rows, productName) {
+  // নির্দিষ্ট product-এর আগের supplier purchase rate ও bill history table-এ দেখায়।
   if (!dom.productPurchaseHistoryBody || !dom.productPurchaseHistorySummary) {
     return;
   }
@@ -3917,6 +4156,7 @@ function renderProductPurchaseHistory(rows, productName) {
 }
 
 async function loadProductPurchaseHistory(options = {}) {
+  // নির্বাচিত product name দিয়ে server থেকে purchase history load করে।
   const productName = dom.productPurchaseSearchInput?.value.trim() || "";
 
   if (!productName) {
@@ -3970,7 +4210,15 @@ async function loadProductPurchaseHistory(options = {}) {
   );
 }
 
+/*
+ * =========================================================
+ * BLOCK 21: SUPPLIER LEDGER, PURCHASE DETAIL ও REPAYMENT
+ * =========================================================
+ * Supplier-wise payable summary এবং individual transaction ledger render করে। Purchase detail items/serial/payment history দেখায়;
+ * repayment validated amount দিয়ে submit হয় এবং success-এর পর relevant ledger/detail/overview views refresh করে।
+ */
 function renderSupplierLedgerSummary(rows) {
+  // Supplier-wise outstanding balance-এর summary ledger render করে।
   if (!rows.length) {
     dom.supplierLedgerTable.innerHTML =
       '<div class="empty-ledger">No supplier ledger rows found for this selection.</div>';
@@ -3996,17 +4244,16 @@ function renderSupplierLedgerSummary(rows) {
       </thead>
       <tbody>
         ${rows
-          .map(
-            (row) => {
-              const supplierName = row.name || "";
-              const actionMenu = renderLedgerActionMenu(
-                "delete-supplier-ledger",
-                {
-                  supplierId: row.id,
-                  name: supplierName,
-                },
-              );
-              return `
+          .map((row) => {
+            const supplierName = row.name || "";
+            const actionMenu = renderLedgerActionMenu(
+              "delete-supplier-ledger",
+              {
+                supplierId: row.id,
+                name: supplierName,
+              },
+            );
+            return `
               <tr class="interactive-row" data-supplier-id="${row.id}" data-supplier-name="${encodeURIComponent(row.name || "")}">
                 <td data-label="Supplier" class="${getLedgerMenuHostClass(actionMenu)}">
                   <div class="${getLedgerMenuPrimaryClass(actionMenu, "table-primary-copy")}">${escapeHtml(row.name || "-")}</div>
@@ -4023,8 +4270,7 @@ function renderSupplierLedgerSummary(rows) {
                 <td data-label="Due">${formatCurrencyValue(row.total_due)}</td>
               </tr>
             `;
-            },
-          )
+          })
           .join("")}
       </tbody>
     </table>
@@ -4049,6 +4295,7 @@ function renderSupplierLedgerSummary(rows) {
 }
 
 function renderSupplierLedgerDetail(supplier, rows) {
+  // এক supplier-এর purchase, payment ও due transaction detail render করে।
   if (!rows.length) {
     dom.supplierLedgerTable.innerHTML =
       '<div class="empty-ledger">No purchases found for this supplier.</div>';
@@ -4096,15 +4343,14 @@ function renderSupplierLedgerDetail(supplier, rows) {
       </thead>
       <tbody>
         ${rows
-          .map(
-            (row) => {
-              const billLabel = row.bill_no || `Purchase #${row.id}`;
-              const actionMenu = renderLedgerActionMenu("delete-purchase", {
-                purchaseId: row.id,
-                supplierId: supplier.id,
-                billLabel,
-              });
-              return `
+          .map((row) => {
+            const billLabel = row.bill_no || `Purchase #${row.id}`;
+            const actionMenu = renderLedgerActionMenu("delete-purchase", {
+              purchaseId: row.id,
+              supplierId: supplier.id,
+              billLabel,
+            });
+            return `
               <tr class="interactive-row" data-purchase-id="${row.id}">
                 <td data-label="Date">${formatDate(row.purchase_date)}</td>
                 <td data-label="Bill" class="${getLedgerMenuHostClass(actionMenu)}">
@@ -4121,8 +4367,7 @@ function renderSupplierLedgerDetail(supplier, rows) {
                 <td data-label="Status">${getStatusChipMarkup(row.payment_status)}</td>
               </tr>
             `;
-            },
-          )
+          })
           .join("")}
       </tbody>
     </table>
@@ -4140,6 +4385,7 @@ function renderSupplierLedgerDetail(supplier, rows) {
 }
 
 function renderPurchaseDetailEmpty(message) {
+  // কোনো bill select না থাকলে purchase detail panel-এ empty-state message দেখায়।
   if (!dom.purchaseDetailCard) {
     return;
   }
@@ -4164,6 +4410,7 @@ function renderPurchaseDetailEmpty(message) {
 }
 
 function renderPurchaseDetail(purchase) {
+  // নির্বাচিত purchase bill-এর supplier, items, payment ও serial detail UI-তে দেখায়।
   if (!dom.purchaseDetailCard) {
     return;
   }
@@ -4316,6 +4563,7 @@ function renderPurchaseDetail(purchase) {
 }
 
 async function openPurchaseDetail(purchaseId, options = {}) {
+  // এই functionটি open Purchase Detail সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!Number.isInteger(Number(purchaseId)) || Number(purchaseId) <= 0) {
     return;
   }
@@ -4359,6 +4607,7 @@ async function openPurchaseDetail(purchaseId, options = {}) {
 }
 
 async function submitPurchaseRepayment() {
+  // Supplier due repayment validate করে selected purchase/balance-এর বিপরীতে save করে।
   const purchaseId = Number(state.currentPurchaseDetailId || 0);
   const currentDue = Number(state.currentPurchaseDetail?.amount_due) || 0;
   const amount = Number(dom.purchaseRepayAmount.value || "0");
@@ -4441,6 +4690,7 @@ async function submitPurchaseRepayment() {
 }
 
 async function searchSupplierLedger(options = {}) {
+  // এই functionটি search Supplier Ledger সম্পর্কিত dashboard কাজ পরিচালনা করে।
   setPurchaseWorkspaceView("supplier");
 
   const supplierId = Number(
@@ -4496,6 +4746,7 @@ async function searchSupplierLedger(options = {}) {
 }
 
 async function showAllSupplierSummary(options = {}) {
+  // এই functionটি show All Supplier Summary সম্পর্কিত dashboard কাজ পরিচালনা করে।
   setPurchaseWorkspaceView("supplier");
 
   if (!options.silent) {
@@ -4539,7 +4790,15 @@ async function showAllSupplierSummary(options = {}) {
   );
 }
 
+/*
+ * =========================================================
+ * BLOCK 22: PURCHASE SUBMISSION
+ * =========================================================
+ * Supplier, item rows, quantities, rates, profit, serial count/duplicates ও payment fields validate করে API payload বানায়।
+ * Button double-submit আটকায়; success-এ form/reset/cache views refresh এবং failure-এ server validation message popup-এ দেখায়।
+ */
 async function submitPurchase() {
+  // Purchase form validate করে supplier bill ও item/serial data API-তে save করে।
   const supplierName = dom.supplierName.value.trim();
   const supplierNumber = normalizeMobileNumber(dom.supplierNumber.value);
   const supplierAddress = dom.supplierAddress.value.trim();
@@ -4560,9 +4819,7 @@ async function submitPurchase() {
       selling_rate: Number(
         row.querySelector(".purchase-sell-input")?.value || "0",
       ),
-      serial_numbers: Array.from(
-        row.querySelectorAll(".purchase-serial-value"),
-      )
+      serial_numbers: Array.from(row.querySelectorAll(".purchase-serial-value"))
         .map((input) => normalizeSerialEntry(input.value))
         .filter(Boolean),
     }))
@@ -4686,7 +4943,11 @@ async function submitPurchase() {
   );
 }
 
+// ==================== BLOCK 23: EXPENSE ENTRY ও REPORT ====================
+// Expense date range validate, category/description/amount rows ও aggregate summary render এবং new expense submit করে। Save-এর পরে report/overview
+// reload হয়; filter suggestion selected expense metadata ব্যবহার করতে পারে।
 function resetExpenseSummary() {
+  // Expense report summary card-গুলোকে initial zero/empty state-এ reset করে।
   dom.expenseSummaryTotal.textContent = "Rs. 0.00";
   dom.expenseSummaryEntryCount.textContent = "No expense entries loaded yet.";
   dom.expenseSummaryCategory.textContent = "No expenses";
@@ -4699,6 +4960,7 @@ function resetExpenseSummary() {
 }
 
 function validateExpenseDates() {
+  // এই functionটি validate Expense Dates সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return validateRange(dom.expenseFromDate.value, dom.expenseToDate.value, {
     from: "From",
     to: "To",
@@ -4706,6 +4968,7 @@ function validateExpenseDates() {
 }
 
 function renderExpenseReport(data = {}) {
+  // API expense totals ও rows দিয়ে expense table এবং summary cards render করে।
   const rows = Array.isArray(data.expenses) ? data.expenses : [];
   const summary = data.summary || {};
 
@@ -4754,6 +5017,7 @@ function renderExpenseReport(data = {}) {
 }
 
 async function loadExpenseReport(options = {}) {
+  // Date/category filter অনুযায়ী expense report API থেকে load করে।
   if (!validateExpenseDates()) {
     return;
   }
@@ -4797,6 +5061,7 @@ async function loadExpenseReport(options = {}) {
 }
 
 async function submitExpense() {
+  // Expense entry form থেকে validated business expense API-তে save করে।
   const title = dom.expenseTitle.value.trim();
   const category = dom.expenseCategory.value.trim();
   const amount = Number(dom.expenseAmount.value || "0");
@@ -4877,7 +5142,11 @@ async function submitExpense() {
   );
 }
 
+// ==================== BLOCK 24: ITEM REPORT, LOW STOCK ও INVENTORY PLANNERS ====================
+// Item stock/buying/selling report render করে এবং low-stock overview update করে। Reorder ও slow-moving planners priority badge, suggested action
+// এবং empty/loading stateসহ inventory decision rows দেখায়।
 function renderItemReport(rows) {
+  // Inventory item rows table-এ render করে এবং available/sold stock metrics দেখায়।
   const showSelling = dom.itemReportShowSelling.checked;
   const showBuying = dom.itemReportShowBuying.checked;
   const columnCount = 3 + Number(showSelling) + Number(showBuying);
@@ -4886,8 +5155,7 @@ function renderItemReport(rows) {
   dom.itemReportBody.innerHTML = "";
 
   if (!rows.length) {
-    dom.itemReportBody.innerHTML =
-      `<tr><td colspan="${columnCount}" class="text-muted">No stock records found for this selection.</td></tr>`;
+    dom.itemReportBody.innerHTML = `<tr><td colspan="${columnCount}" class="text-muted">No stock records found for this selection.</td></tr>`;
     return;
   }
 
@@ -4922,16 +5190,21 @@ function renderItemReport(rows) {
     <td colspan="${columnCount}" class="text-end fw-bold bg-light-subtle">
       <div>Total Units: ${formatNumber(totalUnits)}</div>
       <div>Total Cost Value: ${formatCurrency(totalCostValue)}</div>
-      ${showSelling ? `<div>Total Selling Value: ${formatCurrency(totalSellingValue)}</div>
+      ${
+        showSelling
+          ? `<div>Total Selling Value: ${formatCurrency(totalSellingValue)}</div>
       <div class="${estimatedProfit >= 0 ? "text-success" : "text-danger"}">
         Estimated Profit: ${formatCurrency(estimatedProfit)}
-      </div>` : ""}
+      </div>`
+          : ""
+      }
     </td>
   `;
   dom.itemReportBody.appendChild(summaryRow);
 }
 
 async function loadItemReport(options = {}) {
+  // Stock/item report API থেকে নিয়ে table, low-stock এবং planner UI update করে।
   const item = dom.itemReportSearch.value.trim();
   const query = item ? `?name=${encodeURIComponent(item)}` : "";
 
@@ -4974,6 +5247,7 @@ async function loadItemReport(options = {}) {
 }
 
 function updateLowStockOverview(rows) {
+  // Current item stock থেকে low-stock count ও alert overview update করে।
   const count = rows.length;
   dom.statLowStock.textContent = formatCount(count);
 
@@ -4994,6 +5268,7 @@ function updateLowStockOverview(rows) {
 }
 
 function getReorderBadgeClass(priority) {
+  // এই functionটি get Reorder Badge Class সম্পর্কিত dashboard কাজ পরিচালনা করে।
   switch (priority) {
     case "URGENT":
       return "status-badge-pill status-badge-pill--urgent";
@@ -5005,6 +5280,7 @@ function getReorderBadgeClass(priority) {
 }
 
 function getSlowMovingBadgeClass(priority) {
+  // এই functionটি get Slow Moving Badge Class সম্পর্কিত dashboard কাজ পরিচালনা করে।
   switch (priority) {
     case "NO SALE":
       return "status-badge-pill status-badge-pill--urgent";
@@ -5016,6 +5292,7 @@ function getSlowMovingBadgeClass(priority) {
 }
 
 function resetReorderPlanner() {
+  // Reorder planner section-কে default empty guidance state-এ ফেরত দেয়।
   dom.reorderPlannerCard.hidden = true;
   dom.reorderCandidateCount.textContent = "0";
   dom.reorderUrgentCount.textContent = "0";
@@ -5027,6 +5304,7 @@ function resetReorderPlanner() {
 }
 
 function renderReorderPlanner(rows) {
+  // Low stock trend অনুযায়ী suggested reorder item ও quantity UI-তে render করে।
   dom.reorderPlannerCard.hidden = false;
   dom.reorderPlanBody.innerHTML = "";
 
@@ -5096,6 +5374,7 @@ function renderReorderPlanner(rows) {
 }
 
 function resetSlowMovingPlanner() {
+  // Slow-moving stock planner-এর row ও summary empty state-এ reset করে।
   dom.slowMovingCard.hidden = true;
   dom.slowMovingCount.textContent = "0";
   dom.slowMovingUnits.textContent = "0";
@@ -5107,6 +5386,7 @@ function resetSlowMovingPlanner() {
 }
 
 function renderSlowMovingPlanner(rows) {
+  // বিক্রি কম হওয়া item-গুলো ও তাদের stock movement information render করে।
   dom.slowMovingCard.hidden = false;
   dom.slowMovingBody.innerHTML = "";
 
@@ -5179,6 +5459,7 @@ function renderSlowMovingPlanner(rows) {
 }
 
 function renderLowStock(rows) {
+  // Stock threshold-এর নিচে থাকা item-গুলো low-stock report table-এ দেখায়।
   dom.lowStockBody.innerHTML = "";
   dom.lowStockCard.hidden = rows.length === 0;
   dom.lowStockCount.textContent = formatCount(rows.length);
@@ -5216,6 +5497,7 @@ function renderLowStock(rows) {
 }
 
 async function loadLowStock(options = {}) {
+  // Server থেকে low-stock report data নিয়ে stock alert UI refresh করে।
   const [lowStockResult, reorderResult, slowMovingResult] =
     await Promise.allSettled([
       fetchJSON("/items/low-stock"),
@@ -5277,7 +5559,15 @@ async function loadLowStock(options = {}) {
   }
 }
 
+/*
+ * =========================================================
+ * BLOCK 25: SALES, NET-PROFIT ও GST REPORTS
+ * =========================================================
+ * Sales/GST date filters validate করে, net-profit summary/fallback এবং sales rows render করে। GST insights taxable value/tax totals/trends বানায়,
+ * comparison period state দেখায় এবং loaders current rows/state ধরে subsequent export বা dashboard analysis সম্ভব করে।
+ */
 function validateSalesDates() {
+  // এই functionটি validate Sales Dates সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const fromDate = dom.fromDate.value;
   const toDate = dom.toDate.value;
 
@@ -5305,6 +5595,7 @@ function validateSalesDates() {
 }
 
 function validateSalesNetProfitDates() {
+  // এই functionটি validate Sales Net Profit Dates সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return validateRange(
     dom.salesNetProfitFromDate?.value,
     dom.salesNetProfitToDate?.value,
@@ -5316,6 +5607,7 @@ function validateSalesNetProfitDates() {
 }
 
 function renderSalesNetProfitSummary(summary = {}, meta = {}) {
+  // Sales report-এর gross profit, expense ও net profit summary card-এ দেখায়।
   if (!dom.salesNetProfitValue || !dom.salesNetProfitNote) {
     return;
   }
@@ -5333,6 +5625,7 @@ function renderSalesNetProfitSummary(summary = {}, meta = {}) {
 }
 
 function renderSalesNetProfitFallback(message) {
+  // Net profit API/data না থাকলে summary area-তে fallback message দেখায়।
   if (!dom.salesNetProfitValue || !dom.salesNetProfitNote) {
     return;
   }
@@ -5343,6 +5636,7 @@ function renderSalesNetProfitFallback(message) {
 }
 
 async function loadSalesNetProfitCard(options = {}) {
+  // Current sales filter অনুযায়ী net profit summary API থেকে load করে।
   if (!dom.salesNetProfitCard || !canAccessPermission("expense_tracking")) {
     return;
   }
@@ -5401,6 +5695,7 @@ async function loadSalesNetProfitCard(options = {}) {
 }
 
 function renderSalesReport(rows) {
+  // Sales transaction rows table-এ render করে এবং total/report UI update করে।
   dom.salesReportBody.innerHTML = "";
   let subtotal = 0;
   let gstTotal = 0;
@@ -5444,6 +5739,7 @@ function renderSalesReport(rows) {
 }
 
 function validateGstDates() {
+  // এই functionটি validate Gst Dates সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const fromDate = dom.gstFromDate.value;
   const toDate = dom.gstToDate.value;
 
@@ -5471,6 +5767,7 @@ function validateGstDates() {
 }
 
 function resetGstAdvancedSummary() {
+  // GST insight/advanced summary panel default empty state-এ reset করে।
   dom.gstFilingPeriod.textContent =
     dom.gstFromDate.value && dom.gstToDate.value
       ? `${formatInputDate(dom.gstFromDate.value)} - ${formatInputDate(dom.gstToDate.value)}`
@@ -5485,6 +5782,7 @@ function resetGstAdvancedSummary() {
 }
 
 function buildGstInsights(rows) {
+  // এই functionটি build Gst Insights সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const monthlyMap = new Map();
   const rateMap = new Map();
   let taxableTotal = 0;
@@ -5571,6 +5869,7 @@ function buildGstInsights(rows) {
 }
 
 function renderGstAdvancedSummary(insights) {
+  // GST API-এর tax insight, period total ও invoice summary cards-এ render করে।
   dom.gstFilingPeriod.textContent = `${formatInputDate(dom.gstFromDate.value)} - ${formatInputDate(dom.gstToDate.value)}`;
   dom.gstTopCollectionMonth.textContent =
     insights.topCollectionMonth?.label || "-";
@@ -5615,6 +5914,7 @@ function renderGstAdvancedSummary(insights) {
 }
 
 function resetGstComparison() {
+  // GST period comparison section-এর chart/text default state-এ ফেরত দেয়।
   if (!dom.gstComparePurchaseTotal) {
     return;
   }
@@ -5626,6 +5926,7 @@ function resetGstComparison() {
 }
 
 function renderGstComparison(compare = {}) {
+  // Current ও previous GST period amount তুলনা করে comparison UI-তে দেখায়।
   if (!dom.gstComparePurchaseTotal) {
     return;
   }
@@ -5646,6 +5947,7 @@ function renderGstComparison(compare = {}) {
 }
 
 function renderGstReport(rows) {
+  // Invoice-wise GST rows table-এ render করে filing/review data দেখায়।
   dom.gstReportBody.innerHTML = "";
 
   if (!rows.length) {
@@ -5694,6 +5996,7 @@ function renderGstReport(rows) {
 }
 
 async function loadSalesReport(options = {}) {
+  // Date/filter অনুযায়ী sales report ও net-profit summary API থেকে load করে।
   if (!validateSalesDates()) {
     return;
   }
@@ -5737,6 +6040,7 @@ async function loadSalesReport(options = {}) {
 }
 
 async function loadGstReport(options = {}) {
+  // GST report data, comparison এবং advanced tax insight UI-তে load করে।
   if (!validateGstDates()) {
     return;
   }
@@ -5793,7 +6097,11 @@ async function loadGstReport(options = {}) {
   );
 }
 
+// ==================== BLOCK 26: REPORT PDF/EXCEL DOWNLOAD ACTIONS ====================
+// Current item/sales/GST filters query string-এ দিয়ে authenticated export শুরু করে। Shared queue-aware downloader filename/Blob save সামলায়;
+// button state ও popup প্রতিটি export-এর progress/success/failure user-কে জানায়।
 async function downloadItemReportPDF() {
+  // এই functionটি download Item Report PDF সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const item = dom.itemReportSearch.value.trim();
   const params = new URLSearchParams();
   if (item) params.set("name", item);
@@ -5833,6 +6141,7 @@ async function downloadItemReportPDF() {
 }
 
 async function downloadSalesPDF() {
+  // এই functionটি download Sales PDF সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!validateSalesDates()) {
     return;
   }
@@ -5868,6 +6177,7 @@ async function downloadSalesPDF() {
 }
 
 async function downloadSalesExcel() {
+  // এই functionটি download Sales Excel সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!validateSalesDates()) {
     return;
   }
@@ -5903,6 +6213,7 @@ async function downloadSalesExcel() {
 }
 
 async function downloadGstPDF() {
+  // এই functionটি download Gst PDF সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!validateGstDates()) {
     return;
   }
@@ -5938,6 +6249,7 @@ async function downloadGstPDF() {
 }
 
 async function downloadGstExcel() {
+  // এই functionটি download Gst Excel সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!validateGstDates()) {
     return;
   }
@@ -5972,7 +6284,15 @@ async function downloadGstExcel() {
   );
 }
 
+/*
+ * =========================================================
+ * BLOCK 27: CUSTOMER DUE/REPAYMENT SUBMISSION
+ * =========================================================
+ * Customer identity, sale/credit values ও remarks থেকে due ledger entry validate করে। Existing customer suggestion lock/unlock flow এবং balance
+ * snapshot ব্যবহার করে; success-এ form, due summary, ledger ও overview refresh হয়।
+ */
 async function submitDebt() {
+  // Customer due/collection form validate করে ledger entry save করে।
   const customerName = dom.cdName.value.trim();
   const customerNumber = dom.cdNumber.value.trim();
   const customerAddress = dom.cdAddress?.value.trim() || "";
@@ -6079,7 +6399,15 @@ async function submitDebt() {
   );
 }
 
+/*
+ * =========================================================
+ * BLOCK 28: BUSINESS TREND ও GROWTH ANALYTICS
+ * =========================================================
+ * Year-filtered monthly business metrics load করে, future months চিহ্নিত এবং chart series/reference/average baseline তৈরি করে।
+ * Growth cards previous/reference period-এর সঙ্গে তুলনা পায়; Chart.js দিয়ে responsive trend ও last-13-month visualization render হয়।
+ */
 async function loadBusinessTrend(year = "all", options = {}) {
+  // নির্বাচিত year-এর business trend data load করে chart ও growth summary render করে।
   if (!canAccessPermission("sales_report") || !dom.businessTrendChart) {
     return;
   }
@@ -6142,6 +6470,7 @@ async function loadBusinessTrend(year = "all", options = {}) {
 }
 
 function setTrendYearFilterOptions(availableYears = [], selectedValue = "all") {
+  // এই functionটি set Trend Year Filter Options সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.yearFilter) {
     return;
   }
@@ -6178,6 +6507,7 @@ function setTrendYearFilterOptions(availableYears = [], selectedValue = "all") {
 }
 
 function isFutureTrendMonth(row, context = {}) {
+  // এই functionটি is Future Trend Month সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const selectedYear = Number.parseInt(context.year, 10);
   const currentMonthKey = getCurrentMonthKey();
   const currentYear = Number.parseInt(currentMonthKey.slice(0, 4), 10);
@@ -6191,6 +6521,7 @@ function isFutureTrendMonth(row, context = {}) {
 }
 
 function buildTrendChartSeries(rows, fieldName, context = {}) {
+  // এই functionটি build Trend Chart Series সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return (Array.isArray(rows) ? rows : []).map((row) => {
     if (isFutureTrendMonth(row, context)) {
       return null;
@@ -6201,6 +6532,7 @@ function buildTrendChartSeries(rows, fieldName, context = {}) {
 }
 
 function resolveTrendReferenceRow(rows, context = {}) {
+  // এই functionটি resolve Trend Reference Row সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!Array.isArray(rows) || !rows.length) {
     return null;
   }
@@ -6231,6 +6563,7 @@ function resolveTrendReferenceRow(rows, context = {}) {
 }
 
 function resolveTrendAverageBaseline(rows, referenceRow, context = {}) {
+  // এই functionটি resolve Trend Average Baseline সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!Array.isArray(rows) || !rows.length || !referenceRow) {
     return {
       comparisonRows: [],
@@ -6258,6 +6591,7 @@ function resolveTrendAverageBaseline(rows, referenceRow, context = {}) {
 }
 
 function updateGrowthOverviewMeta(rows, context = {}) {
+  // এই functionটি update Growth Overview Meta সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (
     !dom.growthRangeLabel ||
     !dom.growthRangeNote ||
@@ -6326,6 +6660,7 @@ function updateGrowthOverviewMeta(rows, context = {}) {
 }
 
 function updateGrowthBadge(rows, context = {}) {
+  // এই functionটি update Growth Badge সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.growthBadge) {
     return;
   }
@@ -6398,6 +6733,7 @@ function updateGrowthBadge(rows, context = {}) {
 }
 
 function renderBusinessTrend(
+  // এই functionটি render Business Trend সম্পর্কিত dashboard কাজ পরিচালনা করে।
   labels,
   sales,
   profit,
@@ -6537,6 +6873,7 @@ function renderBusinessTrend(
 }
 
 function initYearFilter() {
+  // এই functionটি init Year Filter সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.yearFilter || dom.yearFilter.dataset.initialized === "true") {
     return;
   }
@@ -6548,6 +6885,7 @@ function initYearFilter() {
 }
 
 async function loadLast13MonthsChart(options = {}) {
+  // এই functionটি load Last13 Months Chart সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!canAccessPermission("sales_report") || !dom.last12MonthsChart) {
     return;
   }
@@ -6572,6 +6910,7 @@ async function loadLast13MonthsChart(options = {}) {
 }
 
 function renderLast13MonthsChart(labels, values, ChartLibrary = window.Chart) {
+  // এই functionটি render Last13 Months Chart সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const ctx = dom.last12MonthsChart.getContext("2d");
 
   if (state.charts.last13Months) {
@@ -6629,7 +6968,11 @@ function renderLast13MonthsChart(labels, values, ChartLibrary = window.Chart) {
   });
 }
 
+// ==================== BLOCK 29: CUSTOMER/EXPENSE AUTOCOMPLETE ও LEDGER VIEW HELPERS ====================
+// Customer mobile/name ও expense text suggestions load/render করে। Selected customer due form-এ প্রয়োগ হয়; ledger empty state, totals এবং
+// action-menu markup summary/detail view অনুযায়ী তৈরি হয়।
 async function loadCustomerSuggestions(query) {
+  // এই functionটি load Customer Suggestions সম্পর্কিত dashboard কাজ পরিচালনা করে।
   try {
     const rows = await fetchJSON(
       `/debts/customers?q=${encodeURIComponent(query)}`,
@@ -6642,6 +6985,7 @@ async function loadCustomerSuggestions(query) {
 }
 
 async function loadExpenseSuggestions(query) {
+  // এই functionটি load Expense Suggestions সম্পর্কিত dashboard কাজ পরিচালনা করে।
   try {
     const rows = await fetchJSON(
       `/expenses/suggestions?q=${encodeURIComponent(query)}`,
@@ -6654,6 +6998,7 @@ async function loadExpenseSuggestions(query) {
 }
 
 function renderCustomerDropdown(listEl, customers, onSelect) {
+  // Customer name/phone search suggestion dropdown interactiveভাবে render করে।
   if (!customers.length) {
     hideElement(listEl);
     listEl.innerHTML = "";
@@ -6702,6 +7047,7 @@ function renderCustomerDropdown(listEl, customers, onSelect) {
 }
 
 function applyCustomerDueSuggestion(customer, options = {}) {
+  // এই functionটি apply Customer Due Suggestion সম্পর্কিত dashboard কাজ পরিচালনা করে।
   dom.cdName.value = customer.name || "";
   dom.cdNumber.value = customer.number || "";
   if (dom.cdAddress) {
@@ -6712,6 +7058,7 @@ function applyCustomerDueSuggestion(customer, options = {}) {
 }
 
 function renderExpenseDropdown(listEl, entries, onSelect) {
+  // Expense title/category suggestion dropdown interactiveভাবে render করে।
   if (!entries.length) {
     hideElement(listEl);
     listEl.innerHTML = "";
@@ -6751,6 +7098,7 @@ function renderExpenseDropdown(listEl, entries, onSelect) {
 }
 
 function renderEmptyLedger(message) {
+  // Customer ledger data না থাকলে explanatory empty state দেখায়।
   const normalizedMessage = String(message || "").trim();
   const title = /^Could not/i.test(normalizedMessage)
     ? "Customer ledger is unavailable"
@@ -6776,6 +7124,7 @@ function renderEmptyLedger(message) {
 }
 
 function updateDueOverviewFromRows(rows) {
+  // Customer due ledger rows থেকে customer count ও total outstanding summary হিসাব করে।
   const totalBalance = rows.reduce((sum, row) => {
     return sum + (Number(row.balance) || 0);
   }, 0);
@@ -6795,21 +7144,21 @@ function updateDueOverviewFromRows(rows) {
 }
 
 function closeLedgerActionMenus(exceptMenu = null) {
-  document
-    .querySelectorAll(".ledger-row-menu.is-open")
-    .forEach((menu) => {
-      if (menu === exceptMenu) {
-        return;
-      }
+  // এই functionটি close Ledger Action Menus সম্পর্কিত dashboard কাজ পরিচালনা করে।
+  document.querySelectorAll(".ledger-row-menu.is-open").forEach((menu) => {
+    if (menu === exceptMenu) {
+      return;
+    }
 
-      menu.classList.remove("is-open");
-      menu
-        .querySelector(".ledger-menu-toggle")
-        ?.setAttribute("aria-expanded", "false");
-    });
+    menu.classList.remove("is-open");
+    menu
+      .querySelector(".ledger-menu-toggle")
+      ?.setAttribute("aria-expanded", "false");
+  });
 }
 
 function renderLedgerActionMenu(action, options = {}) {
+  // Ledger edit/delete/repayment action-এর contextual button/menu markup তৈরি করে।
   if (!isOwnerSession()) {
     return "";
   }
@@ -6883,18 +7232,28 @@ function renderLedgerActionMenu(action, options = {}) {
 }
 
 function getLedgerMenuHostClass(menuHtml, baseClass = "") {
+  // এই functionটি get Ledger Menu Host Class সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return [baseClass, menuHtml ? "ledger-menu-host" : ""]
     .filter(Boolean)
     .join(" ");
 }
 
 function getLedgerMenuPrimaryClass(menuHtml, baseClass = "") {
+  // এই functionটি get Ledger Menu Primary Class সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return [baseClass, menuHtml ? "ledger-menu-primary" : ""]
     .filter(Boolean)
     .join(" ");
 }
 
+/*
+ * =========================================================
+ * BLOCK 30: LEDGER/PURCHASE DELETE ACTIONS ও DEPENDENT REFRESH
+ * =========================================================
+ * Customer, individual due entry, supplier ledger, purchase bill অথবা purchase item delete করার আগে confirm/password flow চালায়।
+ * API success-এর পরে outstanding summaries, current detail, purchase reports, item stock ও overview প্রয়োজন অনুযায়ী refresh করে।
+ */
 async function refreshDueSummarySnapshot() {
+  // এই functionটি refresh Due Summary Snapshot সম্পর্কিত dashboard কাজ পরিচালনা করে।
   try {
     const rows = await fetchJSON("/debts");
     updateDueOverviewFromRows(Array.isArray(rows) ? rows : []);
@@ -6904,6 +7263,7 @@ async function refreshDueSummarySnapshot() {
 }
 
 async function deleteLedgerCustomer(button) {
+  // User confirmation নিয়ে selected customer-এর due ledger record delete করে।
   const customerNumber = decodeURIComponent(button.dataset.ledgerNumber || "");
   const customerName = decodeURIComponent(button.dataset.ledgerName || "");
 
@@ -6958,6 +7318,7 @@ async function deleteLedgerCustomer(button) {
 }
 
 async function deleteLedgerEntry(button) {
+  // User confirmation নিয়ে নির্দিষ্ট customer ledger transaction delete করে।
   const entryId = Number.parseInt(button.dataset.ledgerId, 10);
   const customerNumber = decodeURIComponent(button.dataset.ledgerNumber || "");
 
@@ -7014,6 +7375,7 @@ async function deleteLedgerEntry(button) {
 }
 
 async function refreshPurchaseViewsAfterDelete(options = {}) {
+  // এই functionটি refresh Purchase Views After Delete সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const supplierId = Object.prototype.hasOwnProperty.call(options, "supplierId")
     ? Number(options.supplierId || 0)
     : Number(state.currentSupplierId || 0);
@@ -7033,9 +7395,7 @@ async function refreshPurchaseViewsAfterDelete(options = {}) {
     supplierId > 0 &&
     state.supplierLedgerMode === "ledger"
   ) {
-    refreshTasks.push(
-      searchSupplierLedger({ supplierId, silent: true }),
-    );
+    refreshTasks.push(searchSupplierLedger({ supplierId, silent: true }));
   } else if (supplierViewVisible && state.supplierLedgerMode === "summary") {
     refreshTasks.push(showAllSupplierSummary({ silent: true }));
   }
@@ -7048,11 +7408,14 @@ async function refreshPurchaseViewsAfterDelete(options = {}) {
   await Promise.allSettled(refreshTasks);
 
   if (shouldClearDetail) {
-    renderPurchaseDetailEmpty("Open a purchase bill to view the item details here.");
+    renderPurchaseDetailEmpty(
+      "Open a purchase bill to view the item details here.",
+    );
   }
 }
 
 async function deleteSupplierLedger(button) {
+  // Supplier ledger transaction delete করার confirmed API action চালায়।
   const supplierId = Number.parseInt(button.dataset.supplierId, 10);
   const supplierName = decodeURIComponent(button.dataset.ledgerName || "");
 
@@ -7109,6 +7472,7 @@ async function deleteSupplierLedger(button) {
 }
 
 async function deletePurchaseBill(button) {
+  // Purchase bill delete করার confirmation ও API workflow পরিচালনা করে।
   const purchaseId = Number.parseInt(button.dataset.purchaseId, 10);
   const supplierId = Number.parseInt(button.dataset.supplierId, 10) || 0;
   const billLabel = decodeURIComponent(button.dataset.billLabel || "");
@@ -7164,6 +7528,7 @@ async function deletePurchaseBill(button) {
 }
 
 async function deletePurchaseItem(button) {
+  // Purchase bill-এর নির্দিষ্ট item line delete করার confirmation/API workflow চালায়।
   const itemId = Number.parseInt(button.dataset.itemId, 10);
   const purchaseId = Number.parseInt(button.dataset.purchaseId, 10);
   const supplierId = Number.parseInt(button.dataset.supplierId, 10) || 0;
@@ -7224,7 +7589,15 @@ async function deletePurchaseItem(button) {
   );
 }
 
+/*
+ * =========================================================
+ * BLOCK 31: CUSTOMER LEDGER TABLE, SEARCH ও DOWNLOAD
+ * =========================================================
+ * Summary/detail ledger rows, expandable action menus, keyboard-accessible navigation এবং delete/download buttons bind করে।
+ * Search/show-all/refresh current mode বজায় রাখে; PDF download current customer/number context দিয়ে authenticated export চালায়।
+ */
 function bindLedgerActionMenus(root = dom.ledgerTable) {
+  // Ledger/purchase table-এর action menu click event delegation bind করে।
   root?.querySelectorAll(".ledger-row-menu").forEach((menu) => {
     const toggle = menu.querySelector(".ledger-menu-toggle");
 
@@ -7242,42 +7615,41 @@ function bindLedgerActionMenus(root = dom.ledgerTable) {
     });
   });
 
-  root
-    ?.querySelectorAll("[data-ledger-action]")
-    .forEach((button) => {
-      button.addEventListener("click", async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        closeLedgerActionMenus();
+  root?.querySelectorAll("[data-ledger-action]").forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeLedgerActionMenus();
 
-        if (button.dataset.ledgerAction === "delete-customer") {
-          await deleteLedgerCustomer(button);
-          return;
-        }
+      if (button.dataset.ledgerAction === "delete-customer") {
+        await deleteLedgerCustomer(button);
+        return;
+      }
 
-        if (button.dataset.ledgerAction === "delete-entry") {
-          await deleteLedgerEntry(button);
-          return;
-        }
+      if (button.dataset.ledgerAction === "delete-entry") {
+        await deleteLedgerEntry(button);
+        return;
+      }
 
-        if (button.dataset.ledgerAction === "delete-supplier-ledger") {
-          await deleteSupplierLedger(button);
-          return;
-        }
+      if (button.dataset.ledgerAction === "delete-supplier-ledger") {
+        await deleteSupplierLedger(button);
+        return;
+      }
 
-        if (button.dataset.ledgerAction === "delete-purchase") {
-          await deletePurchaseBill(button);
-          return;
-        }
+      if (button.dataset.ledgerAction === "delete-purchase") {
+        await deletePurchaseBill(button);
+        return;
+      }
 
-        if (button.dataset.ledgerAction === "delete-purchase-item") {
-          await deletePurchaseItem(button);
-        }
-      });
+      if (button.dataset.ledgerAction === "delete-purchase-item") {
+        await deletePurchaseItem(button);
+      }
     });
+  });
 }
 
 function renderLedgerTable(rows, mode = "summary") {
+  // Customer ledger summary অথবা transaction detail mode-এ table render করে।
   if (!rows.length) {
     if (mode === "summary") {
       updateDueOverviewFromRows([]);
@@ -7508,6 +7880,7 @@ function renderLedgerTable(rows, mode = "summary") {
 }
 
 async function searchLedger(options = {}) {
+  // এই functionটি search Ledger সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const value = (options.value || dom.cdSearchInput.value).trim();
 
   if (!value) {
@@ -7571,6 +7944,7 @@ async function searchLedger(options = {}) {
 }
 
 async function showAllDues(options = {}) {
+  // এই functionটি show All Dues সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const task = async () => {
     const rows = await fetchJSON("/debts");
     renderLedgerTable(Array.isArray(rows) ? rows : [], "summary");
@@ -7608,6 +7982,7 @@ async function showAllDues(options = {}) {
 }
 
 async function refreshCurrentDueView() {
+  // এই functionটি refresh Current Due View সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const task = async () => {
     if (state.ledgerMode === "ledger" && state.currentLedgerNumber) {
       await searchLedger({ value: state.currentLedgerNumber, silent: true });
@@ -7651,6 +8026,7 @@ async function refreshCurrentDueView() {
 }
 
 async function downloadCurrentDueLedgerPDF(button = null) {
+  // এই functionটি download Current Due Ledger PDF সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const ledgerNumber = String(state.currentLedgerNumber || "").trim();
 
   if (state.ledgerMode !== "ledger" || !/^\d{10}$/.test(ledgerNumber)) {
@@ -7694,7 +8070,15 @@ async function downloadCurrentDueLedgerPDF(button = null) {
   );
 }
 
+/*
+ * =========================================================
+ * BLOCK 32: STAFF ACCOUNT ও PERMISSION MANAGEMENT
+ * =========================================================
+ * Username normalize, permission checkbox grid/read/write, badges ও staff form reset করে। Owner staff list load, account create,
+ * active-state/permission update এবং server response অনুযায়ী list refresh করতে পারেন।
+ */
 function normalizeStaffUsername(value) {
+  // এই functionটি normalize Staff Username সম্পর্কিত dashboard কাজ পরিচালনা করে।
   return String(value || "")
     .replace(/\s+/g, "")
     .trim()
@@ -7702,6 +8086,7 @@ function normalizeStaffUsername(value) {
 }
 
 function renderStaffPermissionGrid(container, permissions = [], options = {}) {
+  // এই functionটি render Staff Permission Grid সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!container) {
     return;
   }
@@ -7753,6 +8138,7 @@ function renderStaffPermissionGrid(container, permissions = [], options = {}) {
 }
 
 function readStaffPermissionSelection(container) {
+  // এই functionটি read Staff Permission Selection সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!container) {
     return [];
   }
@@ -7766,6 +8152,7 @@ function readStaffPermissionSelection(container) {
 }
 
 function setStaffPermissionSelection(container, permissions) {
+  // এই functionটি set Staff Permission Selection সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!container) {
     return;
   }
@@ -7780,6 +8167,7 @@ function setStaffPermissionSelection(container, permissions) {
 }
 
 function renderStaffPermissionBadges(permissions) {
+  // এই functionটি render Staff Permission Badges সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const normalized = normalizeStaffPermissions(permissions);
 
   if (!normalized.length) {
@@ -7795,6 +8183,7 @@ function renderStaffPermissionBadges(permissions) {
 }
 
 function resetStaffForm() {
+  // এই functionটি reset Staff Form সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.staffName || !dom.staffUsername || !dom.staffPassword) {
     return;
   }
@@ -7809,6 +8198,7 @@ function resetStaffForm() {
 }
 
 function renderStaffList(data = {}) {
+  // এই functionটি render Staff List সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.staffList) {
     return;
   }
@@ -8012,6 +8402,7 @@ function renderStaffList(data = {}) {
 }
 
 async function loadStaffAccounts(options = {}) {
+  // Owner-এর জন্য staff account ও assigned permission list load করে।
   if (!isOwnerSession() || !dom.staffList) {
     return;
   }
@@ -8033,6 +8424,7 @@ async function loadStaffAccounts(options = {}) {
 }
 
 async function createStaffAccount() {
+  // এই functionটি create Staff Account সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const name = String(dom.staffName?.value || "")
     .replace(/\s+/g, " ")
     .trim();
@@ -8110,13 +8502,18 @@ async function createStaffAccount() {
   );
 }
 
+// ==================== BLOCK 33: INPUT CONSTRAINTS ও DEFAULT REPORT DATES ====================
+// Mobile/numeric controls থেকে non-digit character সরায় এবং current Kolkata date/month অনুযায়ী sales, GST, expense ও purchase report filters-এর
+// sensible initial date range বসায়।
 function restrictToDigits(input) {
+  // এই functionটি restrict To Digits সম্পর্কিত dashboard কাজ পরিচালনা করে।
   input.addEventListener("input", () => {
     input.value = input.value.replace(/\D/g, "").slice(0, 10);
   });
 }
 
 function setDefaultSalesDates() {
+  // এই functionটি set Default Sales Dates সম্পর্কিত dashboard কাজ পরিচালনা করে।
   const today = new Date();
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
   const todayInput = toInputDate(today);
@@ -8160,7 +8557,11 @@ function setDefaultSalesDates() {
   }
 }
 
+// ==================== BLOCK 34: SHARED POPUP EVENT BINDING ====================
+// Overlay/icon/cancel/confirm/password input এবং Escape key-কে popup resolve/hide flow-এর সঙ্গে bind করে। Event propagation নিয়ন্ত্রণে modal-এর
+// ভিতরের click accidental outside-close ঘটায় না।
 function bindPopupEvents() {
+  // এই functionটি bind Popup Events সম্পর্কিত dashboard কাজ পরিচালনা করে।
   dom.popupOverlay.addEventListener("click", hidePopup);
   dom.popupIcon?.addEventListener("click", () => {
     if (!dom.popupBox?.classList.contains("has-actions")) {
@@ -8205,7 +8606,15 @@ function bindPopupEvents() {
   });
 }
 
+/*
+ * =========================================================
+ * BLOCK 35: PURCHASE WORKSPACE EVENT BINDING
+ * =========================================================
+ * Bills/ledger view toggle, supplier autocomplete, payment calculation, keyboard navigation, purchase search, report load, row add/reset/submit,
+ * repayment, supplier-ledger search এবং product-history controls bind করে। Event handlers উপরের calculation/loader functions reuse করে।
+ */
 function bindPurchaseEvents() {
+  // Purchase workspace-এর form, item row, supplier ও scanner event handler bind করে।
   if (!dom.submitPurchaseBtn) {
     return;
   }
@@ -8490,7 +8899,11 @@ function bindPurchaseEvents() {
   });
 }
 
+// ==================== BLOCK 36: ITEM, SALES, NET-PROFIT ও GST REPORT EVENTS ====================
+// Visibility preferences, Enter-key filter loading, date controls এবং PDF/Excel buttons bind করে। প্রতিটি interaction সংশ্লিষ্ট validated loader
+// অথবা authenticated export function চালায়।
 function bindReportEvents() {
+  // Stock, sales, GST এবং trend report filter/export button event bind করে।
   const sellingPreferenceKey = "stockReport.showSelling";
   const buyingPreferenceKey = "stockReport.showBuying";
   try {
@@ -8504,7 +8917,9 @@ function bindReportEvents() {
   dom.itemReportSellingHeader.hidden = !dom.itemReportShowSelling.checked;
   dom.itemReportBuyingHeader.hidden = !dom.itemReportShowBuying.checked;
   dom.itemReportBody.querySelector("td[colspan]").colSpan =
-    3 + Number(dom.itemReportShowSelling.checked) + Number(dom.itemReportShowBuying.checked);
+    3 +
+    Number(dom.itemReportShowSelling.checked) +
+    Number(dom.itemReportShowBuying.checked);
   const saveVisibilityPreference = () => {
     try {
       localStorage.setItem(
@@ -8520,7 +8935,10 @@ function bindReportEvents() {
     }
     renderItemReport(state.currentItemReportRows);
   };
-  dom.itemReportShowSelling.addEventListener("change", saveVisibilityPreference);
+  dom.itemReportShowSelling.addEventListener(
+    "change",
+    saveVisibilityPreference,
+  );
   dom.itemReportShowBuying.addEventListener("change", saveVisibilityPreference);
   setupFilterInput(dom.itemReportSearch, dom.itemReportDropdown, (value) => {
     dom.itemReportSearch.value = value;
@@ -8586,7 +9004,11 @@ function bindReportEvents() {
   dom.gstExcelBtn.addEventListener("click", downloadGstExcel);
 }
 
+// ==================== BLOCK 37: CUSTOMER-DUE WORKSPACE EVENTS ====================
+// Due form live preview, customer suggestion selection, mobile validation, clear/submit, ledger search/show-all/refresh এবং document-click dropdown
+// dismissal bind করে।
 function bindCustomerDueEvents() {
+  // Customer due search, collection, ledger এবং action button event bind করে।
   const runCustomerNameSuggestions = debounce(async () => {
     const query = dom.cdName.value.trim();
 
@@ -8600,13 +9022,9 @@ function bindCustomerDueEvents() {
       return;
     }
 
-    renderCustomerDropdown(
-      dom.cdNameDropdown,
-      customers,
-      (customer) => {
-        applyCustomerDueSuggestion(customer, { lockName: true });
-      },
-    );
+    renderCustomerDropdown(dom.cdNameDropdown, customers, (customer) => {
+      applyCustomerDueSuggestion(customer, { lockName: true });
+    });
   }, 180);
 
   const runCustomerNumberSuggestions = debounce(async () => {
@@ -8622,13 +9040,9 @@ function bindCustomerDueEvents() {
       return;
     }
 
-    renderCustomerDropdown(
-      dom.cdNumberDropdown,
-      customers,
-      (customer) => {
-        applyCustomerDueSuggestion(customer, { lockName: true });
-      },
-    );
+    renderCustomerDropdown(dom.cdNumberDropdown, customers, (customer) => {
+      applyCustomerDueSuggestion(customer, { lockName: true });
+    });
   }, 180);
 
   const runLedgerSearchSuggestions = debounce(async () => {
@@ -8721,7 +9135,10 @@ function bindCustomerDueEvents() {
   );
 }
 
+// ==================== BLOCK 38: EXPENSE WORKSPACE EVENTS ====================
+// Expense date/filter keyboard actions, suggestion dropdown, outside click, submit এবং report load controls bind করে।
 function bindExpenseEvents() {
+  // Expense form, autocomplete ও report filter event bind করে।
   if (!dom.submitExpenseBtn) {
     return;
   }
@@ -8778,7 +9195,15 @@ function bindExpenseEvents() {
   dom.loadExpenseReportBtn.addEventListener("click", () => loadExpenseReport());
 }
 
+/*
+ * =========================================================
+ * BLOCK 39: OWNER ACCOUNT PROFILE ও PASSWORD SETTINGS
+ * =========================================================
+ * Account form status, owner-only field read-only state এবং current profile load করে। Save flow name/email/current/new password validation,
+ * sensitive confirmation এবং API update সামলায়; success-এ session/UI identity refresh হয়।
+ */
 function setAccountSaveStatus(message = "", tone = "muted") {
+  // এই functionটি set Account Save Status সম্পর্কিত dashboard কাজ পরিচালনা করে।
   if (!dom.accountSaveStatus) {
     return;
   }
@@ -8790,6 +9215,7 @@ function setAccountSaveStatus(message = "", tone = "muted") {
 }
 
 function setAccountOwnerFieldsReadOnly(readOnly) {
+  // এই functionটি set Account Owner Fields Read Only সম্পর্কিত dashboard কাজ পরিচালনা করে।
   [
     dom.accountOwnerName,
     dom.accountOwnerEmail,
@@ -8805,6 +9231,7 @@ function setAccountOwnerFieldsReadOnly(readOnly) {
 }
 
 async function loadAccountDetails(options = {}) {
+  // Current owner account details API থেকে এনে account form-এ বসায়।
   if (!dom.accountOwnerName) {
     return null;
   }
@@ -8817,7 +9244,8 @@ async function loadAccountDetails(options = {}) {
   try {
     const data = await fetchJSON("/auth/account");
     const isStaff = data?.role === "staff" || data?.can_edit === false;
-    state.accountRequiresPasswordSetup = !isStaff && Boolean(data?.requires_password_setup);
+    state.accountRequiresPasswordSetup =
+      !isStaff && Boolean(data?.requires_password_setup);
     const owner = data?.owner || {};
 
     dom.accountOwnerName.value = isStaff ? "" : owner.name || "";
@@ -8854,7 +9282,9 @@ async function loadAccountDetails(options = {}) {
         : "Manage your account";
     }
     if (dom.accountDetailsKicker) {
-      dom.accountDetailsKicker.textContent = isStaff ? "Staff Account" : "Account";
+      dom.accountDetailsKicker.textContent = isStaff
+        ? "Staff Account"
+        : "Account";
     }
     if (dom.saveAccountBtn) {
       dom.saveAccountBtn.hidden = isStaff;
@@ -8873,18 +9303,25 @@ async function loadAccountDetails(options = {}) {
   } catch (error) {
     console.error("Account details load failed:", error);
     if (dom.accountAccessNote) {
-      dom.accountAccessNote.textContent = "Account details could not be loaded right now. Please refresh and try again.";
+      dom.accountAccessNote.textContent =
+        "Account details could not be loaded right now. Please refresh and try again.";
     }
     if (!options.silent) {
-      showPopup("error", "Account unavailable", error.message || "Could not load account details.", {
-        autoClose: false,
-      });
+      showPopup(
+        "error",
+        "Account unavailable",
+        error.message || "Could not load account details.",
+        {
+          autoClose: false,
+        },
+      );
     }
     return null;
   }
 }
 
 async function saveAccountDetails() {
+  // Account profile/password change validate করে API-তে save করে।
   if (!isOwnerSession()) {
     return;
   }
@@ -8929,13 +9366,28 @@ async function saveAccountDetails() {
       const data = await fetchJSON("/auth/account/password-setup", {
         method: "POST",
       });
-      setAccountSaveStatus(data?.message || "Password setup link sent.", "success");
-      showPopup("success", "Check your email", data?.message || "Password setup link sent.");
+      setAccountSaveStatus(
+        data?.message || "Password setup link sent.",
+        "success",
+      );
+      showPopup(
+        "success",
+        "Check your email",
+        data?.message || "Password setup link sent.",
+      );
     } catch (error) {
-      setAccountSaveStatus(error.message || "Could not send password setup link.", "error");
-      showPopup("error", "Password setup unavailable", error.message || "Could not send password setup link.", {
-        autoClose: false,
-      });
+      setAccountSaveStatus(
+        error.message || "Could not send password setup link.",
+        "error",
+      );
+      showPopup(
+        "error",
+        "Password setup unavailable",
+        error.message || "Could not send password setup link.",
+        {
+          autoClose: false,
+        },
+      );
     }
     return;
   }
@@ -8970,10 +9422,17 @@ async function saveAccountDetails() {
           data?.message || "Account details saved.",
           "success",
         );
-        showPopup("success", "Account updated", data?.message || "Your account details have been saved.");
+        showPopup(
+          "success",
+          "Account updated",
+          data?.message || "Your account details have been saved.",
+        );
       } catch (error) {
         console.error("Account details save failed:", error);
-        setAccountSaveStatus(error.message || "Could not save account details.", "error");
+        setAccountSaveStatus(
+          error.message || "Could not save account details.",
+          "error",
+        );
         showPopup(
           "error",
           "Account changes not saved",
@@ -8986,12 +9445,16 @@ async function saveAccountDetails() {
 }
 
 function bindAccountEvents() {
+  // Account save/password UI event handler bind করে।
   dom.saveAccountBtn?.addEventListener("click", () => {
     void saveAccountDetails();
   });
 }
 
+// ==================== BLOCK 40: ACCOUNT ও STAFF CONTROL EVENTS ====================
+// Account save button, staff form Enter shortcuts, username normalization, select-all/clear permissions এবং create-staff action bind করে।
 function bindStaffEvents() {
+  // Staff create, edit, permission assignment এবং delete event handler bind করে।
   if (!dom.createStaffBtn) {
     return;
   }
@@ -9029,6 +9492,13 @@ function bindStaffEvents() {
   dom.createStaffBtn.addEventListener("click", createStaffAccount);
 }
 
+/*
+ * =========================================================
+ * BLOCK 41: DASHBOARD BOOTSTRAP ও INITIAL DATA LOAD
+ * =========================================================
+ * DOM ready হলে elements cache, shared/feature events bind, input/date defaults বসায় এবং authentication/session access যাচাই করে।
+ * তারপর accessible initial section, overview/item/profit/chart/support data load করে; failure হলেও loading mask সরিয়ে usable error state রাখে।
+ */
 window.addEventListener("DOMContentLoaded", async () => {
   sidebarController =
     window.InventoryAppShell?.setupSidebar("dashboard", {
@@ -9118,6 +9588,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+// ==================== BLOCK 42: LOADING-SCREEN FAILSAFE ====================
+// কোনো startup promise অপ্রত্যাশিতভাবে ঝুলে গেলেও নির্দিষ্ট সময় পরে dashboard loading class সরিয়ে page permanently blocked হওয়া আটকায়।
 window.setTimeout(() => {
   if (document.body.classList.contains("app-loading")) {
     markDashboardReady();

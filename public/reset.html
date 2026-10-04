@@ -1,11 +1,23 @@
 <!doctype html>
+<!--
+  FILE OVERVIEW: Forgot-password email-এর secure link থেকে user এই page-এ আসে।
+  Page URL থেকে email/token নেয়, নতুন password ও confirmation validate করে, তারপর auth API-তে reset request পাঠায়।
+  নিচের comments CSS presentation, HTML fields এবং token-validation-submit flow block ধরে ব্যাখ্যা করে।
+-->
 <html lang="en" data-csp-nonce="__CSP_NONCE__">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Reset Password | Shop Inventory Management</title>
-    <link rel="icon" type="image/png" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
-    <link rel="apple-touch-icon" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
+    <link
+      rel="apple-touch-icon"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
     <link rel="manifest" href="/site.webmanifest" />
     <link
       rel="stylesheet"
@@ -16,6 +28,9 @@
       href="https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.0.17/index.min.css"
     />
     <style nonce="__CSP_NONCE__">
+      /* ==================== CSS BLOCK 01: DESIGN TOKENS ও GLOBAL FOUNDATION ====================
+         Shared brand colors, validation tones, surfaces, shadows ও radius variables রাখে। Global box sizing,
+         font inheritance, viewport-height background এবং button cursor reset পুরো recovery page-এর base তৈরি করে। */
       :root {
         --navy: #122744;
         --navy-soft: #1d487a;
@@ -73,6 +88,9 @@
         cursor: pointer;
       }
 
+      /* ==================== CSS BLOCK 02: RESET PAGE WIDTH ও SHARED SURFACES ====================
+         Sensitive formকে compact readable width-এ center করে। Topbar ও reset-card একই translucent background,
+         border, blur ও shadow ব্যবহার করে login experience-এর visual consistency বজায় রাখে। */
       .reset-page {
         width: min(calc(100% - 24px), 560px);
         margin: 14px auto 26px;
@@ -86,6 +104,9 @@
         backdrop-filter: blur(18px);
       }
 
+      /* ==================== CSS BLOCK 03: BRAND HEADER ও LOGIN RETURN ACTION ====================
+         Product identity বাম পাশে এবং Back to Login link ডান পাশে রাখে। Brand mark, copy ও focus-visible rules
+         keyboard user-কে recovery flow থেকে নিরাপদে login page-এ ফেরার স্পষ্ট পথ দেয়। */
       .topbar {
         display: flex;
         align-items: center;
@@ -162,6 +183,9 @@
         outline-offset: 3px;
       }
 
+      /* ==================== CSS BLOCK 04: RESET INTRO ও SECURITY GUIDANCE ====================
+         Reset label, page title, explanatory copy এবং info-strip-এর spacing/typography নির্ধারণ করে। Guidance box
+         registered email, minimum password length এবং expired-link recovery আগে থেকেই user-কে জানায়। */
       .reset-card {
         margin-top: 18px;
         padding: 20px;
@@ -232,6 +256,9 @@
         line-height: 1.75;
       }
 
+      /* ==================== CSS BLOCK 05: FORM PANEL ও REQUEST STATUS ====================
+         Formকে inner bordered surface-এ রাখে। Info/success/error status variants token verification, validation
+         এবং server response-কে আলাদা background/border color দিয়ে দৃশ্যমান করে। */
       .reset-panel {
         margin-top: 18px;
         padding: 18px;
@@ -272,6 +299,9 @@
         color: var(--danger);
       }
 
+      /* ==================== CSS BLOCK 06: FIELD, INPUT ও VALIDATION FEEDBACK ====================
+         Email/password labels, icon shells, focus state, valid-invalid borders এবং hint text style করে। JavaScript
+         field wrapper-এ class বদলে একই rules দিয়ে live validation result দেখায়। */
       .field {
         margin-bottom: 16px;
       }
@@ -332,6 +362,9 @@
         color: #90a4bd;
       }
 
+      /* ==================== CSS BLOCK 07: PASSWORD VISIBILITY ও SUBMIT ACTION ====================
+         Eye button input-এর পাশে বসে এবং hover/focus feedback দেয়। Submit button normal, hover ও disabled pending
+         state দেখায় যাতে duplicate reset request আটকানো এবং ongoing request বোঝানো যায়। */
       .password-toggle {
         position: absolute;
         right: 8px;
@@ -392,6 +425,9 @@
         transform: none;
       }
 
+      /* ==================== CSS BLOCK 08: RECOVERY FOOTER ও RESPONSIVE OVERRIDES ====================
+         Return-to-login link এবং expired-link help note পাশাপাশি রাখে। Mobile breakpoint card padding, header actions,
+         button width ও footer direction stack করে ছোট screen-এ form readable/touch-friendly রাখে। */
       .panel-footer {
         display: flex;
         flex-wrap: wrap;
@@ -447,7 +483,13 @@
   </head>
 
   <body>
+    <!-- ==================== HTML BLOCK 01: PASSWORD RECOVERY PAGE SHELL ====================
+         reset-page brand header ও focused recovery card ধরে। এটি dashboard workspace নয়; কেবল reset link পাওয়া
+         user-এর credential update এবং login page-এ ফেরার কাজ করে। -->
     <div class="reset-page">
+      <!-- ==================== HTML BLOCK 02: BRAND ও LOGIN NAVIGATION ====================
+           Brand এবং Back to Login—দুটি link একই destination দেয়, যাতে invalid/expired link বা reset বাতিল করার সময়
+           user সহজে normal authentication page-এ ফিরতে পারে। -->
       <header class="topbar">
         <a class="brand" href="login.html" aria-label="Back to login page">
           <span class="brand-mark">
@@ -465,6 +507,9 @@
         </a>
       </header>
 
+      <!-- ==================== HTML BLOCK 03: RESET INSTRUCTIONS ====================
+           Heading recovery action চিহ্নিত করে এবং info-strip submit-এর আগে registered email, six-character minimum
+           ও expired-link fallback জানায়। এগুলো guidance; final validation JavaScript ও server উভয় জায়গায় হয়। -->
       <main class="reset-card">
         <span class="chip">
           <i class="fa-solid fa-key"></i>
@@ -488,9 +533,16 @@
           </ul>
         </div>
 
+        <!-- ==================== HTML BLOCK 04: STATUS ও RESET FORM CONTAINER ====================
+             formStatus token readiness, validation error, API failure বা success message announce করে। aria-live
+             screen reader-কে page reload ছাড়াই status change জানায়। -->
         <div class="reset-panel">
           <div id="formStatus" class="form-status" aria-live="polite"></div>
 
+          <!-- ==================== HTML BLOCK 05: EMAIL, TOKEN ও NEW PASSWORD FIELDS ====================
+               Visible email reset link-এর account match করতে ব্যবহৃত হয়; hidden token URL থেকে আসে। New/confirm inputs
+               minimum length ও equality check পাস করলে submit payload-এ email, token ও newPassword যায়। novalidate থাকার
+               কারণে custom JavaScript messages consistent field hints দেখায়। -->
           <form id="resetForm" novalidate>
             <div class="field">
               <label class="field-label" for="email">Registered email</label>
@@ -516,6 +568,9 @@
               </p>
             </div>
 
+            <!-- RESET TOKEN FIELD:
+                 User token edit করে না। Script query/hash থেকে value বসায়, তারপর URL পরিষ্কার করে address bar/history-তে
+                 sensitive reset parameters দৃশ্যমান থাকা কমায়। Server token validity ও expiry finalভাবে যাচাই করে। -->
             <input id="token" type="hidden" autocomplete="off" />
 
             <div class="field">
@@ -588,6 +643,8 @@
             </button>
           </form>
 
+          <!-- ==================== HTML BLOCK 06: RECOVERY FALLBACK ====================
+               Reset সম্পন্ন না হলে login page-এ ফিরে নতুন forgot-password email চাওয়ার স্পষ্ট পথ দেয়। -->
           <div class="panel-footer">
             <a class="support-link" href="login.html">Return to login</a>
             <span class="footer-note"
@@ -600,6 +657,9 @@
     </div>
 
     <script nonce="__CSP_NONCE__">
+      // ==================== JS BLOCK 01: CONFIGURATION ও DOM REFERENCE MAP ====================
+      // Auth API base, email-format pattern, form/status/button এবং email-token-password inputs একবার cache করে।
+      // পরের সব helpers একই references ব্যবহার করায় reset flow-এর state একটি জায়গা থেকে update হয়।
       const apiBase = "/api/auth";
       const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -613,6 +673,9 @@
         confirmPassword: document.getElementById("confirmPassword"),
       };
 
+      // ==================== JS BLOCK 02: FIELD ও FORM STATUS HELPERS ====================
+      // Input-এর parent field খুঁজে valid/invalid class ও hint message reset/set করে। Form-level status helper
+      // token readiness, request success এবং error message-এর tone ও accessible text update করে।
       const getFieldWrapper = (input) => input?.closest(".field");
 
       const resetInputState = (input) => {
@@ -650,6 +713,9 @@
         statusEl.textContent = message;
       };
 
+      // ==================== JS BLOCK 03: SUBMIT PENDING STATE ====================
+      // API request চলাকালে button disable করে spinner ও saving label দেখায়; request শেষ হলে original reset action ফেরায়।
+      // এতে একই token দিয়ে accidental duplicate submit কমে এবং user ongoing কাজ বুঝতে পারে।
       const setPendingState = (isPending) => {
         resetBtn.disabled = isPending;
         resetBtn.innerHTML = isPending
@@ -657,6 +723,9 @@
           : '<i class="fa-solid fa-rotate-right"></i><span>Reset Password</span>';
       };
 
+      // ==================== JS BLOCK 04: RESET LINK PARSING ও URL CLEANUP ====================
+      // Backend/email link query অথবা hash—দুই format থেকেই email ও token নেয় এবং form fields-এ বসায়। এরপর history.replaceState
+      // দিয়ে address bar পরিষ্কার করে; token থাকলে ready message, না থাকলে incomplete/expired link error দেখায়।
       const searchParams = new URLSearchParams(window.location.search);
       const hashParams = new URLSearchParams(
         window.location.hash.replace(/^#/, ""),
@@ -689,6 +758,9 @@
         );
       }
 
+      // ==================== JS BLOCK 05: FINAL CLIENT-SIDE VALIDATION ====================
+      // Email presence/format, token presence, minimum six-character password এবং confirmation equality যাচাই করে।
+      // First invalid field focus পায়; সব check pass করলে server contract অনুযায়ী { email, token, newPassword } return করে।
       const validateForm = () => {
         clearStatus();
         resetInputState(fields.email);
@@ -782,6 +854,9 @@
         return { email, token, newPassword };
       };
 
+      // ==================== JS BLOCK 06: RESET API SUBMISSION ও REDIRECT ====================
+      // Native submit navigation থামিয়ে validated payload /api/auth/reset-password endpoint-এ JSON POST করে। Server token,
+      // account ও password policy finalভাবে যাচাই করে; success হলে message দেখিয়ে 1.6 seconds পরে login page-এ পাঠায়।
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const payload = validateForm();
@@ -826,6 +901,9 @@
         }
       });
 
+      // ==================== JS BLOCK 07: PASSWORD VISIBILITY ও LIVE VALIDATION ====================
+      // Eye controls password/text type, icon এবং accessible label sync করে। Email blur-এ format check হয়; password input/blur
+      // minimum length ও confirmation match feedback সঙ্গে সঙ্গে update করে, final submit-এর আগেই ভুল ধরতে সাহায্য করে।
       document.querySelectorAll("[data-toggle-password]").forEach((toggle) => {
         const target = document.getElementById(toggle.dataset.togglePassword);
         const icon = toggle.querySelector("i");

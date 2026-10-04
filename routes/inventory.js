@@ -1,4 +1,19 @@
+/**
+ * =========================================================
+ * FILE: routes/inventory.js
+ * PURPOSE: STOCK, REPORT EXPORT, GST, CUSTOMER DUE ও DASHBOARD ROUTES
+ * =========================================================
+ * এই Express router inventory lookup/reports, stock intelligence, PDF/Excel export, sales/GST reports,
+ * customer debt ledger এবং dashboard analytics পরিচালনা করে। সব data authenticated account scope-এ query হয়;
+ * feature permissions routes সীমিত করে। Debt mutations transaction-এর মধ্যে linked invoice balance sync করে,
+ * আর cached read endpoints mutation-এর পরে user cache invalidation দিয়ে fresh রাখা হয়।
+ */
+
 // routes/inventory.js
+
+// ==================== BLOCK 01: DEPENDENCIES ও SHARED INFRASTRUCTURE ====================
+// Database pool queries/transactions চালায়; PDFKit ও ExcelJS downloadable reports বানায়। Auth/permission helpers account scope দেয়,
+// concurrency helpers lock/normalize করে, cache utilities read-heavy endpoints দ্রুত রাখে এবং pagination helpers large lists সীমিত করে।
 const express = require("express");
 const pool = require("../db");
 const PDFDocument = require("pdfkit");
@@ -22,6 +37,9 @@ const {
 } = require("../utils/pagination");
 
 const router = express.Router();
+// ==================== BLOCK 02: STOCK THRESHOLDS, EXPORT THEME ও FORMATTERS ====================
+// Central thresholds low-stock/reorder/slow-moving classification consistent রাখে। PDF theme visual palette দেয়;
+// currency/date formatters Indian numeric style ও Asia/Kolkata date presentation সব exports-এ reuse করে।
 // ===== STOCK ALERT CONFIG =====
 const STOCK_CONFIG = {
   CRITICAL_DAYS: 4,
@@ -59,6 +77,9 @@ const dateFormatter = new Intl.DateTimeFormat("en-IN", {
   timeZone: "Asia/Kolkata",
 });
 
+// ==================== BLOCK 03: SAFE DISPLAY ও EXPORT VALUE HELPERS ====================
+// Currency/date output format করে, current IST year নেয় এবং filename unsafe characters normalized underscore-এ বদলায়।
+// sanitizeExcelCell `=`, `+`, `-`, `@` দিয়ে শুরু হওয়া user text-এর আগে apostrophe দিয়ে spreadsheet formula injection আটকায়।
 function formatCurrency(value) {
   return currencyFormatter.format(Number(value) || 0);
 }
@@ -103,6 +124,9 @@ function parseNonNegativeNumber(value) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
+// ==================== BLOCK 04: INVOICE PAYMENT STATUS ও DEBT-LEDGER RECONCILIATION ====================
+// Paid/due numbers থেকে paid/partial/due status ঠিক করে। Debt entry delete/change-এর পরে linked invoices FOR UPDATE lock করে,
+// ledger credits পুনরায় sum, total-এর মধ্যে clamp এবং amount_paid/amount_due/payment_status atomically sync করে।
 function getInvoicePaymentStatus(amountPaid, amountDue) {
   if (amountDue > 0.009 && amountPaid > 0.009) {
     return "partial";
@@ -170,6 +194,9 @@ async function syncInvoiceBalancesFromDebtLedger(client, userId, invoiceIds) {
   }
 }
 
+// ==================== BLOCK 05: SHOP IDENTITY ও REUSABLE PDF LAYOUT ====================
+// Settings থেকে shop name fallbackসহ নেয়। Banner/table-header helpers report branding ও columns আঁকে; ensurePdfSpace row/summary
+// বর্তমান page-এ না ধরলে নতুন page যোগ করে caller-এর header-redraw callback চালায়।
 async function getShopName(userId) {
   const result = await pool.query(
     `SELECT COALESCE(NULLIF(TRIM(shop_name), ''), 'Shop Inventory Management') AS shop_name
@@ -235,6 +262,9 @@ function ensurePdfSpace(doc, heightNeeded, onNewPage) {
   onNewPage();
 }
 
+// ==================== BLOCK 06: STOCK INTELLIGENCE CLASSIFICATION ====================
+// Estimated days-left থেকে low-stock status ও reorder priority দেয়। Recent sales এবং days-cover থেকে slow/no-sale/overstock label
+// ও human-readable focus note বানায়; thresholds STOCK_CONFIG-এ থাকায় dashboard cards ও reports একই business meaning ব্যবহার করে।
 function getLowStockStatus(daysLeft) {
   if (!Number.isFinite(daysLeft)) {
     return "";
@@ -298,6 +328,9 @@ function getSlowMovingFocusNote(sold30Days, daysCover) {
   return "Push visibility before buying more.";
 }
 
+// ==================== BLOCK 07: ROUTER AUTH BOUNDARY ও STOCK DEFAULT SETTINGS ====================
+// পরের সব endpoints valid session require করে। stock-defaults GET purchase workflow-এর saved profit percentage cacheসহ দেয়;
+// PUT non-negative bounded value upsert করে এবং cache invalidate করে, যাতে নতুন purchase line rate calculation updated default পায়।
 // ✅ Protect all routes
 router.use(authMiddleware);
 
@@ -383,6 +416,9 @@ router.put(
 );
 
 // Auto-suggest item names
+// ==================== BLOCK 08: ITEM NAME, DETAIL ও SERIAL LOOKUPS ====================
+// Item names permission-sharing autocomplete list দেয়; item info selected product-এর stock/rates/serial behavior দেয়। Serial endpoint
+// item/query/exact filters দিয়ে available serials account scope-এ আনে, যাতে invoice/purchase UI duplicate বা sold serial ব্যবহার না করে।
 router.get(
   "/items/names",
   requirePermission(
@@ -504,6 +540,9 @@ router.get(
 );
 
 // ----------------- ITEM WISE STOCK & SALES REPORT (JSON) -----------------
+// ==================== BLOCK 09: FILTERED ITEM/STOCK REPORT ====================
+// stock_report permission-এর user optional name query ও pagination দিয়ে inventory rows আনে। Selling/buying/quantity/value fields
+// dashboard table-এর dataset দেয়; cache identical filters দ্রুত serve করে এবং pagination headers/client metadata large catalog handle করে।
 router.get(
   "/items/report",
   requirePermission("stock_report"),
@@ -575,6 +614,9 @@ router.get(
 );
 
 // ----------------- STOCK ALERTS (Days of Stock Model) -----------------
+// ==================== BLOCK 10: LOW-STOCK ALERT LIST ====================
+// Current quantity ও recent sales velocity থেকে estimated days-left হিসাব করে configurable thresholds অনুযায়ী LOW/MEDIUM/OK status দেয়।
+// Cached result attention table ও alert count পূরণ করে; শুধু current authenticated account-এর items/sales aggregate হয়।
 router.get(
   "/items/low-stock",
   requirePermission("stock_report"),
@@ -631,6 +673,9 @@ router.get(
 );
 
 // ----------------- REORDER SUGGESTIONS (Replenishment Planner) -----------------
+// ==================== BLOCK 11: REORDER SUGGESTIONS ====================
+// Sales velocity, stock cover ও target days ব্যবহার করে suggested replenishment quantity, priority এবং estimated buying investment বানায়।
+// Limit/threshold config operational shortlist ছোট রাখে; frontend KPI এবং reorder table একই computed rows থেকে তৈরি হয়।
 router.get(
   "/items/reorder-suggestions",
   requirePermission("stock_report"),
@@ -737,6 +782,9 @@ router.get(
 );
 
 // ----------------- SLOW MOVING STOCK (Sell-First Focus) -----------------
+// ==================== BLOCK 12: SLOW-MOVING / OVERSTOCK SUGGESTIONS ====================
+// Last 30-day sales, on-hand quantity ও days-cover দিয়ে no-sale, slow এবং overstock candidates চিহ্নিত করে। Focus note sales push বনাম
+// further buying pause-এর context দেয়; minimum quantity/limit config low-impact rows বাদ দেয়।
 router.get(
   "/items/slow-moving",
   requirePermission("stock_report"),
@@ -840,6 +888,9 @@ router.get(
 );
 
 // ----------------- ITEM WISE STOCK & SALES REPORT (PDF) -----------------
+// ==================== BLOCK 13: STOCK REPORT PDF EXPORT ====================
+// Item filter ও show-selling/show-buying flags দিয়ে report columns নির্বাচন করে। PDFKit branded header, alternating rows, page-break header
+// redraw এবং stock-value summary আঁকে; Content-Disposition safe filename দিয়ে browser download response পাঠায়।
 router.get(
   "/items/report/pdf",
   requirePermission("stock_report"),
@@ -893,15 +944,30 @@ router.get(
       const stockColumns = [
         { label: "Sl", x: 46, width: 28 },
         { label: "Item Name", x: 78, width: 180 + hiddenRateColumnCount * 76 },
-        { label: "Available", x: 262 + hiddenRateColumnCount * 76, width: 72, align: "right" },
+        {
+          label: "Available",
+          x: 262 + hiddenRateColumnCount * 76,
+          width: 72,
+          align: "right",
+        },
       ];
       let rateColumnX = 490 - visibleRateColumnCount * 76;
       if (showBuying) {
-        stockColumns.push({ label: "Buying", x: rateColumnX, width: 72, align: "right" });
+        stockColumns.push({
+          label: "Buying",
+          x: rateColumnX,
+          width: 72,
+          align: "right",
+        });
         rateColumnX += 76;
       }
       if (showSelling) {
-        stockColumns.push({ label: "Selling", x: rateColumnX, width: 72, align: "right" });
+        stockColumns.push({
+          label: "Selling",
+          x: rateColumnX,
+          width: 72,
+          align: "right",
+        });
       }
       stockColumns.push({ label: "Sold", x: 490, width: 54, align: "right" });
 
@@ -955,11 +1021,7 @@ router.get(
         }
 
         doc.fillColor(PDF_THEME.ink).font("Helvetica").fontSize(10);
-        const values = [
-          String(i + 1),
-          r.item_name || "",
-          qty.toFixed(2),
-        ];
+        const values = [String(i + 1), r.item_name || "", qty.toFixed(2)];
         if (showBuying) values.push(formatCurrency(buy));
         if (showSelling) values.push(formatCurrency(sell));
         values.push(Number(r.sold_qty).toFixed(2));
@@ -1033,6 +1095,9 @@ router.get(
 );
 
 // ----------------- SALES REPORT table (JSON PREVIEW) -----------------
+// ==================== BLOCK 14: SALES REPORT JSON ====================
+// sales_report permission ও required date range দিয়ে invoice-level sales rows আনে; optional pagination large history সীমিত করে।
+// Totals/payment fields report table ও analytics-এর input দেয়; short cache repeated filters-এর query cost কমায়।
 router.get(
   "/sales/report",
   requirePermission("sales_report"),
@@ -1096,6 +1161,9 @@ router.get(
 );
 
 // ----------------- SALES REPORT (PDF DOWNLOAD) -----------------
+// ==================== BLOCK 15: SALES PDF EXPORT ====================
+// Same date-filtered sales dataset PDF table-এ invoice/customer/amount/payment statusসহ render করে। Page space helper repeated header দেয়,
+// summary box aggregate totals দেখায় এবং filename/shop branding current owner settings থেকে আসে।
 router.get(
   "/sales/report/pdf",
   requirePermission("sales_report"),
@@ -1261,6 +1329,9 @@ router.get(
 );
 
 // ----------------- SALES REPORT (EXCEL DOWNLOAD) -----------------
+// ==================== BLOCK 16: SALES EXCEL EXPORT ====================
+// ExcelJS workbook-এ styled title/header, sanitized cell values, invoice rows ও summary totals লিখে। Column widths/number formats spreadsheet
+// review সহজ করে; formula-like user text neutralize হয় এবং XLSX buffer attachment response হিসেবে পাঠানো হয়।
 router.get(
   "/sales/report/excel",
   requirePermission("sales_report"),
@@ -1479,6 +1550,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 17: REUSABLE GST DATASET ও SUMMARY ====================
+// Account/date range অনুযায়ী invoices ও line-tax values থেকে GST report rows আনে; options report/compare/export-এর প্রয়োজনমতো query shape দেয়।
+// summarizeGstRows taxable/subtotal/GST/grand total এবং payment amounts reduce করে, যাতে JSON/PDF/Excel একই aggregate rules ব্যবহার করে।
 async function fetchGstReportRows(userId, from, to, options = {}) {
   const limit = Number.parseInt(options.limit, 10);
   const offset = Number.parseInt(options.offset, 10);
@@ -1529,6 +1603,9 @@ function summarizeGstRows(rows) {
 }
 
 // ----------------- GST REPORT table (JSON PREVIEW) -----------------
+// ==================== BLOCK 18: GST REPORT JSON ====================
+// gst_report permission এবং required from/to range validate করে shared fetch/summarize helpers চালায়। Rows ও totals cached JSON response-এ
+// ফেরে, যা compliance table ও KPI cards পূরণ করে; account scope অন্য shop-এর invoices বাদ দেয়।
 router.get(
   "/gst/report",
   requirePermission("gst_report"),
@@ -1551,6 +1628,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 19: GST PERIOD / RATE COMPARISON ====================
+// Selected period-এর monthly/rate-group aggregates ও overall totals হিসাব করে trend এবং tax mix comparison দেয়। Frontend monthly GST,
+// slab/rate tables ও comparison KPI একই normalized numeric response থেকে render করে।
 router.get(
   "/gst/compare",
   requirePermission("gst_report"),
@@ -1699,6 +1779,9 @@ router.get(
 );
 
 // ----------------- GST REPORT (PDF DOWNLOAD) -----------------
+// ==================== BLOCK 20: GST PDF EXPORT ====================
+// Shared GST rows branded PDF-এ invoice/date/customer/taxable/GST/total columnsসহ আঁকে। Page overflow হলে headers পুনরায় আঁকে এবং শেষে
+// period summary box দেয়; safe filename ও application/pdf headers download response নিয়ন্ত্রণ করে।
 router.get(
   "/gst/report/pdf",
   requirePermission("gst_report"),
@@ -1842,6 +1925,9 @@ router.get(
 );
 
 // ----------------- GST REPORT (EXCEL DOWNLOAD) -----------------
+// ==================== BLOCK 21: GST EXCEL EXPORT ====================
+// Shared GST dataset XLSX workbook-এ styled heading, sanitized text, currency formats ও total rowসহ লেখে। Formula injection guard user data
+// neutralize করে; generated workbook buffer correct spreadsheet content type/attachment filenameসহ পাঠানো হয়।
 router.get(
   "/gst/report/excel",
   requirePermission("gst_report"),
@@ -2027,6 +2113,11 @@ router.get(
 
 // ------------------- CUSTOMER DEBTS -------------------
 
+// ==================== BLOCK 22: CREATE CUSTOMER DUE / COLLECTION TRANSACTION ====================
+// customer_due permission-এর payload name, 10-digit number, address, debit(total), credit, date, mode ও remark validate/normalize করে।
+// Customer identity account-scoped lock নেয়। invoice_id থাকলে target invoice FOR UPDATE করে credit outstanding-এর মধ্যে সীমিত রাখে এবং
+// linked debt entry insert/update path চালায়; generic entry হলে ledger row যোগ হয়। Commit-এর আগে affected invoice balances ledger থেকে sync হয়,
+// তারপর cache invalidation; error হলে rollback ও client release নিশ্চিত হয়।
 router.post("/debts", requirePermission("customer_due"), async (req, res) => {
   const client = await pool.connect();
   try {
@@ -2070,9 +2161,12 @@ router.post("/debts", requirePermission("customer_due"), async (req, res) => {
         .json({ error: "Credit cannot be greater than total amount" });
     }
 
+    // DEBT TRANSACTION PHASE A — customer ledger ও linked invoice changes একটি atomic transaction-এ শুরু হয়।
+    // Customer number-scoped lock একই customer-এর concurrent due/collection writes serialize করে।
     await client.query("BEGIN");
     await lockScopedResource(client, user_id, "customer-debt", customerNumber);
 
+    // DEBT TRANSACTION PHASE B — একই mobile-এর latest saved name/address নিয়ে canonical customer identity স্থির করা হয়।
     const existingNameResult = await client.query(
       `SELECT customer_name, customer_address
        FROM debts
@@ -2095,6 +2189,7 @@ router.post("/debts", requirePermission("customer_due"), async (req, res) => {
     let remainingCredit = Number((creditAmount || 0).toFixed(2));
 
     if (totalAmount === 0 && remainingCredit > 0) {
+      // DEBT TRANSACTION PHASE C — collection credit থাকলে customer-এর oldest outstanding invoices lock করে ক্রমানুসারে settle করা হয়।
       const invoiceResult = await client.query(
         `SELECT id, invoice_no, customer_name, address, amount_paid, amount_due
          FROM invoices
@@ -2135,6 +2230,7 @@ router.post("/debts", requirePermission("customer_due"), async (req, res) => {
           [nextAmountPaid, nextAmountDue, nextPaymentStatus, invoice.id],
         );
 
+        // Applied credit invoice_id-সহ ledger row-এ লেখা হয়, যাতে invoice balance পরে ledger থেকে পুনর্গঠন করা যায়।
         const linkedDebtResult = await client.query(
           `INSERT INTO debts (
              user_id,
@@ -2171,6 +2267,7 @@ router.post("/debts", requirePermission("customer_due"), async (req, res) => {
     }
 
     if (totalAmount > 0 || remainingCredit > 0) {
+      // DEBT TRANSACTION PHASE D — নতুন due অথবা invoice settlement-এর পর অবশিষ্ট credit generic ledger entry হিসেবে রাখা হয়।
       const genericResult = await client.query(
         `INSERT INTO debts (
            user_id,
@@ -2197,6 +2294,7 @@ router.post("/debts", requirePermission("customer_due"), async (req, res) => {
       createdRows.push(genericResult.rows[0]);
     }
 
+    // DEBT TRANSACTION PHASE E — সব ledger/invoice writes সফল হলে commit এবং related cached summaries invalidate করা হয়।
     await client.query("COMMIT");
     invalidateUserCache(user_id);
 
@@ -2224,154 +2322,153 @@ router.post("/debts", requirePermission("customer_due"), async (req, res) => {
   }
 });
 
-router.delete(
-  "/debts/customers/:number",
-  requireOwner,
-  async (req, res) => {
-    const client = await pool.connect();
-    try {
-      const user_id = getUserId(req);
-      const customerNumber = String(req.params.number || "").trim();
+// ==================== BLOCK 23: DELETE COMPLETE CUSTOMER LEDGER ====================
+// Owner-only transaction 10-digit customer number-এর সব debt rows delete করে এবং RETURNING invoice ids সংগ্রহ করে। Linked invoices ledger
+// credits থেকে পুনরায় balance/status sync হয়; no rows হলে 404 rollback, success হলে commit/cache invalidation ledger ও invoices atomic রাখে।
+router.delete("/debts/customers/:number", requireOwner, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const user_id = getUserId(req);
+    const customerNumber = String(req.params.number || "").trim();
 
-      if (!/^\d{10}$/.test(customerNumber)) {
-        return res
-          .status(400)
-          .json({ error: "Customer number must be 10 digits" });
-      }
+    if (!/^\d{10}$/.test(customerNumber)) {
+      return res
+        .status(400)
+        .json({ error: "Customer number must be 10 digits" });
+    }
 
-      await client.query("BEGIN");
-      await lockScopedResource(client, user_id, "customer-debt", customerNumber);
+    await client.query("BEGIN");
+    await lockScopedResource(client, user_id, "customer-debt", customerNumber);
 
-      const deleteResult = await client.query(
-        `DELETE FROM debts
+    const deleteResult = await client.query(
+      `DELETE FROM debts
          WHERE user_id = $1 AND customer_number = $2
          RETURNING id, invoice_id`,
-        [user_id, customerNumber],
-      );
+      [user_id, customerNumber],
+    );
 
-      if (!deleteResult.rowCount) {
-        await client.query("ROLLBACK");
-        return res
-          .status(404)
-          .json({ error: "No ledger rows found for this customer" });
-      }
-
-      await syncInvoiceBalancesFromDebtLedger(
-        client,
-        user_id,
-        deleteResult.rows.map((row) => row.invoice_id),
-      );
-
-      await client.query("COMMIT");
-      invalidateUserCache(user_id);
-
-      res.json({
-        message: "Customer ledger deleted successfully",
-        deleted_count: deleteResult.rowCount,
-      });
-    } catch (err) {
-      try {
-        await client.query("ROLLBACK");
-      } catch (rollbackError) {
-        if (process.env.NODE_ENV !== "production") {
-          console.error(
-            "Error rolling back DELETE /debts/customers:",
-            rollbackError,
-          );
-        }
-      }
-
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Error in DELETE /debts/customers/:number:", err);
-      }
-      res.status(500).json({ error: "Server error" });
-    } finally {
-      client.release();
+    if (!deleteResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res
+        .status(404)
+        .json({ error: "No ledger rows found for this customer" });
     }
-  },
-);
 
-router.delete(
-  "/debts/entries/:id",
-  requireOwner,
-  async (req, res) => {
-    const client = await pool.connect();
+    await syncInvoiceBalancesFromDebtLedger(
+      client,
+      user_id,
+      deleteResult.rows.map((row) => row.invoice_id),
+    );
+
+    await client.query("COMMIT");
+    invalidateUserCache(user_id);
+
+    res.json({
+      message: "Customer ledger deleted successfully",
+      deleted_count: deleteResult.rowCount,
+    });
+  } catch (err) {
     try {
-      const user_id = getUserId(req);
-      const debtId = Number.parseInt(req.params.id, 10);
-
-      if (!Number.isInteger(debtId) || debtId <= 0) {
-        return res
-          .status(400)
-          .json({ error: "Valid ledger entry id required" });
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error(
+          "Error rolling back DELETE /debts/customers:",
+          rollbackError,
+        );
       }
+    }
 
-      await client.query("BEGIN");
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Error in DELETE /debts/customers/:number:", err);
+    }
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
+  }
+});
 
-      const debtResult = await client.query(
-        `SELECT customer_number
+// ==================== BLOCK 24: DELETE SINGLE DEBT ENTRY ====================
+// Owner-only transaction positive debt id account scope-এ delete করে এবং linked invoice id সংগ্রহ করে। Affected invoice balance পুনরায় sync হয়;
+// missing entry 404 rollback দেয়, success commit/cache refresh করে এবং transaction client finally release হয়।
+router.delete("/debts/entries/:id", requireOwner, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const user_id = getUserId(req);
+    const debtId = Number.parseInt(req.params.id, 10);
+
+    if (!Number.isInteger(debtId) || debtId <= 0) {
+      return res.status(400).json({ error: "Valid ledger entry id required" });
+    }
+
+    await client.query("BEGIN");
+
+    const debtResult = await client.query(
+      `SELECT customer_number
          FROM debts
          WHERE user_id = $1 AND id = $2`,
-        [user_id, debtId],
-      );
+      [user_id, debtId],
+    );
 
-      const customerNumber = debtResult.rows[0]?.customer_number;
-      if (!customerNumber) {
-        await client.query("ROLLBACK");
-        return res.status(404).json({ error: "Ledger entry not found" });
-      }
+    const customerNumber = debtResult.rows[0]?.customer_number;
+    if (!customerNumber) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Ledger entry not found" });
+    }
 
-      await lockScopedResource(client, user_id, "customer-debt", customerNumber);
+    await lockScopedResource(client, user_id, "customer-debt", customerNumber);
 
-      const deleteResult = await client.query(
-        `DELETE FROM debts
+    const deleteResult = await client.query(
+      `DELETE FROM debts
          WHERE user_id = $1 AND id = $2
          RETURNING id, customer_number, invoice_id`,
-        [user_id, debtId],
-      );
+      [user_id, debtId],
+    );
 
-      if (!deleteResult.rowCount) {
-        await client.query("ROLLBACK");
-        return res.status(404).json({ error: "Ledger entry not found" });
-      }
-
-      await syncInvoiceBalancesFromDebtLedger(
-        client,
-        user_id,
-        deleteResult.rows.map((row) => row.invoice_id),
-      );
-
-      await client.query("COMMIT");
-      invalidateUserCache(user_id);
-
-      res.json({
-        message: "Ledger transaction deleted successfully",
-        deleted_count: deleteResult.rowCount,
-        customer_number: deleteResult.rows[0].customer_number,
-      });
-    } catch (err) {
-      try {
-        await client.query("ROLLBACK");
-      } catch (rollbackError) {
-        if (process.env.NODE_ENV !== "production") {
-          console.error(
-            "Error rolling back DELETE /debts/entries:",
-            rollbackError,
-          );
-        }
-      }
-
-      if (process.env.NODE_ENV !== "production") {
-        console.error("Error in DELETE /debts/entries/:id:", err);
-      }
-      res.status(500).json({ error: "Server error" });
-    } finally {
-      client.release();
+    if (!deleteResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Ledger entry not found" });
     }
-  },
-);
+
+    await syncInvoiceBalancesFromDebtLedger(
+      client,
+      user_id,
+      deleteResult.rows.map((row) => row.invoice_id),
+    );
+
+    await client.query("COMMIT");
+    invalidateUserCache(user_id);
+
+    res.json({
+      message: "Ledger transaction deleted successfully",
+      deleted_count: deleteResult.rowCount,
+      customer_number: deleteResult.rows[0].customer_number,
+    });
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error(
+          "Error rolling back DELETE /debts/entries:",
+          rollbackError,
+        );
+      }
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Error in DELETE /debts/entries/:id:", err);
+    }
+    res.status(500).json({ error: "Server error" });
+  } finally {
+    client.release();
+  }
+});
 
 // ----------------- CUSTOMER AUTOSUGGEST -----------------
+// ==================== BLOCK 25: CUSTOMER AUTOCOMPLETE DIRECTORY ====================
+// customer_due permission-এর user name/number/address query দিয়ে distinct latest customer identities খোঁজে। 15-second cached compact result
+// due-entry form autocomplete চালায়; user_id filter অন্য shop-এর customer data বাদ দেয়।
 router.get(
   "/debts/customers",
   requirePermission("customer_due"),
@@ -2426,6 +2523,9 @@ router.get(
 );
 
 // Full ledger
+// ==================== BLOCK 26: CUSTOMER LEDGER PDF EXPORT ====================
+// Customer number validate করে profile/address ও ordered ledger entries আনে। Debit-credit effect, running balance এবং totals PDFKit দিয়ে
+// multi-page statement-এ render হয়; shop/customer context ও safe filenameসহ downloadable PDF পাঠানো হয়।
 router.get(
   "/debts/:number/pdf",
   requirePermission("customer_due"),
@@ -2694,6 +2794,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 27: SINGLE CUSTOMER LEDGER JSON ====================
+// Number ও optional pagination দিয়ে customer-specific debt/collection history আনে। Cached ordered rows detail workspace চালায় এবং pagination
+// headers long histories handle করে; সব query authenticated account scope-এ থাকে।
 router.get(
   "/debts/:number",
   requirePermission("customer_due"),
@@ -2747,7 +2850,9 @@ router.get(
   },
 );
 
-// Summary dues
+// ==================== BLOCK 28: ALL CUSTOMER DEBT SUMMARY ====================
+// Customer name/number group করে latest non-empty address, total debit, total credit ও outstanding balance বানায়। Optional pagination ও cache
+// due-ledger summary table এবং follow-up list দ্রুত render করতে সাহায্য করে।
 router.get(
   "/debts",
   requirePermission("customer_due"),
@@ -2805,6 +2910,9 @@ router.get(
   },
 );
 
+// ==================== BLOCK 29: OWNER DASHBOARD OVERVIEW ====================
+// Owner-only cached endpoint catalog, stock alerts, sales, purchases, customer/supplier dues, GST, profit ও expenses-এর headline aggregates
+// একটি SQL snapshot-এ দেয়। Dashboard KPI cards একই response ব্যবহার করায় আলাদা request timing-এর inconsistent totals কমে।
 router.get(
   "/dashboard/overview",
   requireOwner,
@@ -2991,12 +3099,17 @@ router.get(
 );
 
 // Global error handler
+// ==================== BLOCK 30: ROUTER ERROR NORMALIZATION ====================
+// Route chain থেকে unhandled error এলে server log করে এবং consistent generic 500 JSON পাঠায়, যাতে internal error detail client-এ expose না হয়।
 router.use((err, req, res, next) => {
   console.error("Unhandled route error:", err.message);
   res.status(500).json({ error: "Unexpected server error" });
 });
 
 // ----------------- MONTHLY SALES + PROFIT TREND -----------------
+// ==================== BLOCK 31: SALES MONTHLY TREND ====================
+// sales_report permission-এর optional year/all filter দিয়ে zero-filled month series, sales ও profit totals আনে। Response available years এবং
+// timeline দেয়, যা year selector, trend chart ও growth summary cards চালায়।
 router.get(
   "/sales/monthly-trend",
   requirePermission("sales_report"),
@@ -3123,6 +3236,9 @@ router.get(
 // ----------------- MONTHLY SALES + PROFIT TREND end -----------------
 
 // ----------------- LAST 13 MONTH SALES CHART -----------------
+// ==================== BLOCK 32: ROLLING LAST 13 MONTHS SALES ====================
+// Current monthসহ continuous 13-month window generate করে এবং sales না থাকা মাসও zero-filled result-এ রাখে। Calendar-year boundary ছাড়াই
+// recent sales chart-এর stable labels ও comparable sequence পাওয়া যায়।
 router.get(
   "/sales/last-13-months",
   requirePermission("sales_report"),
@@ -3158,4 +3274,6 @@ router.get(
 );
 // ----------------- LAST 13 MONTH SALES CHART end -----------------
 
+// ==================== BLOCK 33: PUBLIC ROUTER EXPORT ====================
+// CommonJS export configured authenticated inventory router-কে server application-এর inventory API base path-এ mount করার সুযোগ দেয়।
 module.exports = router;

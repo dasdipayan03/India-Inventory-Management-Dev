@@ -1,23 +1,22 @@
 /**
  * =========================================================
  * FILE: db.js
- * MODULE: PostgreSQL Database Connection
- *
- * PURPOSE:
- *  - Create and manage a global PostgreSQL connection pool
- *  - Ensure environment variables are configured properly
- *  - Maintain stable database connectivity
- *  - Export pool for use across the application
- *
- * NOTE:
- *  This file runs once when the server starts.
+ * PURPOSE: POSTGRESQL POOL, STARTUP SCHEMA COMPATIBILITY ও DATABASE READINESS
  * =========================================================
+ * Server start হলে এই module environment থেকে PostgreSQL pool configure করে, connection test চালায় এবং প্রয়োজনীয় schema/index/backfill নিশ্চিত করে।
+ * Existing deployment upgrade করার জন্য idempotent `IF NOT EXISTS` migration, developer-admin duplicate reconciliation এবং optional support admin bootstrap চলে।
+ * Pool-এর সঙ্গে readiness promise/state যুক্ত করে, যাতে routes database প্রস্তুত হওয়ার আগে controlledভাবে অপেক্ষা বা 503 response দিতে পারে।
  */
+
+// ==================== BLOCK 01: DEPENDENCIES ও CONFIGURATION HELPERS ====================
+// bcrypt optional support-admin password hash করে; pg Pool shared connections manage করে; runtime logger structured startup/error events লেখে।
+// Helpers SSL policy, positive/non-negative integer config, email/boolean normalization এবং archived developer email তৈরি করে।
 const bcrypt = require("bcrypt");
 const { Pool } = require("pg");
 const { logEvent } = require("./utils/runtime-log");
 
 function shouldUseSsl(databaseUrl) {
+  // Explicit DB_SSL true/false automatic detection-এর উপর priority পায়।
   if (process.env.DB_SSL === "true") {
     return true;
   }
@@ -26,6 +25,7 @@ function shouldUseSsl(databaseUrl) {
     return false;
   }
 
+  // Override না থাকলে local address-এ plain connection, remote/hosted URL-এ SSL default হয়।
   return !/localhost|127\.0\.0\.1/i.test(databaseUrl);
 }
 
@@ -54,33 +54,33 @@ function isTruthyEnvFlag(value) {
 }
 
 function buildArchivedDeveloperEmail(normalizedEmail, id) {
+  // Unsafe characters সরিয়ে unique archived+id prefix বসায়, যাতে duplicate/invalid row inactive রেখে unique index তৈরি করা যায়।
   const safeEmail = String(normalizedEmail || "developer@example.com")
     .replace(/[^a-z0-9@._+-]/gi, "")
     .trim();
   return `archived+${id}.${safeEmail}`;
 }
 
-// =========================================================
-// ENVIRONMENT VARIABLE CHECK
-// Ensures DATABASE_URL exists before server starts.
-// Without this, database connection is impossible.
-// =========================================================
+/*
+ * =========================================================
+ * BLOCK 02: REQUIRED DATABASE URL CHECK
+ * =========================================================
+ * Connection string ছাড়া pool তৈরি অর্থহীন, তাই application startup-এই স্পষ্ট error দিয়ে process বন্ধ হয়।
+ * এতে routes পরে অস্পষ্ট connection failure দেওয়ার বদলে deployment configuration সমস্যা সঙ্গে সঙ্গে ধরা পড়ে।
+ */
 if (!process.env.DATABASE_URL) {
   console.error("DATABASE_URL is not defined");
   process.exit(1);
 }
 
-// =========================================================
-// CREATE POSTGRESQL CONNECTION POOL
-//
-// Instead of creating a new DB connection for every request,
-// we create a pool (connection manager).
-//
-// Why Pool?
-//  - Reuses connections
-//  - Improves performance
-//  - Prevents DB overload
-// =========================================================
+/*
+ * =========================================================
+ * BLOCK 03: POSTGRESQL POOL CONFIGURATION
+ * =========================================================
+ * Environment values validate করে SSL, maximum connections, connection/idle/keepalive timeouts, connection recycling এবং SQL timeouts নির্ধারণ করে।
+ * Pool request-পিছু connection তৈরির বদলে connections reuse করে; hosted SSL certificate chain-এর জন্য `rejectUnauthorized: false` ব্যবহৃত হয়।
+ * Application name PostgreSQL activity views/logs-এ এই service-এর connections শনাক্ত করতে সাহায্য করে।
+ */
 const SSL_ENABLED = shouldUseSsl(process.env.DATABASE_URL);
 const PG_POOL_MAX = readPositiveInt(process.env.PG_POOL_MAX, 10);
 const PG_CONNECTION_TIMEOUT_MS = readPositiveInt(
@@ -130,6 +130,9 @@ const pool = new Pool({
   application_name: process.env.PG_APPLICATION_NAME || "shop-inventory-api",
 });
 
+// ==================== BLOCK 04: DATABASE LIFECYCLE STATE ও GLOBAL POOL ERROR ====================
+// Startup time/status, ready time ও সর্বশেষ pool error memory-তে থাকে; monitoring/health report এগুলো পড়ে। Idle client-এর unexpected error
+// process crash না করিয়ে state update ও sanitized structured error log তৈরি করে।
 const dbState = {
   startedAt: new Date().toISOString(),
   status: "starting",
@@ -138,16 +141,27 @@ const dbState = {
   lastErrorAt: null,
 };
 
-// =========================================================
-// GLOBAL ERROR LISTENER
-// =========================================================
 pool.on("error", (err) => {
   dbState.lastError = err.message;
   dbState.lastErrorAt = new Date().toISOString();
   logEvent("error", "db_pool_error", { error: err });
 });
 
+/*
+ * =========================================================
+ * BLOCK 05: IDEMPOTENT SCHEMA COMPATIBILITY ORCHESTRATOR
+ * =========================================================
+ * পুরোনো database-কে current application schema-র সঙ্গে compatible করতে columns, tables, constraints, indexes ও data backfills sequentially চালায়।
+ * অধিকাংশ DDL `IF NOT EXISTS` হওয়ায় প্রতিটি startup-এ নিরাপদে rerun হয়; কোনো query fail করলে initializeDatabase ready state দেয় না।
+ */
 async function ensureSchemaCompatibility() {
+  /*
+   * =========================================================
+   * BLOCK 06: USER GOOGLE IDENTITY ও PASSWORD-SETUP COLUMNS
+   * =========================================================
+   * Google subject/email-verification/picture এবং local password setup state যোগ করে। Existing Google-only users-এর password flag backfill হয়,
+   * আর non-empty Google subject unique index একই Google account একাধিক user row-তে যুক্ত হওয়া আটকায়।
+   */
   await pool.query(`
     ALTER TABLE users
     ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255)
@@ -186,6 +200,12 @@ async function ensureSchemaCompatibility() {
       WHERE google_sub IS NOT NULL AND google_sub <> ''
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 07: SHOP SETTINGS-এর PROFIT, BANK ও UPI FIELDS
+   * =========================================================
+   * Purchase auto-rate-এর default profit এবং invoice PDF/payment-এর bank holder/account/IFSC/UPI columns settings table-এ নিশ্চিত করে।
+   */
   await pool.query(`
     ALTER TABLE settings
     ADD COLUMN IF NOT EXISTS default_profit_percent NUMERIC(8,2) NOT NULL DEFAULT 30.00
@@ -216,6 +236,13 @@ async function ensureSchemaCompatibility() {
     ADD COLUMN IF NOT EXISTS upi_id VARCHAR(120)
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 08: SALES COST/GST ও INVOICE PAYMENT MIGRATION
+   * =========================================================
+   * Sales rows-এ cost price/GST যোগ এবং missing cost item buying rate থেকে backfill করে। Invoice payment mode/status/paid/due ও debt address/invoice
+   * relation যোগ হয়; legacy fully-paid invoice-এর amount_paid total amount দিয়ে backfill হয়।
+   */
   await pool.query(`
     ALTER TABLE sales
     ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10,2) NOT NULL DEFAULT 0
@@ -274,6 +301,13 @@ async function ensureSchemaCompatibility() {
       AND COALESCE(total_amount, 0) > 0
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 09: SUPPLIER, PURCHASE ও PURCHASE-ITEM TABLES
+   * =========================================================
+   * User-scoped supplier identity, purchase header/payment summary এবং product line items তৈরি করে। Foreign keys owner/user deletion-এর সঙ্গে
+   * related records cascade করে; supplier mobile থাকলে exact ১০-digit database constraint মানতে হয়।
+   */
   await pool.query(`
     CREATE TABLE IF NOT EXISTS suppliers (
       id SERIAL PRIMARY KEY,
@@ -319,6 +353,13 @@ async function ensureSchemaCompatibility() {
     )
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 10: SERIAL-TRACKED INVENTORY TABLE
+   * =========================================================
+   * Serial-কে user/item/purchase source ও invoice/sale destination-এর সঙ্গে যুক্ত করে। Status শুধু in_stock/sold, source deletion cascade এবং
+   * sale links deletionে null হয়—ফলে inventory serial lifecycle ও audit relation রাখা যায়।
+   */
   await pool.query(`
     CREATE TABLE IF NOT EXISTS item_serials (
       id SERIAL PRIMARY KEY,
@@ -341,6 +382,12 @@ async function ensureSchemaCompatibility() {
     )
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 11: EXPENSE TABLE
+   * =========================================================
+   * User-scoped expense title/category/amount/payment/date/note ও audit timestamps সংরক্ষণ করে; user delete হলে expenses cascade হয়।
+   */
   await pool.query(`
     CREATE TABLE IF NOT EXISTS expenses (
       id SERIAL PRIMARY KEY,
@@ -356,6 +403,13 @@ async function ensureSchemaCompatibility() {
     )
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 12: DEVELOPER ADMIN ও SUPPORT CONVERSATION TABLES
+   * =========================================================
+   * Developer credentials/active state, owner-or-staff requester conversation এবং chronological support messages তৈরি করে।
+   * Role/status/sender constraints invalid states আটকায়; unique requester constraint একই actor-এর একটিমাত্র workspace thread নিশ্চিত করে।
+   */
   await pool.query(`
     CREATE TABLE IF NOT EXISTS developer_admins (
       id SERIAL PRIMARY KEY,
@@ -416,6 +470,13 @@ async function ensureSchemaCompatibility() {
     )
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 13: CORE ITEM, SALES, STAFF ও USER LOOKUP INDEXES
+   * =========================================================
+   * Tenant-scoped item-name lookup, sales date/item reports, staff owner/username lookup এবং normalized user email authentication দ্রুত করে।
+   * `IF NOT EXISTS` index creation repeated startup-এ existing index rebuild করে না।
+   */
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_items_user_name
       ON items (user_id, LOWER(TRIM(name)))
@@ -466,6 +527,13 @@ async function ensureSchemaCompatibility() {
       ON users (LOWER(email))
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 14: INVOICE, INVOICE-ITEM ও CUSTOMER-DEBT INDEXES
+   * =========================================================
+   * Recent invoice ordering, invoice number/customer/contact search, item join, daily counter এবং customer ledger queries optimize করে।
+   * Partial due index শুধু outstanding invoice রাখে, তাই customer settlement lookup ছোট ও দ্রুত থাকে।
+   */
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_invoices_user_date
       ON invoices (user_id, date DESC)
@@ -527,6 +595,12 @@ async function ensureSchemaCompatibility() {
       WHERE amount_due > 0
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 15: SUPPLIER, PURCHASE ও PURCHASE-ITEM INDEXES
+   * =========================================================
+   * Supplier autocomplete/mobile lookup, purchase date reports, supplier chronological ledger এবং purchase line item joins/search accelerate করে।
+   */
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_suppliers_user_name
       ON suppliers (user_id, LOWER(TRIM(name)))
@@ -567,6 +641,13 @@ async function ensureSchemaCompatibility() {
       ON purchase_items (LOWER(TRIM(item_name)))
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 16: SERIAL UNIQUENESS, RELATION INDEXES ও SALE-RATE BACKFILL
+   * =========================================================
+   * একই user-এর normalized serial duplicate হওয়া unique index আটকায়; stock status/source/invoice joins-এর indexes যোগ হয়।
+   * Legacy serial sale rate প্রথমে purchase item, তারপর item selling rate এবং শেষে existing/zero fallback দিয়ে পূরণ হয়।
+   */
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS idx_item_serials_user_serial_unique
       ON item_serials (user_id, serial_no_norm)
@@ -613,6 +694,12 @@ async function ensureSchemaCompatibility() {
       AND COALESCE(s.sale_rate, 0) = 0
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 17: EXPENSE, DEBT-INVOICE ও DEVELOPER EMAIL INDEXES
+   * =========================================================
+   * Expense date/title/category filters, invoice-linked debt lookup এবং normalized developer email login/reconciliation query optimize করে।
+   */
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_expenses_user_date
       ON expenses (user_id, expense_date DESC)
@@ -643,7 +730,15 @@ async function ensureSchemaCompatibility() {
       ON developer_admins (LOWER(email))
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 18: DEVELOPER ADMIN EMAIL RECONCILIATION
+   * =========================================================
+   * Existing developer rows normalized email অনুযায়ী group করে active/newest row primary রাখে। Blank/duplicate emails unique archived address-এ
+   * বদলে inactive হয় এবং warning log পায়; cleanup শেষে normalized-email unique index safely তৈরি হয়।
+   */
   async function reconcileDeveloperAdmins() {
+    /* RECONCILE PHASE A: normalized email এবং preferred primary ordering-সহ সব developer rows load করা। */
     const developers = await pool.query(`
       SELECT
         id,
@@ -661,6 +756,7 @@ async function ensureSchemaCompatibility() {
         id DESC
     `);
 
+    /* RECONCILE PHASE B: blank email rows archive; valid rows normalized email group-এ সংগ্রহ। */
     const groupedDevelopers = new Map();
 
     for (const row of developers.rows) {
@@ -694,6 +790,7 @@ async function ensureSchemaCompatibility() {
       groupedDevelopers.get(normalizedEmail).push(row);
     }
 
+    /* RECONCILE PHASE C: প্রতিটি group-এর প্রথম active/newest row canonical email পায় এবং বাকিগুলো inactive archived identity পায়। */
     for (const [normalizedEmail, rows] of groupedDevelopers.entries()) {
       const primary = rows[0];
       if (!primary) {
@@ -744,14 +841,22 @@ async function ensureSchemaCompatibility() {
       });
     }
 
+    /* RECONCILE PHASE D: duplicates সরার পরে case/whitespace-normalized email uniqueness database level-এ enforce করা। */
     await pool.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS idx_developer_admins_email_normalized_unique
         ON developer_admins (LOWER(BTRIM(email)))
     `);
   }
 
+  // Bootstrap account lookup/upsert-এর আগে legacy duplicate email পরিষ্কার ও unique constraint প্রস্তুত করা হয়।
   await reconcileDeveloperAdmins();
 
+  /*
+   * =========================================================
+   * BLOCK 19: SUPPORT QUEUE ও MESSAGE HISTORY INDEXES
+   * =========================================================
+   * Requester thread lookup, status/activity ordered developer queue, unread-priority queue এবং chronological message history queries optimize করে।
+   */
   await pool.query(`
     CREATE INDEX IF NOT EXISTS idx_support_conversations_owner_lookup
       ON support_conversations (owner_user_id, requester_actor_id, requester_role)
@@ -772,6 +877,14 @@ async function ensureSchemaCompatibility() {
       ON support_messages (conversation_id, created_at ASC, id ASC)
   `);
 
+  /*
+   * =========================================================
+   * BLOCK 20: OPTIONAL SUPPORT-ADMIN BOOTSTRAP
+   * =========================================================
+   * Explicit boolean flag, normalized email এবং supplied password hash/plain password থাকলেই developer support account create/update হয়।
+   * Plain password দেওয়া হলে bcrypt cost 12 hash হয়; existing matching account reactivate হয়, না থাকলে insert হয়। Disabled flag-এর সঙ্গে credentials
+   * থাকলে account না বদলে informational log লেখা হয়।
+   */
   const supportAdminEmail = normalizeEmail(process.env.SUPPORT_ADMIN_EMAIL);
   const supportAdminPasswordHash = String(
     process.env.SUPPORT_ADMIN_PASSWORD_HASH || "",
@@ -785,11 +898,13 @@ async function ensureSchemaCompatibility() {
       .replace(/\s+/g, " ")
       .trim() || "Developer Support";
 
+  /* BOOTSTRAP PHASE A: enable flag + email + যেকোনো credential source থাকলে bootstrap flow চালানো। */
   if (
     supportAdminBootstrapEnabled &&
     supportAdminEmail &&
     (supportAdminPasswordHash || supportAdminPassword)
   ) {
+    /* BOOTSTRAP PHASE B: pre-hashed credential priority; না থাকলে plain password one-way bcrypt hash করা। */
     const passwordHash =
       supportAdminPasswordHash || (await bcrypt.hash(supportAdminPassword, 12));
     const existingSupportAdmin = await pool.query(
@@ -807,6 +922,7 @@ async function ensureSchemaCompatibility() {
       [supportAdminEmail],
     );
 
+    /* BOOTSTRAP PHASE C: normalized email match থাকলে canonical account update/reactivate, না থাকলে নতুন active row insert। */
     if (existingSupportAdmin.rowCount) {
       await pool.query(
         `
@@ -843,6 +959,7 @@ async function ensureSchemaCompatibility() {
       );
     }
 
+    /* BOOTSTRAP PHASE D: upsert-এর পর normalized uniqueness আবার reconcile/confirm করা। */
     await reconcileDeveloperAdmins();
   } else if (
     !supportAdminBootstrapEnabled &&
@@ -854,11 +971,16 @@ async function ensureSchemaCompatibility() {
   }
 }
 
-// =========================================================
-// INITIAL CONNECTION TEST
-// Ensures the latest schema additions are available.
-// =========================================================
+/*
+ * =========================================================
+ * BLOCK 21: INITIAL CONNECTION TEST, MIGRATION ও READINESS STATE
+ * =========================================================
+ * Startup duration মাপে, status `connecting` করে effective pool configuration log এবং `SELECT 1` দিয়ে live connection পরীক্ষা করে।
+ * Connection সফল হলে schema compatibility চালিয়ে status `ready`/readyAt সেট করে; failure-এ error state/time/message save, structured log ও rejection দেয়।
+ * Ready promise reject হলে dependent startup/routes database unavailable হিসেবে আচরণ করতে পারে—failure silently গোপন হয় না।
+ */
 async function initializeDatabase() {
+  /* INITIALIZE PHASE A: lifecycle connecting state এবং effective non-secret connection settings log করা। */
   const startedAt = Date.now();
   dbState.status = "connecting";
 
@@ -876,15 +998,18 @@ async function initializeDatabase() {
   });
 
   try {
+    /* INITIALIZE PHASE B: lightweight query দিয়ে pool/database reachability নিশ্চিত ও connection latency log। */
     await pool.query("SELECT 1");
     logEvent("info", "db_connection_ready", {
       durationMs: Date.now() - startedAt,
     });
 
+    /* INITIALIZE PHASE C: status migrating করে idempotent compatibility schema/data/index কাজ সম্পন্ন করা। */
     dbState.status = "migrating";
     const schemaStartedAt = Date.now();
     await ensureSchemaCompatibility();
 
+    /* INITIALIZE PHASE D: successful migration-এর পরে ready state/time বসিয়ে পুরোনো error markers clear ও timing log। */
     dbState.status = "ready";
     dbState.readyAt = new Date().toISOString();
     dbState.lastError = null;
@@ -897,6 +1022,7 @@ async function initializeDatabase() {
 
     return dbState;
   } catch (err) {
+    /* INITIALIZE PHASE E: connection বা migration error state-এ ধরে log করে আবার throw, যাতে caller failure দেখতে পায়। */
     dbState.status = "error";
     dbState.lastError = err.message;
     dbState.lastErrorAt = new Date().toISOString();
@@ -910,6 +1036,13 @@ async function initializeDatabase() {
   }
 }
 
+/*
+ * =========================================================
+ * BLOCK 22: POOL READINESS CONTRACT ও MODULE EXPORT
+ * =========================================================
+ * Custom `dbState` monitoring-কে lifecycle detail দেয়, `isReady()` cheap boolean probe এবং `readyPromise` একবারের startup initialization represent করে।
+ * একই configured Pool CommonJS export হওয়ায় routes/repositories shared connection manager ও readiness state ব্যবহার করে।
+ */
 pool.dbState = dbState;
 pool.isReady = () => dbState.status === "ready";
 pool.readyPromise = initializeDatabase();

@@ -1,5 +1,7 @@
 (function bootstrapInventoryShell(global) {
+  // পড়ার নিয়ম: প্রতিটি বাংলা comment তার ঠিক উপরের সম্পূর্ণ code line বা code block-এর কাজ বোঝায়।
   const app = global.InventoryApp || {};
+  // app-core.js থেকে shared frontend helper/config নেয়; না থাকলে খালি object রাখে।
   const doc = global.document;
   const escapeHtml = app.escapeHtml || ((value) => String(value ?? ""));
   const styleId = "inventory-sidebar-style";
@@ -11,8 +13,10 @@
   const isMobileLayout =
     app.isMobileLayout ||
     (() => global.matchMedia("(max-width: 991px)").matches);
+  // app-core-এর mobile detector অথবা fallback media query ব্যবহার করে।
 
   function syncAndroidSidebarGestureLock(isLocked) {
+    // Android app wrapper থাকলে sidebar খোলা/বন্ধ অবস্থার সঙ্গে native gesture lock মিলিয়ে দেয়।
     const androidShell = global.AndroidAppShell;
     if (
       !androidShell ||
@@ -29,6 +33,7 @@
   }
 
   let activeController = null;
+  // বর্তমানে active sidebar controller reference; পুনরায় setup হলে পুরোনোটি cleanup করা যায়।
 
   const sidebarStyles = `
     html.body-scroll-lock-root,
@@ -309,30 +314,43 @@
       }
     }
   `;
+  // Sidebar, overlay, mobile toggle এবং scroll-lock-এর প্রয়োজনীয় CSS string।
 
   function ensureStyles() {
+    // একবারের বেশি নয়, page head-এ shared sidebar CSS যোগ করে।
     if (!doc?.head || doc.getElementById(styleId)) {
+      // Document head না থাকলে বা style আগেই থাকলে নতুন করে style tag যোগ করার দরকার নেই।
       return;
     }
 
     const style = doc.createElement("style");
+    // Dynamically CSS বসানোর জন্য নতুন style element তৈরি করে।
     style.id = styleId;
+    // একাধিকবার একই style ঢোকানো রোধ করার জন্য unique ID দেয়।
     if (cspNonce) {
+      // Content Security Policy nonce থাকলে dynamic style-কে অনুমোদিত করে।
       style.setAttribute("nonce", cspNonce);
     }
     style.textContent = sidebarStyles;
+    // আগে সংজ্ঞায়িত sidebar CSS string-টি style tag-এ বসায়।
     doc.head.appendChild(style);
+    // সম্পূর্ণ style tag browser document head-এ যুক্ত করে।
   }
 
   function ensureShell() {
+    // Sidebar, overlay এবং mobile toggle button-এর দরকারি HTML element আছে কি না নিশ্চিত করে।
     if (!doc?.body) {
+      // Body তৈরি না হলে sidebar markup বসানোর জায়গা নেই।
       return null;
     }
 
     ensureStyles();
+    // Shell HTML তৈরি হওয়ার আগে তার CSS নিশ্চিত করে।
 
     let sidebar = doc.getElementById("sidebar");
+    // Page-এ আগে থেকে sidebar আছে কি না খোঁজে।
     if (sidebar) {
+      // Sidebar থাকলে নতুন markup না বানিয়ে শুধু footer text update করে।
       syncFooterText();
       return sidebar;
     }
@@ -377,23 +395,30 @@
         </aside>
       `,
     );
+    // Page body-এর শুরুতে toggle, overlay ও sidebar-এর সম্পূর্ণ HTML বসায়।
 
     syncFooterText();
+    // নতুন sidebar তৈরির পর footer copyright text বসায়।
     return doc.getElementById("sidebar");
   }
 
   function syncFooterText() {
+    // Sidebar footer-এ app-core-এর copyright text বসায়।
     const footer =
       doc.getElementById("sidebarFooterText") ||
       doc.querySelector(".sidebar__footer p");
+    // ID না পেলে fallback selector দিয়ে footer paragraph খুঁজে নেয়।
 
     if (footer) {
+      // Footer element পেলে app-specific অথবা default copyright text দেখায়।
       footer.textContent = app.copyrightText || defaultFooterText;
     }
   }
 
   function buildDashboardButton(item) {
+    // Dashboard section-এ যাওয়ার জন্য একটি sidebar button markup তৈরি করে।
     if (item.kind === "invoice") {
+      // Invoice item-এর জন্য dashboard section নয়, dedicated invoice button markup দেয়।
       return `
         <button id="invoiceBtn" type="button">
           <i class="${escapeHtml(item.iconClass)}"></i>
@@ -414,10 +439,13 @@
         <span>${escapeHtml(item.label)}</span>
       </button>
     `;
+    // সাধারণ dashboard section button-এর safe escaped HTML markup ফেরত দেয়।
   }
 
   function buildInvoiceButton(item) {
+    // Invoice page-এ যাওয়ার জন্য invoice-aware sidebar button markup তৈরি করে।
     if (item.kind === "invoice") {
+      // Invoice page নিজে active অবস্থায় থাকলে invoice navigation item active করে render হয়।
       return `
         <button
           id="invoiceNavBtn"
@@ -440,9 +468,11 @@
         <span>${escapeHtml(item.label)}</span>
       </button>
     `;
+    // Invoice page থেকে dashboard section-এ ফেরার navigation button markup দেয়।
   }
 
   function getElements() {
+    // Shell-এর reusable DOM element একসঙ্গে সংগ্রহ করে ফেরত দেয়।
     return {
       sidebar: doc.getElementById("sidebar"),
       sidebarNav: doc.getElementById("sidebarNav"),
@@ -459,13 +489,18 @@
         doc.querySelectorAll(".sidebar button[data-nav-section]"),
       ),
     };
+    // Sidebar interaction-এর জন্য প্রয়োজনীয় element reference-এর object ফেরত দেয়।
   }
 
   function renderSidebar(pageType) {
+    // Current page type অনুযায়ী sidebar navigation item render করে।
     ensureShell();
+    // Render-এর আগে shell HTML এবং style আছে কি না নিশ্চিত করে।
 
     const elements = getElements();
+    // সদ্য তৈরি/বিদ্যমান sidebar element reference সংগ্রহ করে।
     if (!elements.sidebarNav || !Array.isArray(app.sidebarItems)) {
+      // Navigation container বা sidebar data না থাকলে render না করে current elements ফেরত দেয়।
       return elements;
     }
 
@@ -476,6 +511,7 @@
           : buildDashboardButton(item),
       )
       .join("");
+    // Permission-filtered app sidebar item থেকে page-specific button HTML তৈরি করে।
 
     elements.sidebarNav.innerHTML = `
       ${buttonMarkup}
@@ -484,18 +520,22 @@
         <span>Logout</span>
       </button>
     `;
+    // Sidebar menu-তে buttonগুলো ও logout button বসায়।
 
     syncFooterText();
     return getElements();
   }
 
   function setupSidebar(pageType, options = {}) {
+    // Click, keyboard, touch এবং responsive behavior-সহ সম্পূর্ণ sidebar controller তৈরি করে।
     if (activeController?.destroy) {
+      // পুরোনো controller থাকলে তার event listener আগে remove করে duplicate event ঠেকায়।
       activeController.destroy();
       activeController = null;
     }
 
     if (options.render !== false) {
+      // Caller render বন্ধ না করলে বর্তমান page type-এর জন্য sidebar menu আবার render করে।
       renderSidebar(pageType);
     } else {
       ensureShell();
@@ -503,26 +543,34 @@
     }
 
     const elements = getElements();
+    // Event bind করার জন্য সকল sidebar element নেয়।
     const cleanups = [];
+    // পরবর্তীতে destroy করার সময় সব event listener remove করার callback list।
     let sidebarScrollY = 0;
     const root = doc.documentElement;
     const lockRootClass = "body-scroll-lock-root";
 
     const listen = (target, eventName, handler, options) => {
+      // Event listener add এবং তার matching cleanup একই helper-এ রাখে।
       if (!target || typeof target.addEventListener !== "function") {
+        // Invalid target হলে event bind করার চেষ্টা না করে নিরাপদে ফিরে যায়।
         return;
       }
 
       target.addEventListener(eventName, handler, options);
+      // নির্দিষ্ট target-এ browser event listener যোগ করে।
       cleanups.push(() =>
         target.removeEventListener(eventName, handler, options),
       );
+      // একই listener পরে remove করার callback cleanup list-এ রাখে।
     };
 
     const isSidebarTarget = (target) =>
       target instanceof Element && Boolean(target.closest(".sidebar"));
+    // Event target sidebar-এর ভেতরের element কি না নির্ধারণ করে।
 
     const unlockBodyScroll = () => {
+      // Mobile sidebar বন্ধ হলে body scroll lock ও আগের scroll position restore করে।
       if (!doc.body.classList.contains("body-scroll-lock")) {
         return;
       }
@@ -535,6 +583,7 @@
     };
 
     const lockBodyScroll = () => {
+      // Mobile sidebar খোলার সময় main page scroll আটকে দিয়ে background scroll প্রতিরোধ করে।
       if (
         !isMobileLayout() ||
         doc.body.classList.contains("body-scroll-lock")
@@ -548,8 +597,10 @@
     };
 
     const controller = {
+      // Open, close, toggle, state check ও cleanup-সহ sidebar-এর public controller object।
       elements,
       close() {
+        // Sidebar ও overlay লুকিয়ে gesture/scroll lock মুক্ত করে।
         if (
           !elements.sidebar ||
           !elements.sidebarOverlay ||
@@ -565,6 +616,7 @@
         syncAndroidSidebarGestureLock(false);
       },
       open() {
+        // Sidebar ও overlay দেখিয়ে mobile body scroll lock চালু করে।
         if (
           !elements.sidebar ||
           !elements.sidebarOverlay ||
@@ -580,6 +632,7 @@
         syncAndroidSidebarGestureLock(true);
       },
       toggle() {
+        // বর্তমান open state অনুযায়ী sidebar খুলে অথবা বন্ধ করে।
         if (controller.isOpen()) {
           controller.close();
         } else {
@@ -587,9 +640,11 @@
         }
       },
       isOpen() {
+        // CSS class দেখে sidebar বর্তমানে খোলা কি না boolean দেয়।
         return Boolean(elements.sidebar?.classList.contains("sidebar--open"));
       },
       destroy() {
+        // Sidebar বন্ধ করে সব previously registered event listener remove করে।
         controller.close();
         while (cleanups.length) {
           cleanups.pop()();
@@ -600,11 +655,13 @@
     let touchStartY = 0;
 
     const handleSidebarTouchStart = (event) => {
+      // Touch শুরু হওয়ার vertical position ধরে রাখে, পরে boundary scroll check-এ লাগবে।
       const touchY = event.touches?.[0]?.clientY;
       touchStartY = Number.isFinite(touchY) ? touchY : 0;
     };
 
     const handleSidebarTouchMove = (event) => {
+      // Sidebar nav-এর scroll boundary-তে background overscroll প্রতিরোধ করে।
       if (!controller.isOpen() || !isMobileLayout()) {
         return;
       }
@@ -639,6 +696,7 @@
     };
 
     const handleLockedScroll = (event) => {
+      // Sidebar খোলা থাকলে sidebar-এর বাইরের wheel/touch scroll cancel করে।
       if (!controller.isOpen() || !isMobileLayout()) {
         return;
       }
@@ -651,7 +709,9 @@
     };
 
     listen(elements.sidebarToggle, "click", controller.toggle);
+    // Mobile menu button click করলে sidebar open/close toggle হয়।
     listen(elements.sidebarOverlay, "click", controller.close);
+    // Dark overlay click করলে sidebar বন্ধ হয়।
     listen(doc, "wheel", handleLockedScroll, {
       passive: false,
     });
@@ -669,6 +729,7 @@
     });
 
     const handleInvoiceSelect = () => {
+      // Invoice navigation callback চালায় এবং setting অনুযায়ী sidebar বন্ধ করে।
       options.onInvoiceSelect?.();
       if (options.closeOnSelect !== false) {
         controller.close();
@@ -676,6 +737,7 @@
     };
 
     const refreshCurrentPage = () => {
+      // Active dashboard section মনে রেখে page reload করে।
       const activeSectionId =
         doc.querySelector(".form-section.active")?.id ||
         global.localStorage?.getItem("activeSection") ||
@@ -690,6 +752,7 @@
     };
 
     listen(elements.sidebarNav, "click", (event) => {
+      // Sidebar menu-র সব button click event এক জায়গা থেকে handle করে।
       const button =
         event.target instanceof Element ? event.target.closest("button") : null;
 
@@ -724,22 +787,28 @@
     });
 
     listen(elements.sidebarRefreshBtn, "click", refreshCurrentPage);
+    // Refresh icon click করলে current page reload handler চালায়।
 
     listen(global, "resize", () => {
+      // Desktop layout-এ ফিরে গেলে mobile-style open sidebar বন্ধ করে।
       if (!isMobileLayout()) {
         controller.close();
       }
     });
 
     activeController = controller;
+    // নতুন controller-কে future cleanup/reuse-এর জন্য active reference করে।
     syncAndroidSidebarGestureLock(false);
+    // Setup শেষে native Android sidebar gesture default unlocked অবস্থায় রাখে।
     return controller;
   }
 
   global.InventoryAppShell = {
+    // অন্য frontend scripts-এর ব্যবহারের জন্য shell API global object-এ প্রকাশ করে।
     ensureShell,
     getElements,
     renderSidebar,
     setupSidebar,
   };
+  // অন্য page script যেন shell তৈরি ও control করতে পারে, সেই API global-এ প্রকাশ করে।
 })(window);

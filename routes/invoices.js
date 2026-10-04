@@ -1,4 +1,19 @@
+/**
+ * =========================================================
+ * FILE: routes/invoices.js
+ * PURPOSE: SALES INVOICE, PAYMENT SETTLEMENT, PDF ও SHOP PROFILE ROUTES
+ * =========================================================
+ * এই router নতুন invoice number তৈরি, sale invoice save, stock/serial deduction, customer due ledger,
+ * invoice search/detail, later payment collection, PDF generation এবং invoice-facing shop settings পরিচালনা করে।
+ * Invoice writes transaction ও scoped locks ব্যবহার করে; retryable PostgreSQL conflicts সীমিত retry পায়।
+ * PDF-এর UPI QR matrix এই file-এর internal encoder দিয়ে তৈরি হয়, কোনো remote QR service-এ payment data পাঠানো হয় না।
+ */
+
 // routes/invoices.js
+
+// ==================== BLOCK 01: DEPENDENCIES ও SHARED INFRASTRUCTURE ====================
+// Express routes, PDFKit rendering ও database pool load করে। Auth/permission helpers account access enforce করে; concurrency helpers
+// normalized item/serial keys ও scoped locks দেয়; cache/pagination helpers read endpoints দ্রুত ও bounded রাখে।
 const express = require("express");
 const router = express.Router();
 const PDFDocument = require("pdfkit");
@@ -18,6 +33,9 @@ const { cacheJsonResponse } = require("../middleware/cache");
 const { invalidateUserCache } = require("../utils/cache");
 const { parsePagination } = require("../utils/pagination");
 
+// ==================== BLOCK 02: BASIC INPUT, NUMBER, MOBILE ও SERIAL HELPERS ====================
+// Invoice suffix zero-pad করে; positive/non-zero/non-negative parsers invalid numeric input reject করে; mobile Indian prefix পরিষ্কার করে।
+// Serial parser display/key normalize করে, blank বাদ দেয় এবং একই invoice payload-এর case-insensitive duplicate serial আটকায়।
 /* ---------------------- Helper: pad serial ---------------------- */
 function padSerial(n) {
   return String(n).padStart(4, "0");
@@ -87,22 +105,15 @@ function parseSerialNumbers(value) {
   return serials;
 }
 
+// ==================== BLOCK 03: PAYMENT MODES ও QR ENCODER TABLES ====================
+// Invoice payment mode allow-list invalid input-এ cash fallback দেয়। QR lookup tables version 1–10 low-error-correction capacity,
+// Reed-Solomon block layout এবং alignment pattern positions নির্ধারণ করে; generated UPI payload-এর maximum size সীমিত থাকে।
 const INVOICE_PAYMENT_MODES = new Set(["cash", "upi", "bank", "mixed"]);
 
 const QR_MAX_VERSION = 10;
 const QR_TOTAL_CODEWORDS = [0, 26, 44, 70, 100, 134, 172, 196, 242, 292, 346];
 const QR_ECC_CODEWORDS_PER_BLOCK_LOW = [
-  0,
-  7,
-  10,
-  15,
-  20,
-  26,
-  18,
-  20,
-  24,
-  30,
-  18,
+  0, 7, 10, 15, 20, 26, 18, 20, 24, 30, 18,
 ];
 const QR_BLOCK_COUNT_LOW = [0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 4];
 const QR_ALIGNMENT_PATTERN_POSITIONS = [
@@ -126,6 +137,9 @@ function normalizeInvoicePaymentMode(value) {
   return INVOICE_PAYMENT_MODES.has(normalized) ? normalized : "cash";
 }
 
+// ==================== BLOCK 04: QR BITSTREAM ও ERROR CORRECTION ====================
+// Byte-mode payload bits, version capacity ও padding codewords তৈরি করে। GF(256) multiply এবং Reed-Solomon divisor/remainder functions
+// error-correction bytes বানায়; block interleaving QR decoder-কে damaged modules থেকেও payload recover করতে সাহায্য করে।
 function appendQrBits(bits, value, length) {
   for (let i = length - 1; i >= 0; i--) {
     bits.push(((value >>> i) & 1) !== 0);
@@ -234,6 +248,9 @@ function addQrErrorCorrection(version, dataCodewords) {
   return result;
 }
 
+// ==================== BLOCK 05: QR MASK, FORMAT ও VERSION METADATA ====================
+// Module coordinates-এর mask bit, BCH-protected format bits এবং larger-version metadata হিসাব করে। Current encoder mask 0 ব্যবহার করে;
+// format/version information scanner-কে matrix layout ও error-correction interpretation জানায়।
 function getQrMaskBit(mask, x, y) {
   switch (mask) {
     case 0:
@@ -268,6 +285,9 @@ function getQrVersionBits(version) {
   return (version << 12) | remainder;
 }
 
+// ==================== BLOCK 06: COMPLETE QR MATRIX GENERATION ====================
+// UTF-8 UPI URI-এর smallest supported version বেছে data/error-correction codewords বানায়। Finder, timing, alignment, format ও version
+// function modules আগে আঁকে; তারপর remaining cells-এ masked data zig-zag order-এ বসিয়ে boolean matrix return করে।
 function createQrCodeMatrix(text) {
   const bytes = Array.from(Buffer.from(String(text), "utf8"));
   const version = findQrVersion(bytes.length);
@@ -305,7 +325,9 @@ function createQrCodeMatrix(text) {
 
   const codewords = addQrErrorCorrection(version, dataCodewords);
   const modules = Array.from({ length: size }, () => Array(size).fill(false));
-  const isFunction = Array.from({ length: size }, () => Array(size).fill(false));
+  const isFunction = Array.from({ length: size }, () =>
+    Array(size).fill(false),
+  );
   const mask = 0;
 
   const setFunctionModule = (x, y, dark) => {
@@ -446,6 +468,9 @@ function createQrCodeMatrix(text) {
   return modules;
 }
 
+// ==================== BLOCK 07: UPI URI ও GST CALCULATION ====================
+// Valid UPI id থাকলে payee address/name encoded `upi://pay` URI বানায়; blank id-এ empty string দেয় যাতে PDF QR block skip করতে পারে।
+// Sale GST helper base amount ও non-negative rate থেকে two-decimal tax amount তৈরি করে।
 function buildUpiPaymentUri(upiId, payeeName) {
   const normalizedUpiId = normalizeDisplayText(upiId);
   if (!normalizedUpiId) {
@@ -468,6 +493,9 @@ function calculateSaleGstAmount(baseAmount, gstRate) {
   return Number(((normalizedBaseAmount * normalizedGstRate) / 100).toFixed(2));
 }
 
+// ==================== BLOCK 08: INITIAL INVOICE PAYMENT SNAPSHOT ====================
+// Grand total, optional paid input ও mode থেকে bounded amountPaid/amountDue এবং paid/partial/due state বানায়। Blank paid value full payment,
+// explicit value total-এর মধ্যে clamp হয়; due amount numeric roundingসহ consistent থাকে।
 function buildInvoicePaymentSnapshot(
   totalAmount,
   amountPaidInput,
@@ -508,6 +536,9 @@ function buildInvoicePaymentSnapshot(
   };
 }
 
+// ==================== BLOCK 09: LATER PAYMENT SETTLEMENT SNAPSHOT ====================
+// Existing paid/due-এর সঙ্গে positive collection যোগ করে total-এর মধ্যে cap করে এবং next paid/due/status return করে। Caller এই normalized
+// snapshot invoice row ও linked debt credit entry একই transaction-এ update করতে ব্যবহার করে।
 function buildInvoiceSettlementSnapshot(
   invoiceRow,
   paymentAmountInput,
@@ -547,6 +578,9 @@ function buildInvoiceSettlementSnapshot(
   };
 }
 
+// ==================== BLOCK 10: RETRYABLE DATABASE CONFLICTS ও INVOICE NUMBER GENERATION ====================
+// Unique collision, serialization failure ও deadlock codes limited invoice-write retry পায়। Invoice number generator user/date scoped lock নেয়,
+// current day's highest suffix পড়ে এবং date prefixসহ next padded number বানায়, যাতে concurrent requests duplicate number না পায়।
 const RETRYABLE_INVOICE_PG_CODES = new Set(["23505", "40001", "40P01"]);
 
 function isRetryableInvoiceWriteError(error) {
@@ -596,7 +630,14 @@ async function generateInvoiceNoWithClient(client, userId) {
   };
 }
 
-/* ---------------------- GET: Preview Next Invoice ---------------------- */
+/*
+ * =========================================================
+ * BLOCK 11: পরবর্তী invoice number-এর preview
+ * =========================================================
+ * Login করা এবং `sale_invoice` permission থাকা user-এর আজকের counter পড়ে সম্ভাব্য পরবর্তী invoice number দেখায়।
+ * এটি counter বাড়ায় না; তাই preview দেখার পর অন্য request invoice save করলে চূড়ান্ত number আলাদা হতে পারে।
+ * Asia/Kolkata date, user id এবং zero-padded daily serial মিলিয়ে `INV-YYYYMMDD-userId-serial` format তৈরি হয়।
+ */
 router.get(
   "/invoices/new",
   authMiddleware,
@@ -627,7 +668,14 @@ router.get(
   },
 );
 
-/* ---------------------- POST: SAVE INVOICE (FINAL LOGIC) ---------------------- */
+/*
+ * =========================================================
+ * BLOCK 12: নতুন sale invoice save করার মূল transaction
+ * =========================================================
+ * Body থেকে customer, item ও payment data নিয়ে একটি atomic database transaction-এ invoice তৈরি করে।
+ * প্রতিটি item validate হয়, serial ও stock row lock হয়, invoice/items/sales/debt ledger লেখা হয় এবং stock কমে।
+ * কোনো ধাপ ব্যর্থ হলে পুরো transaction rollback হয়; invoice-number conflict বা deadlock-এর মতো retryable error সর্বোচ্চ তিনবার চেষ্টা করে।
+ */
 router.post(
   "/invoices",
   authMiddleware,
@@ -644,6 +692,7 @@ router.post(
       amount_paid,
     } = req.body;
 
+    // অন্তত একটি sale line ছাড়া invoice অর্থপূর্ণ নয়, তাই database connection নেওয়ার আগেই request reject করা হয়।
     if (!Array.isArray(items) || !items.length) {
       return res.status(400).json({ success: false, message: "No items" });
     }
@@ -651,10 +700,12 @@ router.post(
     const client = await pool.connect();
     let lastRetryableError = null;
     try {
+      // একই client ব্যবহার করে retry loop চলে; প্রতিটি attempt নিজস্ব BEGIN/COMMIT বা ROLLBACK পায়।
       for (let attempt = 1; attempt <= 3; attempt += 1) {
         try {
           await client.query("BEGIN");
 
+          /* PHASE A: transaction-এর ভেতরে daily counter reserve করে unique invoice number এবং customer-এর normalized value তৈরি। */
           const { invoiceNo } = await generateInvoiceNoWithClient(
             client,
             userId,
@@ -664,7 +715,7 @@ router.post(
           const customerAddress = String(address || "").trim() || null;
           const trimmedGstNo = String(gst_no || "").trim() || null;
 
-          /* ---- calculate ---- */
+          /* PHASE B: প্রতিটি invoice line-এর description, quantity, rate ও optional serial list validate করে internal working object বানানো। */
           const computed = items.map((item, index) => {
             const description = normalizeDisplayText(item.description);
             const q = parseNonZeroNumber(item.quantity);
@@ -672,7 +723,7 @@ router.post(
               item.serial_numbers ?? item.serials ?? item.serial_no_text,
             );
             const r = serialNumbers.length
-              ? parseNonNegativeNumber(item.rate) ?? 0
+              ? (parseNonNegativeNumber(item.rate) ?? 0)
               : parsePositiveNumber(item.rate);
 
             if (
@@ -708,6 +759,7 @@ router.post(
             };
           });
 
+          /* PHASE C: পুরো invoice জুড়ে duplicate serial আটকানো এবং stable order-এ advisory lock নিয়ে concurrent sale প্রতিরোধ। */
           const allSerials = [];
           const seenSerialKeys = new Set();
           computed.forEach((line) => {
@@ -733,6 +785,7 @@ router.post(
             );
           }
 
+          /* PHASE D: serial-tracked item হলে serial row lock করে ownership, stock status এবং item-name matching যাচাই। */
           if (allSerials.length) {
             const serialResult = await client.query(
               `
@@ -763,7 +816,9 @@ router.post(
               line.serialRows = line.serialNumbers.map((serial) => {
                 const row = serialRowsByKey.get(serial.serialKey);
                 if (!row) {
-                  throw new Error(`Serial number not found: ${serial.serialNo}`);
+                  throw new Error(
+                    `Serial number not found: ${serial.serialNo}`,
+                  );
                 }
 
                 if (row.status !== "in_stock") {
@@ -783,6 +838,7 @@ router.post(
             });
           }
 
+          /* PHASE E: line amount/subtotal হিসাব এবং একই product-এর মোট প্রয়োজনীয় quantity group করা। */
           let subtotal = 0;
           computed.forEach((line) => {
             line.amount = +(line.quantity * line.rate).toFixed(2);
@@ -800,6 +856,7 @@ router.post(
             groupedStockNeed.set(line.lookupKey, existing);
           });
 
+          /* PHASE F: সংশ্লিষ্ট inventory rows deterministic order-এ lock করে মোট available stock যথেষ্ট কি না যাচাই। */
           const lockedStockByKey = new Map();
           for (const lookupKey of Array.from(groupedStockNeed.keys()).sort()) {
             const requirement = groupedStockNeed.get(lookupKey);
@@ -841,6 +898,7 @@ router.post(
             lockedStockByKey.set(lookupKey, stockRows);
           }
 
+          /* PHASE G: shop GST rate দিয়ে tax/total এবং initial paid/due/payment-status snapshot তৈরি। */
           const gstR = await client.query(
             `SELECT gst_rate FROM settings WHERE user_id=$1`,
             [userId],
@@ -863,7 +921,7 @@ router.post(
             );
           }
 
-          /* ---- invoice ---- */
+          /* PHASE H: validated header ও payment summary `invoices` table-এ লিখে নতুন invoice id নেওয়া। */
           const inv = await client.query(
             `
               INSERT INTO invoices
@@ -906,7 +964,10 @@ router.post(
 
           const invoiceId = inv.rows[0].id;
 
-          /* ---- invoice_items + stock + sales ---- */
+          /*
+           * PHASE I: প্রতিটি line `invoice_items`-এ লেখা এবং FIFO-style locked stock rows থেকে sale allocate করা।
+           * Serial item-এর serial status sold হয়; negative quantity return হিসেবে stock বাড়ায়; প্রতিটি allocation `sales` audit row তৈরি করে।
+           */
           const stockAdjustments = new Map();
           for (const it of computed) {
             const invoiceItemResult = await client.query(
@@ -932,11 +993,15 @@ router.post(
                 serialGroups.set(serialRow.item_id, current);
               });
 
-              const sortedSerialGroups = Array.from(serialGroups.entries()).sort(
-                ([leftItemId], [rightItemId]) => leftItemId - rightItemId,
-              );
+              const sortedSerialGroups = Array.from(
+                serialGroups.entries(),
+              ).sort(([leftItemId], [rightItemId]) => leftItemId - rightItemId);
 
-              for (let groupIndex = 0; groupIndex < sortedSerialGroups.length; groupIndex += 1) {
+              for (
+                let groupIndex = 0;
+                groupIndex < sortedSerialGroups.length;
+                groupIndex += 1
+              ) {
                 const [itemId, serialRows] = sortedSerialGroups[groupIndex];
                 const stockRow = stockRows.find((row) => row.id === itemId);
                 const consumedQty = serialRows.length;
@@ -949,7 +1014,8 @@ router.post(
 
                 stockRow.available -= consumedQty;
                 const saleBaseAmount = +(consumedQty * it.rate).toFixed(2);
-                const isLastSplit = groupIndex === sortedSerialGroups.length - 1;
+                const isLastSplit =
+                  groupIndex === sortedSerialGroups.length - 1;
                 const saleGstAmount = isLastSplit
                   ? Number((it.gstAmount - allocatedGstAmount).toFixed(2))
                   : calculateSaleGstAmount(saleBaseAmount, gstRate);
@@ -1102,6 +1168,7 @@ router.post(
             }
           }
 
+          /* PHASE J: জমা করা per-item adjustment একবারে মূল `items.quantity`-তে প্রয়োগ করে stock final করা। */
           for (const [itemId, deductedQty] of stockAdjustments.entries()) {
             await client.query(
               `
@@ -1113,6 +1180,7 @@ router.post(
             );
           }
 
+          /* PHASE K: টাকা বাকি থাকলে customer debt ledger-এ invoice opening entry লেখা হয়। */
           if (payment.amountDue > 0) {
             await client.query(
               `
@@ -1141,6 +1209,7 @@ router.post(
             );
           }
 
+          /* PHASE L: সব write সফল হলে commit, user cache invalidate এবং frontend-কে final invoice/payment summary পাঠানো। */
           await client.query("COMMIT");
           invalidateUserCache(userId);
           return res.json({
@@ -1151,6 +1220,7 @@ router.post(
             amount_due: payment.amountDue,
           });
         } catch (err) {
+          // Current attempt-এর আংশিক পরিবর্তন বাতিল করে retryable conflict retry করা হয়; validation error 400 এবং exhausted conflict 409 দেয়।
           await client.query("ROLLBACK");
 
           if (isRetryableInvoiceWriteError(err) && attempt < 3) {
@@ -1200,7 +1270,14 @@ router.post(
   },
 );
 
-//---------- invoice search dropdown -----------//
+/*
+ * =========================================================
+ * BLOCK 13: invoice search suggestion
+ * =========================================================
+ * Search box-এর text দিয়ে invoice number, customer name ও contact-এ case-insensitive match খোঁজে।
+ * Query-তে digit থাকলে Kolkata date-এর `YYYYMMDD` text-ও match করে; limit 1–20-এর মধ্যে রাখা হয়।
+ * সাম্প্রতিক invoice আগে ফেরে এবং অল্প সময় cache হওয়ায় dropdown-এর repeated typing query কমায়।
+ */
 router.get(
   "/invoices/suggestions",
   authMiddleware,
@@ -1270,6 +1347,13 @@ router.get(
   },
 );
 
+/*
+ * =========================================================
+ * BLOCK 14: সাম্প্রতিক invoice number list
+ * =========================================================
+ * বর্তমান user-এর সর্বশেষ ৫০টি invoice number date অনুযায়ী নামিয়ে শুধু string array হিসেবে পাঠায়।
+ * Invoice picker-এর lightweight data source হিসেবে response ১৫ সেকেন্ড cache হয়।
+ */
 router.get(
   "/invoices/numbers",
   authMiddleware,
@@ -1290,6 +1374,14 @@ router.get(
   },
 );
 
+/*
+ * =========================================================
+ * BLOCK 15: আগের invoice থেকে customer autocomplete
+ * =========================================================
+ * Typed name বা mobile fragment দিয়ে invoice history খুঁজে unique name/contact pair ফেরায়।
+ * একই customer বহু invoice-এ থাকলে `DISTINCT ON` ও descending date-এর কারণে সর্বশেষ address/date রাখা হয়।
+ * Empty query-তে সঙ্গে সঙ্গে empty list দেয় এবং সর্বোচ্চ ২০টি suggestion পাঠায়।
+ */
 router.get(
   "/invoices/customers",
   authMiddleware,
@@ -1356,7 +1448,14 @@ router.get(
   },
 );
 
-/* ---------------------- GET: All Invoices List ---------------------- */
+/*
+ * =========================================================
+ * BLOCK 16: paginated invoice list ও search
+ * =========================================================
+ * Invoice number, customer name, contact অথবা numeric date fragment দিয়ে current user-এর invoice filter করে।
+ * প্রথম query মোট matching row গোনে; দ্বিতীয় query item count ও payment summary-সহ requested page আনে।
+ * Response-এ total/limit/offset/page/has_more থাকে এবং short cache dashboard-এর repeated load কমায়।
+ */
 router.get(
   "/invoices",
   authMiddleware,
@@ -1447,7 +1546,14 @@ router.get(
   },
 );
 
-/* ---------------------- GET: Invoice Details ---------------------- */
+/*
+ * =========================================================
+ * BLOCK 17: একটি invoice-এর পূর্ণ detail
+ * =========================================================
+ * User ownership ও invoice number মিলিয়ে header-এর সঙ্গে সব invoice item JSON array হিসেবে aggregate করে।
+ * প্রতিটি item-এর সঙ্গে linked serial number, sale rate, status ও sold time nested array-এ যুক্ত হয়।
+ * Invoice না থাকলে 404; থাকলে debt ledger-এর collection history সময় অনুযায়ী `collections`-এ যোগ হয়।
+ */
 router.get(
   "/invoices/:invoiceNo",
   authMiddleware,
@@ -1514,6 +1620,14 @@ router.get(
   },
 );
 
+/*
+ * =========================================================
+ * BLOCK 18: বকেয়া invoice-এ পরবর্তী payment গ্রহণ
+ * =========================================================
+ * Invoice row lock করে current paid/due amount থেকে নতুন settlement snapshot হিসাব করে।
+ * Valid customer mobile-এর scoped lock একই customer-এর concurrent debt update serial রাখে।
+ * Invoice payment fields update ও positive collection ledger entry একই transaction-এ commit হয়; failure-এ rollback হয়।
+ */
 router.post(
   "/invoices/:invoiceNo/payment",
   authMiddleware,
@@ -1528,6 +1642,7 @@ router.post(
     try {
       await client.query("BEGIN");
 
+      // Invoice lock নেওয়ায় একই invoice-এ একসঙ্গে আসা payment পুরোনো due balance পড়ে overwrite করতে পারে না।
       const invoiceResult = await client.query(
         `
           SELECT
@@ -1567,6 +1682,7 @@ router.post(
         });
       }
 
+      // Customer debt ledger-এর অন্যান্য write-এর সঙ্গে একই normalized mobile key ব্যবহার করে serialization নিশ্চিত করা হয়।
       await lockScopedResource(
         client,
         userId,
@@ -1589,6 +1705,7 @@ router.post(
         });
       }
 
+      // Validated snapshot অনুযায়ী invoice-এর cumulative paid, remaining due, mode ও status একসঙ্গে বদলায়।
       await client.query(
         `
           UPDATE invoices
@@ -1608,6 +1725,7 @@ router.post(
         ],
       );
 
+      // `total = 0` এবং positive `credit` row payment receipt হিসেবে customer debt history-তে যোগ হয়।
       await client.query(
         `
           INSERT INTO debts (
@@ -1671,7 +1789,14 @@ router.post(
   },
 );
 
-//==================INVOICE PAGE FORMATING =========================
+/*
+ * =========================================================
+ * BLOCK 19: invoice PDF download ও page rendering
+ * =========================================================
+ * Sanitized invoice number ও current user id দিয়ে invoice/items/serial data, shop settings এবং payment collections load করে।
+ * Bank/UPI detail থাকলে payment panel ও local QR matrix তৈরি হয়; remote service ব্যবহার করা হয় না।
+ * PDFKit দিয়ে A4 header, customer info, multipage item table, payment/amount summary, account panel ও footer আঁকে।
+ */
 router.get(
   "/invoices/:invoiceNo/pdf",
 
@@ -1681,9 +1806,11 @@ router.get(
 
   async (req, res) => {
     const userId = getUserId(req);
+    // Quote/percent character বাদ দিয়ে route parameter query value হিসেবে ব্যবহার করা হয়; SQL value parameterized থাকে।
     const invoiceNo = req.params.invoiceNo.replace(/['"%]+/g, "").trim();
 
     try {
+      /* PDF PHASE A: invoice header-এর সঙ্গে item এবং প্রতিটি item-এর serial list এক query-তে JSON aggregate করে আনা। */
       const q = `
           SELECT i.id, i.invoice_no, i.customer_name, i.contact, i.address, i.gst_no,
                  i.date, i.subtotal, i.gst_amount, i.total_amount,
@@ -1726,6 +1853,7 @@ router.get(
 
       const inv = rows[0];
 
+      /* PDF PHASE B: seller/shop identity, bank account ও UPI configuration load করে printable rows তৈরি। */
       const shopRes = await pool.query(
         `SELECT
            shop_name,
@@ -1758,10 +1886,9 @@ router.get(
       const hasAccountDetails = accountRows.length > 0;
       const upiPaymentUri = buildUpiPaymentUri(
         accountDetails.upiId,
-        accountDetails.accountHolderName ||
-          shop.shop_name ||
-          "Invoice Payment",
+        accountDetails.accountHolderName || shop.shop_name || "Invoice Payment",
       );
+      /* PDF PHASE C: configured UPI id থাকলে URI encode করে QR matrix বানানো; QR failure হলেও invoice PDF তৈরি চলতে থাকে। */
       let upiQrMatrix = null;
 
       if (upiPaymentUri) {
@@ -1771,6 +1898,7 @@ router.get(
           console.warn("UPI QR generation skipped:", qrError.message);
         }
       }
+      /* PDF PHASE D: invoice-এর payment/debt ledger rows আনা, যাতে payment summary ও শেষ collection time দেখানো যায়। */
       const settlementRes = await pool.query(
         `SELECT total, credit, created_at
          FROM debts
@@ -1780,6 +1908,7 @@ router.get(
       );
       const settlements = settlementRes.rows;
 
+      /* PDF PHASE E: A4 PDF document, buffered pages এবং download/no-cache response headers প্রস্তুত করা। */
       const doc = new PDFDocument({
         size: "A4",
         margin: 28,
@@ -1801,7 +1930,10 @@ router.get(
 
       doc.pipe(res);
 
-      /* ================= PAGE HELPERS ================= */
+      /*
+       * PDF PHASE F: reusable layout constants ও helper functions।
+       * এগুলো money/status format, QR drawing, account panel, header, customer info, table header ও page break পরিচালনা করে।
+       */
       const pageHeight = doc.page.height;
       const leftX = 28;
       const contentWidth = 539;
@@ -1968,9 +2100,14 @@ router.get(
           .font("Helvetica")
           .fontSize(7.8)
           .text(shop.shop_address || "", leftX + 12, 57, { width: 330 })
-          .text(`GSTIN: ${shop.gst_no || inv.gst_no || "N/A"}`, leftX + 12, 69, {
-            width: 270,
-          });
+          .text(
+            `GSTIN: ${shop.gst_no || inv.gst_no || "N/A"}`,
+            leftX + 12,
+            69,
+            {
+              width: 270,
+            },
+          );
 
         doc.font("Helvetica-Bold").fontSize(13).text("TAX INVOICE", 425, 45, {
           width: 128,
@@ -2093,12 +2230,11 @@ router.get(
       drawHeader();
       let y = drawTableHeader(drawInvoiceInfo(96));
 
-      /* ================= TABLE ROWS ================= */
+      /* PDF PHASE G: product name, optional serial list, quantity, rate ও amount প্রতিটি table row-তে আঁকা। */
       (Array.isArray(inv.items) ? inv.items : []).forEach((item, index) => {
         const itemName = String(item.description || "-");
-        const serialText = (Array.isArray(item.serial_numbers)
-          ? item.serial_numbers
-          : []
+        const serialText = (
+          Array.isArray(item.serial_numbers) ? item.serial_numbers : []
         )
           .map((serial) => normalizeSerialNumber(serial.serial_no))
           .filter(Boolean)
@@ -2109,7 +2245,10 @@ router.get(
         const serialHeight = serialText
           ? doc.heightOfString(`SN: ${serialText}`, { width: 270 })
           : 0;
-        const rowHeight = Math.max(13, itemHeight + serialHeight + (serialText ? 2 : 0));
+        const rowHeight = Math.max(
+          13,
+          itemHeight + serialHeight + (serialText ? 2 : 0),
+        );
 
         y = ensureTableSpace(y, rowHeight + 5);
 
@@ -2122,7 +2261,9 @@ router.get(
             .font("Helvetica")
             .fontSize(7.1)
             .fillColor(colors.muted)
-            .text(`SN: ${serialText}`, leftX + 24, y + itemHeight + 1, { width: 270 });
+            .text(`SN: ${serialText}`, leftX + 24, y + itemHeight + 1, {
+              width: 270,
+            });
         }
         doc.font("Helvetica").fontSize(8.4).fillColor(colors.ink);
         doc.text(String(item.quantity ?? "-"), 326, y, {
@@ -2141,7 +2282,7 @@ router.get(
         y += rowHeight + 4;
       });
 
-      /* ================= TOTALS / PAYMENT DETAILS ================= */
+      /* PDF PHASE H: payment status/mode/paid/due এবং subtotal/GST/total পাশাপাশি summary panel-এ আঁকা। */
       const summaryHeight = 90;
       const accountPanelHeight = hasAccountDetails ? 96 : 0;
       const accountFooterReserve = hasAccountDetails
@@ -2257,7 +2398,7 @@ router.get(
         align: "right",
       });
 
-      /* ================= FOOTER AND PAGE NUMBER ================= */
+      /* PDF PHASE I: buffered প্রতিটি page-এ footer/page number, আর শেষ page-এ bank/UPI payment panel বসানো। */
       const accountPanelY = hasAccountDetails
         ? Math.max(y + summaryHeight + 12, pageHeight - 184)
         : null;
@@ -2288,6 +2429,7 @@ router.get(
         });
       }
 
+      // Document stream শেষ করলে PDFKit সম্পূর্ণ bytes response-এ flush করে download সম্পন্ন করে।
       doc.end();
     } catch (err) {
       console.error("❌ PDF error:", err);
@@ -2298,7 +2440,14 @@ router.get(
   },
 );
 
-/* ---------------------- SHOP INFO save ---------------------- */
+/*
+ * =========================================================
+ * BLOCK 20: invoice-এ ব্যবহৃত shop ও payment settings save
+ * =========================================================
+ * শুধু owner shop identity, GST rate, bank account এবং UPI id update করতে পারে।
+ * GST rate 0–100 range-এ validate হয়; text trim এবং IFSC uppercase করে per-user settings upsert করা হয়।
+ * Save সফল হলে user cache invalidate হয়, যাতে পরের invoice/PDF নতুন settings পায়।
+ */
 router.post("/shop-info", authMiddleware, requireOwner, async (req, res) => {
   try {
     const {
@@ -2386,6 +2535,13 @@ router.post("/shop-info", authMiddleware, requireOwner, async (req, res) => {
   }
 });
 
+/*
+ * =========================================================
+ * BLOCK 21: invoice form-এর shop settings load
+ * =========================================================
+ * `sale_invoice` permission থাকা user-এর settings row থেকে shop, GST, bank ও UPI field ফেরায়।
+ * এখনও settings তৈরি না হলে empty object পাঠায়, ফলে frontend default বা blank form দেখাতে পারে।
+ */
 router.get(
   "/shop-info",
   authMiddleware,
@@ -2418,4 +2574,10 @@ router.get(
   },
 );
 
+/*
+ * =========================================================
+ * BLOCK 22: router export
+ * =========================================================
+ * প্রস্তুত Express router-টি main application-এ mount করার জন্য CommonJS module হিসেবে প্রকাশ করা হয়।
+ */
 module.exports = router;

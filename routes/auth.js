@@ -1,3 +1,17 @@
+/**
+ * =========================================================
+ * FILE: routes/auth.js
+ * PURPOSE: OWNER, STAFF, GOOGLE OAUTH ও ACCOUNT AUTH ROUTES
+ * =========================================================
+ * এই Express router owner registration/login, staff access, Google OAuth web/Android return flow,
+ * session cookies, password reset, staff management এবং account profile endpoints পরিচালনা করে।
+ * Route handlers input normalize/validate করে, PostgreSQL queries চালায় এবং token-security helpers দিয়ে
+ * purpose-bound signed tokens তৈরি/verify করে। নিচের comments flow ব্যাখ্যা করে; runtime logic অপরিবর্তিত।
+ */
+
+// ==================== BLOCK 01: DEPENDENCIES ও SHARED SECURITY CONTRACTS ====================
+// Express routing, bcrypt password hashing, cryptographic random/hash operations, rate limiting ও database pool load করে।
+// Permission contract staff access normalize করে; auth middleware owner/session guard দেয়; token helpers আলাদা token purpose enforce করে।
 const express = require("express");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
@@ -24,6 +38,9 @@ const {
 
 const router = express.Router();
 
+// ==================== BLOCK 02: AUTHENTICATION CONSTANTS ও IN-MEMORY ANDROID RETURN STORE ====================
+// Session/reset/OAuth expiry windows, cookie names, Google endpoints, Android deep-link identity এবং validation limits এক জায়গায় রাখে।
+// PUBLIC_BASE_URL environment থেকে canonical origin নেয়; Map অল্প সময়ের Android callback result replay/return state ধরে।
 const SESSION_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
 const RESET_TOKEN_BYTES = 32;
 const GOOGLE_OAUTH_STATE_COOKIE = "google_oauth_state";
@@ -44,10 +61,14 @@ const PUBLIC_BASE_URL = normalizeBaseUrl(process.env.BASE_URL);
 const androidGoogleCallbackResults = new Map();
 
 if (!process.env.JWT_SECRET) {
+  // Signed session/OAuth/reset-related tokens JWT secret ছাড়া নিরাপদ নয়; তাই misconfigured process startup-এই বন্ধ হয়।
   console.error("JWT_SECRET not found in environment variables.");
   process.exit(1);
 }
 
+// ==================== BLOCK 03: BRUTE-FORCE ও RESET ABUSE RATE LIMITS ====================
+// Login limiter 15 মিনিটে failed attempts সীমিত করে এবং successful request count থেকে বাদ দেয়। Password-reset limiter
+// একই window-তে আরও কম request অনুমোদন করে, যাতে account enumeration/mail flooding/token abuse কমে।
 const loginAttemptLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -70,6 +91,9 @@ const passwordResetLimiter = rateLimit({
   },
 });
 
+// ==================== BLOCK 04: BASE URL, COOKIE ও SENSITIVE RESPONSE HELPERS ====================
+// Configured BASE_URL validate/normalize করে; development-এ request host fallback হলেও production-এ missing base URL reject হয়।
+// Cookie helpers HTTP-only, SameSite, production Secure ও root path policy reuse করে; sensitive response browser caching বন্ধ করে।
 function normalizeBaseUrl(value) {
   const rawValue = String(value || "").trim();
   if (!rawValue) {
@@ -119,6 +143,8 @@ function clearGoogleOnboardingCookie(res) {
   res.clearCookie(GOOGLE_ONBOARDING_COOKIE, getSessionCookieOptions());
 }
 
+// Raw reset token email link-এ যায়, কিন্তু database-এ SHA-256 hash রাখা হয়। Database leak হলেও stored value দিয়ে সরাসরি
+// reset request করা যায় না; submitted token একইভাবে hash করে constant equality query-তে match করা হয়।
 function hashResetToken(token) {
   return crypto
     .createHash("sha256")
@@ -130,6 +156,9 @@ function markSensitiveResponse(res) {
   res.set("Cache-Control", "no-store");
 }
 
+// ==================== BLOCK 05: USER INPUT NORMALIZATION ও BASIC VALIDATION ====================
+// Name whitespace collapse, email lowercase, Indian mobile prefix/leading zero cleanup এবং username lowercase/no-space করে।
+// Route-specific handlers length/presence/password rules পরে যাচাই করে; normalization database uniqueness checks consistent রাখে।
 function normalizeName(value) {
   return String(value || "")
     .replace(/\s+/g, " ")
@@ -179,6 +208,9 @@ function normalizeGoogleOAuthClient(value) {
     : "web";
 }
 
+// ==================== BLOCK 06: PURPOSE-BOUND GOOGLE OAUTH ও ANDROID TRANSFER TOKENS ====================
+// OAuth state random nonceসহ web/android client type sign করে CSRF/return context বহন করে। Android transfer token callback result
+// native deep link-এ নিরাপদে পাঠায়; Google onboarding token verified profile অল্প সময়ের জন্য profile-completion form-এ দেয়।
 function signGoogleOAuthState(client) {
   return signToken(
     {
@@ -195,7 +227,8 @@ function readGoogleOAuthState(state) {
   try {
     const decoded = verifyToken(state, TOKEN_PURPOSES.GOOGLE_OAUTH_STATE, {
       allowLegacy: true,
-      validateLegacy: (legacy) => legacy.type === "google_oauth_state" && Boolean(legacy.nonce),
+      validateLegacy: (legacy) =>
+        legacy.type === "google_oauth_state" && Boolean(legacy.nonce),
     });
     if (decoded.type !== "google_oauth_state" || !decoded.nonce) {
       return null;
@@ -209,6 +242,8 @@ function readGoogleOAuthState(state) {
   }
 }
 
+// Expired callback entries Map থেকে সরায়। Android browser/native return একই OAuth state পুনরায় জিজ্ঞেস করলে short-lived result
+// পাওয়া যায়, কিন্তু configured five-minute window শেষ হলে stale transfer token memory-তে থাকে না।
 function pruneAndroidGoogleCallbackResults() {
   const now = Date.now();
   for (const [state, result] of androidGoogleCallbackResults.entries()) {
@@ -296,6 +331,9 @@ function verifyGoogleOnboardingToken(token) {
   };
 }
 
+// ==================== BLOCK 07: SESSION COOKIE ও GOOGLE/ANDROID REDIRECT BUILDERS ====================
+// Signed session token তিন দিনের HTTP-only cookie-তে বসায়/সরায়। Google config environment credentials ও callback URL resolve করে;
+// URL builders web login return, custom deep link, HTTPS fallback এবং Android intent link safely construct করে।
 function setSessionCookie(res, token) {
   res.cookie("token", token, {
     ...getSessionCookieOptions(),
@@ -354,6 +392,8 @@ function buildAndroidGoogleOpenUrl(req, transferToken) {
   return url.toString();
 }
 
+// Android fallback page server-generated HTML/inline script ব্যবহার করে। escapeHtml markup injection আটকায় এবং scriptJson
+// serialized values-এর `<`, U+2028 ও U+2029 escape করে inline-script context break হওয়া প্রতিরোধ করে।
 function escapeHtml(value) {
   return String(value || "").replace(/[&<>"']/g, (character) => {
     switch (character) {
@@ -482,6 +522,9 @@ function renderAndroidGoogleOpenPage(req, res, transferToken) {
 </html>`);
 }
 
+// ==================== BLOCK 08: GOOGLE TOKEN EXCHANGE ও VERIFIED PROFILE FETCH ====================
+// Authorization code Google token endpoint-এ exchange করে access token নেয়। UserInfo endpoint থেকে sub/email/name/picture নেয়,
+// verified email ও required identifiers নিশ্চিত করে; provider/network/non-2xx failure normalized Error হিসেবে caller পায়।
 async function exchangeGoogleCodeForTokens(code, config) {
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: "POST",
@@ -556,6 +599,9 @@ async function fetchGoogleUserProfile(accessToken) {
   };
 }
 
+// ==================== BLOCK 09: OWNER/STAFF SESSION SHAPES ও CLIENT-SAFE USER ====================
+// Database row থেকে minimal signed owner/staff session payload বানায়। Staff permissions canonical contract দিয়ে normalize হয়।
+// toClientUser password hash/token বাদ দিয়ে frontend-এর প্রয়োজনীয় identity, role, owner এবং permission fields return করে।
 function normalizeSessionRole(value) {
   return String(value || "")
     .trim()
@@ -614,6 +660,9 @@ function toClientUser(session) {
   };
 }
 
+// ==================== BLOCK 10: ACCOUNT LOOKUP ও GOOGLE OWNER PROVISIONING ====================
+// Owner email/mobile এবং staff username lookup helpers authentication-এর প্রয়োজনীয় hash/status fields আনে। Google lookup sub/email
+// দিয়ে existing owner খোঁজে; link helper profile identity update করে; create helper transaction-এ user ও default shop profile তৈরি করে।
 async function getOwnersByIdentifier(identifier) {
   const rawIdentifier = String(identifier || "").trim();
   const email = normalizeEmail(rawIdentifier);
@@ -771,6 +820,9 @@ async function createOwnerFromGoogleProfile(profile, shopName, mobileNumber) {
   }
 }
 
+// ==================== BLOCK 11: GOOGLE OAUTH START (WEB ও ANDROID) ====================
+// Rate-limited endpoint Google credentials/config যাচাই করে, requested client web/android normalize করে এবং signed state token বানায়।
+// State HTTP-only temporary cookie-তেও রেখে Google consent URL-এ redirect করে; scope openid/email/profile পর্যন্ত সীমিত।
 router.get("/google/start", loginAttemptLimiter, async (req, res) => {
   try {
     const config = getGoogleOAuthConfig(req);
@@ -816,6 +868,10 @@ router.get("/google/start", loginAttemptLimiter, async (req, res) => {
   }
 });
 
+// ==================== BLOCK 12: GOOGLE OAUTH CALLBACK ও EXISTING/NEW OWNER BRANCH ====================
+// Provider error, code/state presence এবং signed/cookie state match যাচাই করে authorization code exchange ও verified profile fetch করে।
+// Existing owner হলে Google identity link করে session দেয়; নতুন user হলে short-lived onboarding token দেয়। Android client-এ একই
+// ফল session/profile transfer token হিসেবে deep link bridge-এ যায়; web client login page বা authenticated app-এ redirect হয়।
 router.get("/google/callback", async (req, res) => {
   try {
     markSensitiveResponse(res);
@@ -930,6 +986,9 @@ router.get("/google/callback", async (req, res) => {
   }
 });
 
+// ==================== BLOCK 13: ANDROID GOOGLE RETURN BRIDGE ====================
+// android-open fallback page custom scheme/intent দিয়ে native wrapper খোলার চেষ্টা করে। android-transfer signed transfer token
+// verify করে session cookie অথবা onboarding cookie বসায় এবং web login page-কে next step জানায়। Token invalid হলে safe error response দেয়।
 router.get("/google/android-open", async (req, res) => {
   const transferToken = String(req.query.transfer || "").trim();
   if (!transferToken) {
@@ -989,6 +1048,10 @@ router.get("/google/android-transfer", async (req, res) => {
   }
 });
 
+// ==================== BLOCK 14: GOOGLE PROFILE COMPLETION ====================
+// GET temporary onboarding cookie verify করে frontend-কে pending Google email/name profile দেয় এবং response no-store রাখে।
+// POST shop name/mobile validate ও uniqueness check করে transaction helper-এ owner/shop তৈরি করে, onboarding cookie clear করে,
+// তারপর normal owner session cookie ও client-safe user return করে।
 router.get("/google/onboarding", async (req, res) => {
   try {
     markSensitiveResponse(res);
@@ -1127,6 +1190,10 @@ router.post(
   },
 );
 
+// ==================== BLOCK 15: OWNER REGISTRATION, LOGIN ও STAFF LOGIN ====================
+// Registration normalized name/email/mobile ও password policy যাচাই করে duplicates reject করে এবং bcrypt hashসহ owner তৈরি করে।
+// Owner login email/mobile দিয়ে account খুঁজে bcrypt compare করে; staff login normalized username, active status ও hash যাচাই করে।
+// Successful login role-specific session sign করে HTTP-only cookie-তে বসায় এবং frontend-কে safe user object দেয়।
 router.post("/register", async (req, res) => {
   try {
     const name = normalizeName(req.body.name);
@@ -1279,12 +1346,18 @@ router.post("/staff/login", loginAttemptLimiter, async (req, res) => {
   }
 });
 
+// Logout server-side cookie options-এর একই path/security policy দিয়ে token cookie clear করে; client success response পায়।
 router.post("/logout", (req, res) => {
   markSensitiveResponse(res);
   clearSessionCookie(res);
   return res.json({ message: "Logged out successfully" });
 });
 
+// ==================== BLOCK 16: PASSWORD RECOVERY ও OWNER PASSWORD SETUP ====================
+// Forgot route rate-limited এবং unknown email-এর জন্যও generic response দেয়, যাতে account enumeration কমে। Existing email হলে random
+// token-এর hash/expiry database-এ রাখে এবং raw token hash-fragment reset link-এ mail relay দিয়ে পাঠায়। Authenticated owner setup route
+// password না থাকা account-এর জন্য একই short-lived reset link তৈরি করে। Reset route submitted token hash/expiry যাচাই করে bcrypt hash
+// update করে এবং ব্যবহৃত reset token fields atomically clear করে।
 router.post("/forgot-password", passwordResetLimiter, async (req, res) => {
   try {
     const email = normalizeEmail(req.body.email);
@@ -1416,7 +1489,8 @@ router.post(
       }
 
       return res.json({
-        message: "A password setup link has been sent to your registered email.",
+        message:
+          "A password setup link has been sent to your registered email.",
       });
     } catch (error) {
       console.error("Account password setup error:", error.message);
@@ -1480,6 +1554,10 @@ router.post("/reset-password", passwordResetLimiter, async (req, res) => {
   }
 });
 
+// ==================== BLOCK 17: OWNER-CONTROLLED STAFF MANAGEMENT ====================
+// সব staff-management routes আগে valid session ও owner role enforce করে। GET current owner-এর staff list/client-safe permissions দেয়;
+// POST plan limit, username uniqueness, password ও permission contract validate করে staff তৈরি করে। PATCH permission set update করে এবং
+// DELETE owner-scoped staff row সরায়। Update/delete-এর পরে staff session cache invalidate হয় যাতে access change দ্রুত কার্যকর হয়।
 router.get("/staff", authMiddleware, requireOwner, async (req, res) => {
   try {
     const ownerId = getUserId(req);
@@ -1683,6 +1761,10 @@ router.delete(
   },
 );
 
+// ==================== BLOCK 18: ACCOUNT READ ও OWNER PROFILE UPDATE ====================
+// GET role অনুযায়ী owner account অথবা staff identity/owner context return করে। PATCH owner-only transaction-এ name/email/mobile/shop
+// changes validate করে; sensitive identity change হলে current password verify করে; uniqueness checks শেষে user/shop update commit করে।
+// Successful update নতুন owner session sign করে cookie refresh করে, যাতে token claims updated profile-এর সঙ্গে sync থাকে।
 router.get("/account", authMiddleware, async (req, res) => {
   try {
     markSensitiveResponse(res);
@@ -1829,7 +1911,8 @@ router.patch("/account", authMiddleware, requireOwner, async (req, res) => {
     if (!currentAccount.password_set) {
       await client.query("ROLLBACK");
       return res.status(428).json({
-        error: "Set a password from your registered email before saving account changes.",
+        error:
+          "Set a password from your registered email before saving account changes.",
         requires_password_setup: true,
       });
     }
@@ -1900,7 +1983,9 @@ router.patch("/account", authMiddleware, requireOwner, async (req, res) => {
     }
 
     if (error.code === "23505") {
-      return res.status(400).json({ error: "This email is already registered" });
+      return res
+        .status(400)
+        .json({ error: "This email is already registered" });
     }
 
     console.error("Account profile update error:", error.message);
@@ -1910,6 +1995,9 @@ router.patch("/account", authMiddleware, requireOwner, async (req, res) => {
   }
 });
 
+// ==================== BLOCK 19: CURRENT SESSION REFRESH ও ROUTER EXPORT ====================
+// /me middleware-verified session থেকে owner id নেয়, current owner record আবার database থেকে পড়ে এবং client-safe user return করে।
+// Missing/deleted owner হলে stale session 401 পায়। শেষে CommonJS export এই configured router app-এর /api/auth mount-এ ব্যবহারযোগ্য করে।
 router.get("/me", authMiddleware, async (req, res) => {
   try {
     markSensitiveResponse(res);

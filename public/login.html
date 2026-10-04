@@ -1,4 +1,8 @@
-<!-- login page -->
+<!--
+  FILE OVERVIEW: এই page public landing experience এবং authentication gateway—দুই কাজ করে।
+  User feature showcase দেখতে পারে, তারপর owner/staff login, registration, password reset অথবা Google sign-in চালাতে পারে।
+  নিচের comments CSS presentation, HTML form structure এবং JavaScript authentication flow block ধরে ব্যাখ্যা করে।
+-->
 <!doctype html>
 <html lang="en" data-csp-nonce="__CSP_NONCE__">
   <head>
@@ -16,6 +20,8 @@
     />
     <link rel="manifest" href="/site.webmanifest" />
     <script nonce="__CSP_NONCE__">
+      // RESOURCE LOADER BLOCK: CSP nonce-সহ Font Awesome, Manrope ও Sora stylesheet runtime-এ head-এ যোগ করে।
+      // JavaScript বন্ধ থাকলে নিচের noscript links একই resources-এর fallback হিসেবে কাজ করে।
       [
         "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css",
         "https://cdn.jsdelivr.net/npm/@fontsource/manrope@5.0.17/index.min.css",
@@ -42,6 +48,9 @@
       />
     </noscript>
     <style nonce="__CSP_NONCE__">
+      /* ==================== CSS BLOCK 01: DESIGN TOKENS ও GLOBAL FOUNDATION ====================
+         Shared colors, surfaces, shadows, radius ও maximum width variables রাখে। Global reset, typography,
+         responsive page background, hidden state এবং screen-reader-only text-এর base behavior নির্ধারণ করে। */
       :root {
         --navy: #122744;
         --navy-soft: #1d487a;
@@ -123,6 +132,9 @@
         max-width: 100%;
         height: auto;
       }
+      /* ==================== CSS BLOCK 02: PAGE WIDTH ও SHARED GLASS SURFACES ====================
+         Landing content viewport-এর মধ্যে center করে এবং topbar, footer, auth modal ও popup-এ একই
+         translucent surface/border/shadow language প্রয়োগ করে। */
       .login-page {
         width: min(calc(100% - 28px), var(--max-width));
         margin: 14px auto 110px;
@@ -138,6 +150,9 @@
         box-shadow: var(--shadow-lg);
         backdrop-filter: blur(18px);
       }
+      /* ==================== CSS BLOCK 03: BRAND HEADER ও FOOTER LINKS ====================
+         Logo, app name ও supporting copy topbar-এ সাজায়। Footer links keyboard focus/hover stateসহ
+         privacy, terms, support এবং copyright navigation উপস্থাপন করে। */
       .topbar {
         position: static;
         top: 12px;
@@ -262,6 +277,9 @@
         text-align: center;
         white-space: nowrap;
       }
+      /* ==================== CSS BLOCK 04: QUICK AUTHENTICATION ACTIONS ====================
+         Login, registration, Google sign-in এবং app installation actions responsive button grid-এ রাখে।
+         Primary/install variants action priority বোঝাতে আলাদা gradient ও hover feedback পায়। */
       .dock {
         position: fixed;
         right: 16px;
@@ -319,6 +337,9 @@
       .dock-btn.install i {
         color: #ffffff;
       }
+      /* ==================== CSS BLOCK 05: MODAL OVERLAY ও DIALOG SHELL ====================
+         Authentication, result popup এবং footer-information dialog full-screen overlay-তে রাখে। open/active
+         state visibility চালায় এবং modal-open body scrolling বন্ধ রাখে। */
       .auth-overlay,
       .popup-overlay,
       .footer-popup-overlay {
@@ -375,6 +396,9 @@
         outline: 3px solid rgba(22, 151, 208, 0.18);
         outline-offset: 3px;
       }
+      /* ==================== CSS BLOCK 06: AUTH MODAL HEADER ও GOOGLE PROFILE ====================
+         Modal title/lead, close control এবং Google account email/profile-completion header সাজায়।
+         Shared auth-panel-এর ভেতরে mode switch ও সক্রিয় form render হয়। */
       .auth-head {
         padding-right: 54px;
         margin-bottom: 18px;
@@ -417,6 +441,9 @@
       .google-profile-email i {
         color: var(--sky);
       }
+      /* ==================== CSS BLOCK 07: OWNER / STAFF LOGIN MODE SWITCH ====================
+         Tab-style buttons owner এবং staff form বেছে নেয়; active button ও explanatory note বর্তমান
+         authentication route user-কে স্পষ্ট করে। */
       .mode-wrap {
         margin-bottom: 16px;
       }
@@ -455,6 +482,9 @@
         font-size: 12px;
         line-height: 1.7;
       }
+      /* ==================== CSS BLOCK 08: AUTH FORM VISIBILITY ও STATUS ====================
+         Login/register/forgot forms default-এ লুকানো থাকে এবং active form দেখানো হয়। Form heading এবং
+         info/success/error status boxes validation ও server response user-এর কাছে তুলে ধরে। */
       .form {
         display: none;
       }
@@ -503,6 +533,9 @@
         border-color: rgba(220, 38, 38, 0.14);
         color: #b91c1c;
       }
+      /* ==================== CSS BLOCK 09: INPUT, VALIDATION ও PASSWORD CONTROL ====================
+         Label/icon/input shell, focus ring, valid-invalid border, field hint এবং password visibility button
+         সাজায়। JavaScript field classes বদলে একই rules দিয়ে live validation feedback দেখায়। */
       .field {
         margin-bottom: 14px;
       }
@@ -598,6 +631,9 @@
         color: var(--sky);
         transform: translateY(-50%) scale(1.1);
       }
+      /* ==================== CSS BLOCK 10: SUBMIT ও SECONDARY FORM ACTIONS ====================
+         সব authentication submit button-এর gradient, hover/focus এবং disabled pending state নির্ধারণ করে।
+         Small links login/register/forgot form-এর মধ্যে দ্রুত navigation দেয়। */
       .form-submit {
         width: 100%;
         margin-top: 6px;
@@ -679,6 +715,9 @@
         background: rgba(254, 226, 226, 0.98);
         box-shadow: 0 14px 28px rgba(153, 27, 27, 0.12);
       }
+      /* ==================== CSS BLOCK 11: SUCCESS, ERROR ও INFORMATION POPUPS ====================
+         Request result icon/message, dismiss control এবং privacy/terms/help content cards style করে।
+         Success ও error tone আলাদা রেখে accessible focus state বজায় রাখে। */
       .popup-box,
       .footer-popup {
         padding: 26px;
@@ -810,6 +849,9 @@
         margin: 8px auto 24px;
       }
 
+      /* ==================== CSS BLOCK 12: LANDING SHOWCASE SHELL ====================
+         Marketing landing area-তে decorative background, topbar, feature slider, access card এবং footer
+         একই bounded surface-এর মধ্যে রাখে। Pseudo-element শুধু visual atmosphere যোগ করে। */
       .showcase-shell {
         position: relative;
         display: grid;
@@ -884,6 +926,9 @@
         height: 10px;
       }
 
+      /* ==================== CSS BLOCK 13: FEATURE CAROUSEL ====================
+         Product screenshots horizontal track-এ রাখে। JavaScript transform বদলে slide সরায়; viewport overflow,
+         image sizing এবং transition smooth visual carousel তৈরি করে। */
       .feature-slider-card {
         padding: clamp(16px, 2.5vw, 26px);
         overflow: hidden;
@@ -979,6 +1024,9 @@
         border-radius: 22px;
       }
 
+      /* ==================== CSS BLOCK 14: ACCESS CARD ও INLINE AUTH CONTAINER ====================
+         Public call-to-action card এবং authMount-এ সরিয়ে আনা authentication modal পাশাপাশি/stacked layout-এ রাখে।
+         Inline shell open হলে form page-এর অংশের মতো দেখা যায়, overlay modal-এর মতো নয়। */
       .access-panel-section {
         padding: 0;
         overflow: hidden;
@@ -1145,6 +1193,9 @@
         border-radius: 26px;
       }
 
+      /* ==================== CSS BLOCK 15: RESPONSIVE OVERRIDES ====================
+         Laptop, tablet ও mobile widths-এ showcase columns, action buttons, modal size, feature media ও spacing
+         ধাপে ধাপে compact করে। ছোট screen-এ forms readable রেখে horizontal overflow আটকায়। */
       @media (max-width: 1180px) {
         .slider-head h1 {
           font-size: 28px;
@@ -1480,8 +1531,13 @@
     </style>
   </head>
   <body>
+    <!-- ==================== HTML BLOCK 01: PUBLIC LOGIN LANDING SHELL ====================
+         login-page পুরো public experience ধরে। showcase-shell brand, feature preview ও account access card রাখে;
+         footer legal/support links দেয়। Authentication সফল না হওয়া পর্যন্ত dashboard content এখানে থাকে না। -->
     <div class="login-page">
       <div class="showcase-shell">
+        <!-- ==================== HTML BLOCK 02: BRAND HEADER ====================
+             App logo ও product name দেখায় এবং overview anchor-এ ফিরে যাওয়ার accessible home link হিসেবে কাজ করে। -->
         <header class="topbar">
           <a
             class="brand"
@@ -1504,6 +1560,9 @@
         <div class="header-card-gap" aria-hidden="true"></div>
 
         <main class="landing-main">
+          <!-- ==================== HTML BLOCK 03: FEATURE SHOWCASE CAROUSEL ====================
+               Server/build process LOGIN_BANNER_SLIDES marker-এ slides বসায়। JavaScript track translate করে,
+               autoplay, hover/focus pause, keyboard arrow এবং touch swipe interaction পরিচালনা করে। -->
           <section class="feature-slider-card" id="overview">
             <div class="slider-head">
               <span class="slider-kicker">
@@ -1530,6 +1589,9 @@
             </div>
           </section>
 
+          <!-- ==================== HTML BLOCK 04: QUICK ACCOUNT ACCESS ====================
+               Owner login, Google OAuth, registration, staff login, Play Store install ও password reset-এর entry
+               actions এখানে থাকে। authMount-এর মধ্যে authentication modal runtime-এ এনে inline form দেখানো হয়। -->
           <section
             class="access-panel-section"
             id="access"
@@ -1607,6 +1669,9 @@
         </main>
       </div>
 
+      <!-- ==================== HTML BLOCK 05: FOOTER INFORMATION ও LEGAL LINKS ====================
+           About/contact/privacy summary buttons local information popup খোলে; full privacy policy ও account deletion
+           আলাদা pages-এ যায়। currentYear JavaScript দিয়ে বর্তমান বছর নেয়। -->
       <footer class="site-footer">
         <div class="footer-links">
           <button type="button" class="footer-link" data-type="about">
@@ -1629,6 +1694,9 @@
       </footer>
     </div>
 
+    <!-- ==================== HTML BLOCK 06: OWNER/STAFF AUTHENTICATION DIALOG ====================
+         একটি shared dialog-এর মধ্যে mode switch এবং চারটি form থাকে। switchForm শুধু প্রয়োজনীয় login,
+         staffLogin, register বা forgot form active করে; aria attributes screen-reader dialog context দেয়। -->
     <div
       id="authModal"
       class="auth-overlay"
@@ -1678,6 +1746,9 @@
             </p>
           </div>
 
+          <!-- OWNER LOGIN FORM:
+               Registered email অথবা 10-digit mobile ও password নেয়। Client validation pass হলে /api/auth/login
+               request পাঠে; success session cookie তৈরি হওয়ার পরে dashboard-এ redirect হয়। -->
           <form class="form active" id="login" novalidate>
             <div class="form-title">
               <strong>Owner login</strong>
@@ -1756,6 +1827,9 @@
             </div>
           </form>
 
+          <!-- STAFF LOGIN FORM:
+               Owner-created username/password নেয় এবং /api/auth/staff/login ব্যবহার করে। Successful staff session
+               dashboard-এ ঢোকে, যেখানে granted permissions অনুযায়ী sections সীমিত থাকে। -->
           <form class="form" id="staffLogin" novalidate>
             <div class="form-title">
               <strong>Staff login</strong>
@@ -1830,6 +1904,9 @@
             </div>
           </form>
 
+          <!-- OWNER REGISTRATION FORM:
+               Shop name, email, mobile, password ও confirmation সংগ্রহ করে। Client-side uniqueness নয়, format এবং
+               password rules যাচাই করে; server /register endpoint final account validation ও creation করে। -->
           <form class="form" id="register" novalidate>
             <div class="form-title">
               <strong>Create account</strong>
@@ -1992,6 +2069,9 @@
             </div>
           </form>
 
+          <!-- PASSWORD RESET FORM:
+               Registered email validate করে /forgot-password endpoint-এ পাঠায়। Server reset link workflow শুরু করে;
+               response status user-কে দেখানো হয়, কিন্তু password এই page-এ সরাসরি পরিবর্তন হয় না। -->
           <form class="form" id="forgot" novalidate>
             <div class="form-title">
               <strong>Reset password</strong>
@@ -2041,6 +2121,9 @@
       </div>
     </div>
 
+    <!-- ==================== HTML BLOCK 07: GOOGLE OWNER ONBOARDING ====================
+         Google OAuth user-এর shop profile অসম্পূর্ণ হলে selected email দেখিয়ে shop name ও mobile নেয়। Submit
+         /google/complete-profile endpoint-এ data পাঠিয়ে owner setup সম্পন্ন করে। -->
     <div
       id="googleProfileOverlay"
       class="auth-overlay google-profile-overlay"
@@ -2136,6 +2219,9 @@
       </div>
     </div>
 
+    <!-- ==================== HTML BLOCK 08: FOOTER INFORMATION POPUP ====================
+         About, contact ও privacy-summary content JavaScript template থেকে popupContent-এ বসে। Overlay click,
+         close button অথবা Escape dialog বন্ধ করে এবং focus trigger button-এ ফেরে। -->
     <div
       id="footerPopupOverlay"
       class="footer-popup-overlay"
@@ -2149,6 +2235,9 @@
       </div>
     </div>
 
+    <!-- ==================== HTML BLOCK 09: AUTHENTICATION RESULT FEEDBACK ====================
+         Success overlay request completion/redirect message দেখায়; error overlay server বা validation failure দেখায়
+         এবং dismiss button দেয়। aria-hidden state JavaScript showPopup/hidePopup update করে। -->
     <div id="successScreen" class="popup-overlay" aria-hidden="true">
       <div class="popup-box success" role="dialog" aria-modal="true">
         <i class="fa-solid fa-circle-check"></i>
@@ -2164,7 +2253,9 @@
           class="popup-dismiss-icon"
           type="button"
           aria-label="Dismiss error popup"
-        ><i class="fa-solid fa-circle-xmark"></i></button>
+        >
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
         <h3>Error</h3>
         <p id="errorText">Something went wrong.</p>
       </div>
@@ -2172,6 +2263,9 @@
 
     <script nonce="__CSP_NONCE__">
       document.addEventListener("DOMContentLoaded", async () => {
+        // ==================== JS BLOCK 01: PAGE BOOTSTRAP ও DOM REFERENCE MAP ====================
+        // HTML parse শেষ হলে auth API base, forms, inputs, status areas, buttons, overlays ও carousel elements cache করে।
+        // একই references validation, request handlers ও accessibility updates-এ reuse হওয়ায় repeated DOM lookup কমে।
         const apiBase = "/api/auth";
 
         const msgEl = document.getElementById("msg");
@@ -2317,6 +2411,9 @@
           new Date().getFullYear(),
         );
 
+        // ==================== JS BLOCK 02: PLATFORM-SPECIFIC ACTION CONFIGURATION ====================
+        // Android browser হলে Play Store install action configure করে; Android wrapper-এর মধ্যে duplicate install
+        // button লুকানো হয়। Google OAuth URL-এ wrapper হলে client=android যোগ করে correct return flow বেছে নেয়।
         const configureAppDownloadButton = () => {
           if (!appDownloadBtn || !appDownloadLabel) {
             return;
@@ -2344,6 +2441,9 @@
           }
         };
 
+        // ==================== JS BLOCK 03: FEATURE CAROUSEL STATE ও INTERACTIONS ====================
+        // Slide index wrap করে, autoplay timer start/stop করে এবং track transform update করে। Hover/focus/reduced-motion,
+        // keyboard arrows, touch swipe ও page visibility অনুযায়ী autoplay pause/resume হয়।
         const getFeatureSlideCount = () => featureSlides.length;
 
         const normalizeFeatureSlideIndex = (index) => {
@@ -2516,6 +2616,9 @@
         }
         configureGoogleButtons();
 
+        // ==================== JS BLOCK 04: INPUT NORMALIZATION ও VISUAL VALIDATION STATE ====================
+        // Shop name-এর extra spaces এবং Indian mobile prefix/leading zero normalize করে। Field wrapper-এর valid/invalid
+        // class, hint message এবং per-form status একই helpers দিয়ে reset/update করা হয়।
         const normalizeShopName = (value) => value.replace(/\s+/g, " ").trim();
         const normalizeMobileNumber = (value) => {
           const digits = String(value || "").replace(/\D+/g, "");
@@ -2596,6 +2699,9 @@
           googleProfileStatus.textContent = message;
         };
 
+        // ==================== JS BLOCK 05: AUTH FORM ROUTING ও MODAL FOCUS ====================
+        // Owner/staff tab state বদলায়, target form active করে এবং heading/lead metadata sync করে। Modal open/close-এর সময়
+        // aria-hidden, body scroll lock, first-field focus এবং opener button-এ focus restoration পরিচালনা করে।
         const setLoginMode = (mode) => {
           const isStaff = mode === "staff";
           loginModeButtons.forEach((button) => {
@@ -2682,6 +2788,9 @@
           });
         };
 
+        // ==================== JS BLOCK 06: PENDING BUTTON ও USER FEEDBACK POPUPS ====================
+        // Async request চলাকালে submit button disable করে spinner label দেখায় এবং finally block-এ original content ফেরায়।
+        // Success/error overlays redirect timerসহ result দেখায়; footer popup trigger focusও সংরক্ষণ করে।
         const withPendingState = async (button, label, task) => {
           const originalLabel = button.innerHTML;
           button.disabled = true;
@@ -2741,6 +2850,9 @@
           window.setTimeout(() => popupClose.focus(), 30);
         };
 
+        // ==================== JS BLOCK 07: AUTH API TRANSPORT HELPERS ====================
+        // postJSON JSON body ও cookie credentials দিয়ে mutation request পাঠায়; fetchJSON no-store GET request পাঠায়।
+        // Network/invalid JSON/non-2xx response-কে consistent Error message-এ বদলে caller-এর catch block-এ দেয়।
         const postJSON = async (path, payload) => {
           let response;
           try {
@@ -2797,6 +2909,9 @@
           return data;
         };
 
+        // ==================== JS BLOCK 08: GOOGLE RETURN ও EXISTING SESSION CHECK ====================
+        // OAuth query parameters consume হওয়ার পরে URL পরিষ্কার করে। Pending Google onboarding profile server থেকে নেয়;
+        // valid existing session থাকলে login page না দেখিয়ে সরাসরি index.html-এ replace করে।
         const removeGoogleReturnParams = () => {
           const url = new URL(window.location.href);
           const hadGoogleParams =
@@ -2849,6 +2964,9 @@
           return;
         }
 
+        // ==================== JS BLOCK 09: FORM-SPECIFIC CLIENT VALIDATION ====================
+        // Owner login email/mobile ও password, staff username/password, registration fields, reset email এবং Google
+        // profile আলাদাভাবে যাচাই করে। প্রথম invalid field focus পায়; valid হলে normalized API payload return হয়।
         const validateLoginForm = () => {
           clearFormStatus("login");
           resetInputState(fields.loginEmail);
@@ -3237,6 +3355,9 @@
           return { shopName, mobileNumber };
         };
 
+        // ==================== JS BLOCK 10: AUTHENTICATION SUBMIT WORKFLOWS ====================
+        // প্রতিটি submit browser navigation থামিয়ে validator চালায়, pending state দেখায় এবং নিজস্ব API endpoint call করে।
+        // Owner/staff login dashboard-এ যায়; register login form-এ ফেরে; forgot link পাঠায়; Google profile setup শেষ করে।
         forms.login.addEventListener("submit", async (event) => {
           event.preventDefault();
           const payload = validateLoginForm();
@@ -3428,6 +3549,9 @@
           );
         });
 
+        // ==================== JS BLOCK 11: FORM NAVIGATION ও MODAL ACTION BINDINGS ====================
+        // Forgot/create/back links form switch করে; owner/staff mode buttons route বদলায়; landing action buttons modal খোলে।
+        // Close button click/touch handle করে এবং active trigger reference keyboard focus restoration-এর জন্য থাকে।
         document
           .getElementById("forgotLink")
           .addEventListener("click", (event) => {
@@ -3476,6 +3600,9 @@
         authClose.addEventListener("click", closeAuthModal);
         authClose.addEventListener("touchstart", closeAuthModal);
 
+        // ==================== JS BLOCK 12: PASSWORD VISIBILITY ও LIVE FIELD FEEDBACK ====================
+        // Password eye buttons input type ও accessible label sync করে। Input listeners formatting/status reset চালায়;
+        // blur listeners field-specific rules দিয়ে email, mobile, username, name ও password match feedback দেয়।
         document
           .querySelectorAll("[data-toggle-password]")
           .forEach((toggle) => {
@@ -3772,6 +3899,9 @@
           });
         });
 
+        // ==================== JS BLOCK 13: FOOTER INFORMATION CONTENT ====================
+        // About, contact ও privacy summary-এর trusted local HTML templates রাখে। Footer data-type button click করলে
+        // matching title/content dialog-এ render হয়; overlay/close/Escape handlers popup safely বন্ধ করে।
         const footerData = {
           about: {
             title: "About Shop Inventory Management",
@@ -3883,6 +4013,9 @@
           }
         });
 
+        // ==================== JS BLOCK 14: FINAL INITIALIZATION ও OAUTH OUTCOME HANDLING ====================
+        // সব fields reset করে carousel ও default login form চালু করে। তারপর Google return parameters পড়ে pending profile,
+        // provider error অথবা expired onboarding state দেখায়; কোনো special state না থাকলে owner-login guidance দেয়।
         Object.values(fields).forEach(resetInputState);
         Object.values(googleProfileFields).forEach(resetInputState);
         bindFeatureCarousel();

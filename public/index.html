@@ -1,11 +1,24 @@
 <!doctype html>
+<!--
+  FILE OVERVIEW: এই page-টি inventory dashboard-এর প্রধান workspace।
+  HTML অংশ বিভিন্ন form-section তৈরি করে; dashboard.js permission অনুযায়ী একটি section দেখায়,
+  API data এনে tables/cards/charts পূরণ করে এবং user action backend-এ পাঠায়।
+  নিচের CSS dashboard shell, purchase workflow, reports, dues, support ও responsive layout সাজায়।
+-->
 <html lang="en" data-csp-nonce="__CSP_NONCE__">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Shop Inventory Management</title>
-    <link rel="icon" type="image/png" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
-    <link rel="apple-touch-icon" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
+    <link
+      rel="apple-touch-icon"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
     <link rel="manifest" href="/site.webmanifest" />
     <link
       rel="stylesheet"
@@ -16,6 +29,9 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
     />
     <style nonce="__CSP_NONCE__">
+      /* ==================== CSS BLOCK 01: DESIGN TOKENS ও PAGE FOUNDATION ====================
+         :root shared color, shadow, radius ও surface variables রাখে। body এবং dashboard-body
+         base typography, layered background এবং initial loading state নিয়ন্ত্রণ করে। */
       :root {
         --ink-strong: #10213f;
         --ink-main: #27406b;
@@ -109,6 +125,9 @@
         z-index: 0;
       }
 
+      /* ==================== CSS BLOCK 02: MAIN SHELL ও HERO HEADER ====================
+         Sidebar-এর পাশে dashboard-এর usable width নির্ধারণ করে। Hero panel user greeting,
+         account role/scope এবং page পরিচিতি একই responsive header surface-এ সাজায়। */
       .main {
         position: relative;
         z-index: 1;
@@ -230,6 +249,9 @@
         line-height: 1.52;
       }
 
+      /* ==================== CSS BLOCK 03: OVERVIEW KPI CAROUSEL ====================
+         Sales, purchase, stock, due ও expense summary cards horizontal track-এ রাখে। Controls,
+         dots, active state ও card color variants dashboard.js-এর carousel state দৃশ্যমান করে। */
       .overview-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
@@ -384,6 +406,9 @@
         outline-offset: 2px;
       }
 
+      /* ==================== CSS BLOCK 04: SECTION VISIBILITY ও SHARED GRID ====================
+         সব dashboard workspace default-এ লুকানো থাকে; navigation যে section-এ active class দেয়
+         শুধু সেটিই দেখা যায়। Shared grid dues, expenses ও account panels-এর column layout দেয়। */
       .form-section {
         display: none;
       }
@@ -409,6 +434,9 @@
         grid-template-columns: minmax(340px, 0.92fr) minmax(0, 1.24fr);
       }
 
+      /* ==================== CSS BLOCK 05: CUSTOMER DUE LEDGER ====================
+         Due entry form, balance impact, customer ledger summary, row action menu ও empty state
+         সাজায়। Positive balance, settled account ও customer credit আলাদা tone-এ দেখানো হয়। */
       .due-search-actions .btn,
       .due-submit-row .btn {
         min-height: 48px;
@@ -737,6 +765,9 @@
         background: rgba(59, 130, 246, 0.12);
       }
 
+      /* ==================== CSS BLOCK 06: EXPENSE ও SUPPORT WORKSPACE ====================
+         Expense form/history-এর grid এবং developer support thread-এর message bubbles, metadata,
+         composer, refresh state ও empty view নির্ধারণ করে। */
       .section-grid--expense {
         grid-template-columns: minmax(320px, 0.9fr) minmax(0, 1.25fr);
       }
@@ -770,7 +801,9 @@
         background-image:
           radial-gradient(rgba(15, 118, 110, 0.08) 1px, transparent 1px),
           radial-gradient(rgba(14, 165, 233, 0.06) 1px, transparent 1px);
-        background-position: 0 0, 11px 11px;
+        background-position:
+          0 0,
+          11px 11px;
         background-size: 22px 22px;
         scrollbar-width: thin;
         scrollbar-color: rgba(15, 118, 110, 0.38) transparent;
@@ -946,6 +979,9 @@
         }
       }
 
+      /* ==================== CSS BLOCK 07: SHARED PANEL, FORM ও BUTTON SYSTEM ====================
+         Reports/forms-এর card surfaces, headings, labels, inputs এবং action buttons-এর consistent
+         spacing ও states দেয়। Highlight/alert variants গুরুত্বপূর্ণ information আলাদা করে। */
       .chart-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1196,6 +1232,9 @@
         margin-top: 8px;
       }
 
+      /* ==================== CSS BLOCK 08: PURCHASE LINE BUILDER ও SERIAL SCANNER ====================
+         Dynamic purchase rows, item/rate/quantity fields, optional serial inputs, row totals ও remove
+         action সাজায়। Camera scanner modal live barcode/serial capture-এর preview ও status দেখায়। */
       .purchase-line-builder {
         display: grid;
         gap: 14px;
@@ -1508,6 +1547,9 @@
         font-weight: 700;
       }
 
+      /* ==================== CSS BLOCK 09: PURCHASE HISTORY, DETAIL ও SUPPLIER LEDGER ====================
+         Purchase list থেকে নির্বাচিত voucher-এর metadata/items এবং due repayment panel দুই-column
+         layout-এ রাখে। View switch history ও supplier ledger panel-এর active state দেখায়। */
       .purchase-detail-layout {
         display: grid;
         grid-template-columns: minmax(0, 1.35fr) minmax(300px, 0.9fr);
@@ -1683,6 +1725,9 @@
         line-height: 1.65;
       }
 
+      /* ==================== CSS BLOCK 10: AUTOCOMPLETE ও DATA TABLES ====================
+         Supplier/product/customer suggestion overlay, scrollable report tables, sticky-style headers,
+         row hover এবং stock/reorder urgency tones একই reusable visual system-এ রাখে। */
       .dropdown-list {
         position: absolute;
         top: calc(100% + 8px);
@@ -1893,6 +1938,9 @@
         background-color: rgba(254, 249, 195, 0.72) !important;
       }
 
+      /* ==================== CSS BLOCK 11: SUMMARY, STATUS ও REPORT KPI CARDS ====================
+         Calculated totals, paid/partial/due status, GST metrics এবং stock intelligence values compact
+         pills/cards-এ দেখায়। JavaScript শুধু text/state বদলায়; layout এই block নিয়ন্ত্রণ করে। */
       .summary-strip {
         display: flex;
         justify-content: flex-end;
@@ -2157,6 +2205,9 @@
         margin-top: 12px;
       }
 
+      /* ==================== CSS BLOCK 12: INVENTORY ও GST INSIGHT PANELS ====================
+         Reorder planner, slow-moving stock, monthly GST এবং tax-rate comparison cards/tables responsive
+         grid-এ সাজায় যাতে operational এবং compliance data পাশাপাশি বিশ্লেষণ করা যায়। */
       .insight-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2319,6 +2370,9 @@
         color: #1d4ed8;
       }
 
+      /* ==================== CSS BLOCK 13: SALES ANALYTICS ও PROFIT VISUALIZATION ====================
+         Trend/doughnut chart containers, live badge, growth summary এবং net-profit filters/value card
+         সাজায়। Canvas-এর responsive size Chart.js rendering-এর জন্য স্থির visual area দেয়। */
       .analytics-card {
         position: relative;
         overflow: hidden;
@@ -2704,6 +2758,9 @@
         margin-top: 12px;
       }
 
+      /* ==================== CSS BLOCK 14: COMMON POPUP ও CONFIRMATION DIALOG ====================
+         Success/error message, confirmation actions এবং sensitive account operation-এর password field
+         একটি accessible overlay dialog-এ দেখায়; active class visibility ও entry animation চালায়। */
       .popup-shell {
         position: fixed;
         inset: 0;
@@ -2936,7 +2993,9 @@
         color: var(--cyan-strong);
         cursor: pointer;
         font-size: 24px;
-        transition: transform 0.2s ease, filter 0.2s ease;
+        transition:
+          transform 0.2s ease,
+          filter 0.2s ease;
       }
 
       .popup-icon:hover:not(:disabled) {
@@ -3088,6 +3147,9 @@
         }
       }
 
+      /* ==================== CSS BLOCK 15: RESPONSIVE ও ACCESSIBILITY OVERRIDES ====================
+         Laptop, tablet, mobile এবং extra-small widths-এ grids, cards, tables, buttons ও typography ধাপে
+         ধাপে compact করে। prefers-reduced-motion user-এর জন্য animation/transition সীমিত করে। */
       @media (max-width: 1199px) {
         .overview-grid {
           margin-bottom: 16px;
@@ -4123,6 +4185,9 @@
     </style>
   </head>
   <body class="dashboard-body app-loading">
+    <!-- ==================== HTML BLOCK 01: DASHBOARD SHELL ও USER CONTEXT ====================
+         main element sidebar-এর পাশের সম্পূর্ণ workspace ধরে। Hero header current date, signed-in user,
+         owner/staff role এবং permission scope দেখায়; dashboard.js session load হওয়ার পরে values বসায়। -->
     <main class="main">
       <div class="main-shell">
         <header class="hero-panel">
@@ -4145,6 +4210,9 @@
           </div>
         </header>
 
+        <!-- ==================== HTML BLOCK 02: OVERVIEW KPI CAROUSEL ====================
+             Inventory value, sales, purchase, customer due ও expense-এর quick totals slide cards-এ দেখায়।
+             Previous/next controls এবং dots dashboard.js-এর carousel position পরিবর্তন করে। -->
         <section
           id="overviewGrid"
           class="overview-grid"
@@ -4267,6 +4335,9 @@
           </div>
         </section>
 
+        <!-- ==================== HTML BLOCK 03: PURCHASE ENTRY WORKFLOW ====================
+             Supplier identity ও bill metadata নেওয়ার পরে dynamic item rows-এ product, quantity, rate এবং
+             optional serial number যোগ হয়। Summary paid/due হিসাব দেখায়; save action stock ও supplier ledger update করে। -->
         <div id="purchaseEntrySection" class="form-section active">
           <div class="section-grid">
             <section
@@ -4469,6 +4540,9 @@
               </button>
             </div>
 
+            <!-- PURCHASE HISTORY / SUPPLIER LEDGER SUB-BLOCK:
+                 Tabs purchase bills অথবা supplier-wise ledger দেখায়। Date/supplier filters API result সীমিত করে;
+                 bill row নির্বাচন করলে detail panel-এ voucher items ও payment state load হয়। -->
             <div id="purchaseHistoryView" class="purchase-view-panel">
               <div class="purchase-view-panel__head">
                 <div>
@@ -4628,6 +4702,9 @@
               </div>
             </div>
 
+            <!-- PURCHASE DETAIL SUB-BLOCK:
+                 নির্বাচিত bill-এর supplier/payment summary ও item rows দেখায়। Outstanding purchase থাকলে পাশের
+                 repayment form amount, mode ও remark নিয়ে supplier payment record তৈরি করে। -->
             <section
               id="purchaseDetailCard"
               class="panel-card panel-card--surface mt-4"
@@ -4727,6 +4804,9 @@
           <section class="panel-card panel-card--surface">
             <div class="panel-heading">
               <div>
+                <!-- PRODUCT BUYING HISTORY SUB-BLOCK:
+                     Product selection অনুযায়ী আগের supplier, purchase date, quantity ও buying rate records দেখায়;
+                     purchasing trend ও last-cost comparison বোঝার জন্য summary এবং table একসঙ্গে update হয়। -->
                 <span class="panel-kicker">Product Purchase History</span>
                 <h4>Track supplier buying history by item</h4>
               </div>
@@ -4831,6 +4911,9 @@
           </section>
         </div>
 
+        <!-- ==================== HTML BLOCK 04: INVENTORY REPORT ও STOCK INTELLIGENCE ====================
+             Item search এবং optional selling/buying columns দিয়ে stock report তৈরি হয়। Low-stock table immediate
+             alerts দেখায়; reorder planner প্রয়োজনীয় quantity এবং slow-moving panel পুরোনো stock চিহ্নিত করে। -->
         <div id="itemReportSection" class="form-section">
           <section class="panel-card panel-card--surface">
             <div class="panel-heading">
@@ -4884,16 +4967,32 @@
 
             <div class="mt-3 p-3 border rounded-3 bg-light-subtle">
               <div class="form-check form-switch mb-1">
-                <input class="form-check-input" type="checkbox" role="switch"
-                  id="itemReportShowSelling" checked />
-                <label class="form-check-label fw-semibold" for="itemReportShowSelling">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  id="itemReportShowSelling"
+                  checked
+                />
+                <label
+                  class="form-check-label fw-semibold"
+                  for="itemReportShowSelling"
+                >
                   Show selling price &amp; profit
                 </label>
               </div>
               <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" role="switch"
-                  id="itemReportShowBuying" checked />
-                <label class="form-check-label fw-semibold" for="itemReportShowBuying">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  role="switch"
+                  id="itemReportShowBuying"
+                  checked
+                />
+                <label
+                  class="form-check-label fw-semibold"
+                  for="itemReportShowBuying"
+                >
                   Show buying rate
                 </label>
               </div>
@@ -4945,6 +5044,9 @@
           >
             <div class="panel-heading">
               <div>
+                <!-- LOW-STOCK SUB-BLOCK:
+                       Current quantity threshold-এর নিচে নামা items count ও table-এ দেখায়; row tone critical এবং
+                       warning priority আলাদা করে যাতে দ্রুত replenishment decision নেওয়া যায়। -->
                 <span class="panel-kicker">Stock Alert</span>
                 <h5>
                   Items needing attention (<span id="lowStockCount">0</span>)
@@ -4993,6 +5095,9 @@
             >
               <div class="panel-heading">
                 <div>
+                  <!-- REORDER PLANNER SUB-BLOCK:
+                       Stock level ও configured demand signals থেকে suggested order quantity, urgency এবং estimated
+                       investment তৈরি করে; KPI cards পুরো replenishment plan-এর quick totals দেখায়। -->
                   <span class="panel-kicker">Reorder Planner</span>
                   <h5>Suggested replenishment list</h5>
                 </div>
@@ -5086,6 +5191,9 @@
             >
               <div class="panel-heading">
                 <div>
+                  <!-- SLOW-MOVING SUB-BLOCK:
+                       Last-sale age ও available quantity দিয়ে দীর্ঘদিন আটকে থাকা products চিহ্নিত করে। Suggested
+                       action sales priority ঠিক করতে সাহায্য করে এবং dormant stock value বোঝায়। -->
                   <span class="panel-kicker">Sell-First Focus</span>
                   <h5>Slow-moving stock worth pushing</h5>
                 </div>
@@ -5171,6 +5279,9 @@
             </section>
           </div>
         </div>
+        <!-- ==================== HTML BLOCK 05: SALES REPORT ও PROFIT ANALYTICS ====================
+             Date range ও customer filter দিয়ে invoice sales load/export করা হয়। Result table/summary-এর পাশাপাশি
+             growth trend, payment-mode chart এবং date-filtered net profit business performance ব্যাখ্যা করে। -->
         <div id="salesReportSection" class="form-section">
           <section class="panel-card panel-card--surface">
             <div class="panel-heading">
@@ -5387,6 +5498,9 @@
           </section>
         </div>
 
+        <!-- ==================== HTML BLOCK 06: GST COMPLIANCE REPORT ====================
+             নির্বাচিত সময়ের taxable sales, GST collected ও invoice totals table/KPI-তে দেখায়। Monthly trend,
+             tax-rate comparison এবং export controls accounting review-এর জন্য একই section-এ রাখা হয়েছে। -->
         <div id="gstReportSection" class="form-section">
           <section class="panel-card panel-card--surface">
             <div class="panel-heading">
@@ -5730,6 +5844,9 @@
           </section>
         </div>
 
+        <!-- ==================== HTML BLOCK 07: CUSTOMER DUE ENTRY ও LEDGER ====================
+             Customer autocomplete দিয়ে credit sale বা collection entry করা হয়। Impact preview balance কীভাবে
+             বদলাবে দেখায়; ledger search, totals ও row menu থেকে customer history manage করা যায়। -->
         <div id="customerDebtSection" class="form-section">
           <div class="section-grid section-grid--dues due-section-grid">
             <section class="panel-card panel-card--surface due-composer-card">
@@ -5938,6 +6055,9 @@
           </div>
         </div>
 
+        <!-- ==================== HTML BLOCK 08: EXPENSE TRACKING ====================
+             Daily expense title, category, amount, date, payment mode ও note save করে। Summary cards selected period-এর
+             spend breakdown দেখায় এবং filterable history table existing expense records manage করে। -->
         <div id="expenseTrackingSection" class="form-section">
           <div class="section-grid section-grid--expense">
             <section class="panel-card panel-card--surface">
@@ -6147,6 +6267,9 @@
           </section>
         </div>
 
+        <!-- ==================== HTML BLOCK 09: PRIVATE SUPPORT CONVERSATION ====================
+             Owner/staff application issue লিখে developer support-এ পাঠাতে পারে। Thread previous messages,
+             sender metadata ও replies দেখায়; refresh action server থেকে latest conversation আবার load করে। -->
         <div id="supportChatSection" class="form-section">
           <div class="section-grid support-section-grid">
             <section class="panel-card panel-card--highlight">
@@ -6263,12 +6386,20 @@
           </div>
         </div>
 
+        <!-- ==================== HTML BLOCK 10: ACCOUNT DETAILS ও PASSWORD MANAGEMENT ====================
+             Session role অনুযায়ী owner profile fields অথবা staff identity/access information দেখায়। Owner contact/shop
+             details save করতে পারে এবং password setup/change common secure popup flow ব্যবহার করে। -->
         <div id="accountSection" class="form-section">
           <div class="section-grid">
-            <section id="accountDetailsCard" class="panel-card panel-card--surface">
+            <section
+              id="accountDetailsCard"
+              class="panel-card panel-card--surface"
+            >
               <div class="panel-heading">
                 <div>
-                  <span id="accountDetailsKicker" class="panel-kicker">Account</span>
+                  <span id="accountDetailsKicker" class="panel-kicker"
+                    >Account</span
+                  >
                   <h4 id="accountDetailsHeading">Manage your account</h4>
                 </div>
               </div>
@@ -6279,23 +6410,63 @@
 
               <div id="accountOwnerFields" class="row g-3">
                 <div class="col-12">
-                  <label class="form-label small" for="accountOwnerName">Owner Name</label>
-                  <input id="accountOwnerName" class="form-control" type="text" maxlength="50" autocomplete="name" />
+                  <label class="form-label small" for="accountOwnerName"
+                    >Owner Name</label
+                  >
+                  <input
+                    id="accountOwnerName"
+                    class="form-control"
+                    type="text"
+                    maxlength="50"
+                    autocomplete="name"
+                  />
                 </div>
                 <div class="col-12">
-                  <label class="form-label small" for="accountOwnerEmail">Email Address</label>
-                  <input id="accountOwnerEmail" class="form-control" type="email" maxlength="100" autocomplete="email" />
+                  <label class="form-label small" for="accountOwnerEmail"
+                    >Email Address</label
+                  >
+                  <input
+                    id="accountOwnerEmail"
+                    class="form-control"
+                    type="email"
+                    maxlength="100"
+                    autocomplete="email"
+                  />
                 </div>
                 <div class="col-12">
-                  <label class="form-label small" for="accountOwnerMobile">Mobile Number</label>
-                  <input id="accountOwnerMobile" class="form-control" type="tel" inputmode="numeric" maxlength="10" autocomplete="tel" />
+                  <label class="form-label small" for="accountOwnerMobile"
+                    >Mobile Number</label
+                  >
+                  <input
+                    id="accountOwnerMobile"
+                    class="form-control"
+                    type="tel"
+                    inputmode="numeric"
+                    maxlength="10"
+                    autocomplete="tel"
+                  />
                 </div>
                 <div class="col-12">
-                  <label class="form-label small" for="accountShopName">Shop Name</label>
-                  <input id="accountShopName" class="form-control" type="text" maxlength="150" autocomplete="organization" />
+                  <label class="form-label small" for="accountShopName"
+                    >Shop Name</label
+                  >
+                  <input
+                    id="accountShopName"
+                    class="form-control"
+                    type="text"
+                    maxlength="150"
+                    autocomplete="organization"
+                  />
                 </div>
-                <div id="accountSaveActions" class="col-12 d-flex flex-wrap align-items-center gap-3">
-                  <button id="saveAccountBtn" class="btn btn-primary" type="button">
+                <div
+                  id="accountSaveActions"
+                  class="col-12 d-flex flex-wrap align-items-center gap-3"
+                >
+                  <button
+                    id="saveAccountBtn"
+                    class="btn btn-primary"
+                    type="button"
+                  >
                     <i class="fa-solid fa-floppy-disk"></i>
                     Save Changes
                   </button>
@@ -6310,13 +6481,20 @@
                 </div>
                 <div class="col-12">
                   <label class="form-label small">Username</label>
-                  <input id="accountStaffUsername" class="form-control" readonly />
+                  <input
+                    id="accountStaffUsername"
+                    class="form-control"
+                    readonly
+                  />
                 </div>
               </div>
             </section>
           </div>
         </div>
 
+        <!-- ==================== HTML BLOCK 11: STAFF ACCOUNT ও PERMISSION CONTROL ====================
+             Owner নতুন staff credentials তৈরি করে এবং invoice, purchase, reports, dues ও expense module access বেছে নেয়।
+             Current staff list থেকে permissions update এবং account-level action চালানো যায়। -->
         <div id="staffAccessSection" class="form-section">
           <div class="section-grid section-grid--dues">
             <section class="panel-card panel-card--surface">
@@ -6416,6 +6594,9 @@
             <section class="panel-card panel-card--surface">
               <div class="panel-heading">
                 <div>
+                  <!-- STAFF LIST SUB-BLOCK:
+                       Created staff accounts, remaining owner-plan slots এবং current permission state দেখায়;
+                       owner এখান থেকে staff access review/update করার প্রয়োজনীয় row actions পায়। -->
                   <span class="panel-kicker">Access Overview</span>
                   <h4>Current staff accounts</h4>
                 </div>
@@ -6444,6 +6625,10 @@
       </div>
     </main>
 
+    <!-- ==================== HTML BLOCK 12: SHARED POPUP / SECURE CONFIRMATION ====================
+         dashboard.js success, error ও informational message এই এক dialog-এ render করে। Optional password field
+         এবং confirm/cancel actions password change, delete বা অন্য sensitive operation-এর confirmation নেয়।
+         aria-hidden, role ও aria-labelledby assistive technology-কে dialog state বুঝতে সাহায্য করে। -->
     <div
       id="commonPopup"
       class="popup-shell"
@@ -6494,6 +6679,10 @@
       </div>
     </div>
 
+    <!-- ==================== HTML BLOCK 13: JAVASCRIPT DEPENDENCY ORDER ====================
+         permission-contract প্রথমে canonical module permissions দেয়। app-core API/session helpers তৈরি করে,
+         app-shell sidebar/navigation render করে এবং সবশেষে dashboard.js এই page-এর forms, reports, charts,
+         autocomplete, validation, API requests ও event listeners চালু করে। এই load order dependency-safe। -->
     <script src="js/permission-contract.js"></script>
     <script src="js/app-core.js?v=2026-08-14-account-1"></script>
     <script src="js/app-shell.js"></script>

@@ -1,12 +1,28 @@
 <!doctype html>
+<!-- উপরের declaration browser-কে জানায় documentটি modern HTML5 format ব্যবহার করছে। -->
 <html lang="en" data-csp-nonce="__CSP_NONCE__">
+  <!-- উপরের root tag page language এবং server-provided CSP nonce বহন করে। -->
   <head>
+    <!-- Head block browser metadata, title, icons এবং page styles ধরে রাখে। -->
     <meta charset="utf-8" />
+    <!-- UTF-8 encoding বাংলা/ইংরেজি ও special character সঠিকভাবে দেখায়। -->
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Mobile screen-এর width অনুযায়ী responsive layout চালু করে। -->
     <title>Account Deletion - Shop Inventory Management</title>
-    <link rel="icon" type="image/png" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
-    <link rel="apple-touch-icon" href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1" />
+    <!-- Browser tab ও search result-এ page-এর নাম দেখায়। -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
+    <!-- Browser tab-এর favicon হিসেবে app logo ব্যবহার করে। -->
+    <link
+      rel="apple-touch-icon"
+      href="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
+    />
+    <!-- iPhone/iPad home-screen shortcut-এর icon হিসেবে app logo ব্যবহার করে। -->
     <style nonce="__CSP_NONCE__">
+      /* এই style block account-deletion page-এর সম্পূর্ণ visual design নিয়ন্ত্রণ করে। */
       :root {
         color-scheme: light;
         --navy: #122744;
@@ -20,10 +36,12 @@
         --warning: #b45309;
         --shadow: 0 24px 70px rgba(12, 31, 59, 0.12);
       }
+      /* উপরের variables পুরো page-এর shared colors, borders এবং shadow এক জায়গায় রাখে। */
 
       * {
         box-sizing: border-box;
       }
+      /* Width/height হিসাবের মধ্যে padding ও border অন্তর্ভুক্ত করে predictable sizing দেয়। */
 
       body {
         margin: 0;
@@ -44,22 +62,26 @@
           ),
           linear-gradient(180deg, #eef9fd 0%, #f8fcff 52%, #edf7fc 100%);
       }
+      /* Body পুরো viewport জুড়ে font, text color ও layered gradient background সেট করে। */
 
       a {
         color: var(--sky);
         font-weight: 800;
         text-decoration: none;
       }
+      /* সব link-কে brand color, bold weight ও clean default appearance দেয়। */
 
       a:hover {
         text-decoration: underline;
         text-underline-offset: 4px;
       }
+      /* Mouse hover করলে link-এর নিচে offset underline দেখায়। */
 
       .page {
         width: min(calc(100% - 28px), 980px);
         margin: 18px auto 42px;
       }
+      /* Main page container-এর responsive maximum width ও outer spacing নির্ধারণ করে। */
 
       .topbar,
       .hero,
@@ -69,6 +91,7 @@
         box-shadow: var(--shadow);
         backdrop-filter: blur(18px);
       }
+      /* Topbar, hero ও card-এ একই glass-like surface, border, blur এবং shadow প্রয়োগ করে। */
 
       .topbar {
         display: flex;
@@ -78,6 +101,7 @@
         padding: 14px 18px;
         border-radius: 28px;
       }
+      /* Header-এর brand ও privacy link horizontal flex layout-এ সাজায়। */
 
       .brand {
         display: inline-flex;
@@ -86,21 +110,25 @@
         color: var(--ink);
         text-decoration: none;
       }
+      /* Logo ও brand text-কে একই clickable aligned row-এ রাখে। */
 
       .brand img {
         width: 50px;
         height: 50px;
         object-fit: contain;
       }
+      /* Brand logo-এর fixed size রাখে এবং image distortion ঠেকায়। */
 
       .brand strong,
       .brand span {
         display: block;
       }
+      /* Brand title ও subtitle-কে আলাদা line-এ block হিসেবে দেখায়। */
 
       .brand strong {
         font-size: 15px;
       }
+      /* Brand-এর প্রধান নামের font size নির্ধারণ করে। */
 
       .brand span {
         margin-top: 2px;
@@ -108,6 +136,7 @@
         font-size: 12px;
         font-weight: 600;
       }
+      /* Brand subtitle-কে muted ছোট text হিসেবে দেখায়। */
 
       .pill-link,
       .primary-link {
@@ -120,12 +149,14 @@
         font-size: 13px;
         font-weight: 900;
       }
+      /* দুই ধরনের action link-এর shared button shape, alignment ও typography দেয়। */
 
       .pill-link {
         border: 1px solid var(--line);
         background: rgba(255, 255, 255, 0.72);
         color: var(--navy);
       }
+      /* Secondary action-কে light outlined pill button হিসেবে দেখায়। */
 
       .primary-link {
         border: 0;
@@ -133,12 +164,14 @@
         color: #ffffff;
         box-shadow: 0 16px 34px rgba(20, 155, 215, 0.22);
       }
+      /* প্রধান deletion-email action-কে branded gradient button হিসেবে দেখায়। */
 
       .hero {
         margin-top: 18px;
         padding: clamp(28px, 5vw, 52px);
         border-radius: 34px;
       }
+      /* Page introduction section-এর spacing, responsive padding ও rounded corners সেট করে। */
 
       .eyebrow {
         display: inline-flex;
@@ -153,6 +186,7 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
+      /* ছোট Account Deletion label-কে uppercase branded badge হিসেবে দেখায়। */
 
       h1 {
         margin: 18px 0 12px;
@@ -161,6 +195,7 @@
         line-height: 1.02;
         letter-spacing: 0;
       }
+      /* Main heading-এর responsive বড় font, spacing ও navy color নির্ধারণ করে। */
 
       h2 {
         margin: 0 0 12px;
@@ -168,6 +203,7 @@
         font-size: clamp(22px, 3vw, 30px);
         letter-spacing: 0;
       }
+      /* প্রতিটি information card-এর heading style নির্ধারণ করে। */
 
       p,
       li {
@@ -175,20 +211,24 @@
         font-size: 15px;
         line-height: 1.8;
       }
+      /* Paragraph ও list item-এ readable muted text size এবং line-height দেয়। */
 
       p {
         margin: 0 0 12px;
       }
+      /* Paragraphগুলোর নিচে consistent spacing রাখে। */
 
       ul,
       ol {
         margin: 10px 0 0;
         padding-left: 22px;
       }
+      /* Ordered ও unordered list-এর indentation এবং top spacing নির্ধারণ করে। */
 
       li + li {
         margin-top: 8px;
       }
+      /* প্রথম item ছাড়া পরের list itemগুলোর মাঝে vertical gap দেয়। */
 
       .actions {
         display: flex;
@@ -197,6 +237,7 @@
         gap: 12px;
         margin-top: 24px;
       }
+      /* Hero-এর email এবং app action buttonগুলো wrapping flex row-এ সাজায়। */
 
       .grid {
         display: grid;
@@ -204,24 +245,29 @@
         gap: 18px;
         margin-top: 18px;
       }
+      /* Information cardগুলো desktop-এ দুই-column responsive grid-এ সাজায়। */
 
       .card {
         padding: clamp(22px, 4vw, 34px);
         border-radius: 28px;
       }
+      /* প্রতিটি information card-এর responsive padding ও rounded corners দেয়। */
 
       .full {
         grid-column: 1 / -1;
       }
+      /* Full class দেওয়া card-কে grid-এর দুই column জুড়ে বিস্তৃত করে। */
 
       .warning {
         border-color: rgba(180, 83, 9, 0.24);
         background: rgba(255, 251, 235, 0.88);
       }
+      /* Retention warning card-এ আলাদা amber border ও background দেয়। */
 
       .warning strong {
         color: var(--warning);
       }
+      /* Warning card-এর emphasized text amber warning color-এ দেখায়। */
 
       .footer {
         margin-top: 20px;
@@ -230,6 +276,7 @@
         font-size: 13px;
         text-align: center;
       }
+      /* Footer copyright text-এর spacing, muted color ও center alignment সেট করে। */
 
       @media (max-width: 760px) {
         .topbar {
@@ -246,6 +293,7 @@
           border-radius: 24px;
         }
       }
+      /* Tablet/mobile width-এ header stack, single-column grid ও ছোট corner radius প্রয়োগ করে। */
 
       @media (max-width: 560px) {
         .page {
@@ -258,49 +306,74 @@
           height: 44px;
         }
       }
+      /* ছোট mobile screen-এ page margin ও logo size আরও compact করে। */
     </style>
+    <!-- উপরের style block শেষ; এর পরে visible page markup শুরু হবে। -->
   </head>
+  <!-- Head শেষ; browser metadata ও styling load সম্পূর্ণ। -->
   <body>
+    <!-- Body block user-এর সামনে দেখা সম্পূর্ণ account deletion content ধরে। -->
     <div class="page">
+      <!-- Page wrapper সব content center করে এবং maximum width নিয়ন্ত্রণ করে। -->
       <header class="topbar">
+        <!-- Topbar app identity ও Privacy Policy navigation দেখায়। -->
         <a
           class="brand"
           href="/login.html"
           aria-label="Shop Inventory Management login"
         >
+          <!-- Brand link click করলে user login page-এ ফিরে যায়। -->
           <img
             src="/images/app_logo.png?v=2026-07-03-shop-brand-logo-1"
             alt="Shop Inventory Management logo"
           />
+          <!-- App logo brand identity হিসেবে দেখায়; alt text accessibility বজায় রাখে। -->
           <span>
+            <!-- Brand name ও account-control subtitle একসঙ্গে group করে। -->
             <strong>Shop Inventory Management</strong>
             <span>Account and business data control</span>
           </span>
+          <!-- Brand text group শেষ। -->
         </a>
+        <!-- Clickable brand/logo block শেষ। -->
         <a class="pill-link" href="/privacy-policy.html">Privacy Policy</a>
+        <!-- Privacy Policy button user-কে data-handling policy page-এ নেয়। -->
       </header>
+      <!-- Top navigation/header শেষ। -->
 
       <main>
+        <!-- Main block page-এর primary deletion instructions ও policy details ধরে। -->
         <article class="hero">
+          <!-- Hero block page-এর উদ্দেশ্য, eligibility ও প্রধান actions বোঝায়। -->
           <span class="eyebrow">Account Deletion</span>
+          <!-- ছোট category badge user-কে বর্তমান page context জানায়। -->
           <h1>Request deletion of your Shop Inventory Management account</h1>
+          <!-- প্রধান heading account deletion request-এর উদ্দেশ্য স্পষ্ট করে। -->
           <p>
             Shop owners can request deletion of their owner account and related
             business data. Staff users should contact the shop owner, because
             staff access is managed by the owner from the Staff Access section.
           </p>
+          <!-- উপরের paragraph owner এবং staff-এর deletion responsibility ব্যাখ্যা করে। -->
           <div class="actions">
+            <!-- Deletion request email ও app login link একই action group-এ রাখে। -->
             <a
               class="primary-link"
               href="mailto:contact.us.indiainventory@gmail.com?subject=India%20Inventory%20Management%20Account%20Deletion%20Request"
               >Email Deletion Request</a
             >
+            <!-- Primary mailto link pre-filled subject-সহ email app খুলে দেয়। -->
             <a class="pill-link" href="/login.html">Open App</a>
+            <!-- Secondary action user-কে application login page-এ ফিরিয়ে নেয়। -->
           </div>
+          <!-- Hero action group শেষ। -->
         </article>
+        <!-- Introductory hero section শেষ। -->
 
         <div class="grid">
+          <!-- নিচের policy/instruction sections responsive card grid-এ রাখে। -->
           <section class="card">
+            <!-- প্রথম card deletion request পাঠানোর ধাপগুলো ব্যাখ্যা করে। -->
             <h2>How to request deletion</h2>
             <ol>
               <li>
@@ -317,9 +390,12 @@
               </li>
               <li>We will verify owner access before deleting account data.</li>
             </ol>
+            <!-- Ordered list request-এর প্রয়োজনীয় চারটি sequential step শেষ করে। -->
           </section>
+          <!-- Deletion-request instruction card শেষ। -->
 
           <section class="card">
+            <!-- দ্বিতীয় card account deletion-এ সাধারণত কোন data মুছবে তা জানায়। -->
             <h2>Data usually deleted</h2>
             <ul>
               <li>
@@ -336,9 +412,12 @@
                 account.
               </li>
             </ul>
+            <!-- Deleted-data category list শেষ। -->
           </section>
+          <!-- Data-usually-deleted card শেষ। -->
 
           <section class="card warning full">
+            <!-- Full-width warning card temporary/legal data retention ব্যাখ্যা করে। -->
             <h2>Records that may be retained temporarily</h2>
             <p>
               Some data may remain for a limited time in backups, logs, audit
@@ -347,9 +426,12 @@
               retention is no longer required, the data will be deleted or
               anonymized.
             </p>
+            <!-- Backup, audit, security ও legal retention condition-এর ব্যাখ্যা শেষ। -->
           </section>
+          <!-- Temporary-retention warning card শেষ। -->
 
           <section class="card full">
+            <!-- Full-width timeline card verification ও processing expectation জানায়। -->
             <h2>Expected timeline</h2>
             <p>
               After receiving a valid request and verifying account ownership,
@@ -357,6 +439,7 @@
               verification is needed, we may contact the registered email
               address before deleting the account.
             </p>
+            <!-- প্রথম paragraph ownership verification ও deletion processing timeline বোঝায়। -->
             <p>
               For privacy questions, read the
               <a href="/privacy-policy.html">Privacy Policy</a> or contact us at
@@ -364,13 +447,22 @@
                 >contact.us.indiainventory@gmail.com</a
               >.
             </p>
+            <!-- দ্বিতীয় paragraph privacy policy ও contact email-এর পথ দেখায়। -->
           </section>
+          <!-- Expected-timeline card শেষ। -->
         </div>
+        <!-- Information card grid শেষ। -->
       </main>
+      <!-- Page-এর মূল account deletion content শেষ। -->
 
       <footer class="footer">
+        <!-- Footer app copyright ownership দেখায়। -->
         &copy; 2026 Shop Inventory Management. All rights reserved.
       </footer>
+      <!-- Footer শেষ। -->
     </div>
+    <!-- Centered page wrapper শেষ। -->
   </body>
+  <!-- Visible document body শেষ। -->
 </html>
+<!-- সম্পূর্ণ HTML document শেষ। -->
